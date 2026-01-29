@@ -1,0 +1,160 @@
+
+import React, { useState, useEffect } from 'react';
+import type { BlogPost } from '../types';
+import { fetchBlogPosts, trackEvent } from '../services/apiService';
+import BlogPostModal from '../components/BlogPostModal';
+import BlogSubmissionModal from '../components/BlogSubmissionModal';
+import AnimatedElement from '../components/AnimatedElement';
+
+const BlogPage: React.FC = () => {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+  const [isSubmissionOpen, setIsSubmissionOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getPosts = async () => {
+      try {
+        const data = await fetchBlogPosts();
+        setPosts(data);
+      } catch (err) {
+        console.error("Failed to fetch blog posts:", err);
+        setError("Failed to load articles. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    getPosts();
+  }, []);
+
+  const handlePostClick = (post: BlogPost) => {
+      trackEvent('click', `blog_post_${post.title.substring(0, 20)}`, '/blog', { title: post.title });
+      setSelectedPost(post);
+  };
+
+  const renderContent = () => {
+      if (isLoading) {
+          return (
+            <div className="text-center py-20">
+              <i className="fas fa-spinner fa-spin text-4xl text-lt-orange"></i>
+              <p className="mt-4 text-slate-500">Loading articles...</p>
+            </div>
+          );
+      }
+
+      if (error) {
+          return (
+            <div className="text-center text-red-600 bg-red-50 p-8 rounded-lg border border-red-200">
+                <i className="fas fa-exclamation-circle text-4xl mb-3 text-red-500"></i>
+                <p>{error}</p>
+            </div>
+          );
+      }
+
+      if (posts.length === 0) {
+        return (
+            <div className="text-center py-20 text-slate-500">
+                <i className="far fa-newspaper text-4xl mb-3"></i>
+                <p>No blog posts found. Check back soon!</p>
+            </div>
+        );
+      }
+
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {posts.map((post, index) => (
+          <AnimatedElement key={post._id || index} delay={index * 100}>
+            <div 
+                className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col group h-full cursor-pointer transform hover:-translate-y-2 transition-all duration-300 border border-slate-100 hover:shadow-xl"
+                onClick={() => handlePostClick(post)}
+            >
+              <div className="relative h-56 overflow-hidden">
+                <img src={post.image} alt={post.alt} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute top-4 left-4">
+                    <span className="bg-white/90 backdrop-blur-md text-lt-orange text-xs font-bold px-3 py-1 rounded-full shadow-sm uppercase tracking-wide border border-lt-orange/20">
+                        {post.badge}
+                    </span>
+                </div>
+              </div>
+              <div className="p-6 flex-grow flex flex-col">
+                <div className="flex items-center text-xs text-slate-500 mb-3 space-x-2">
+                    <span><i className="far fa-calendar-alt mr-1"></i> {post.date}</span>
+                    <span>&bull;</span>
+                    <span><i className="far fa-clock mr-1"></i> {post.readTime}</span>
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-slate-800 group-hover:text-lt-red transition-colors leading-tight">
+                    {post.title}
+                </h3>
+                <p className="text-slate-600 text-sm flex-grow mb-4 line-clamp-3">
+                    {post.description}
+                </p>
+                <div className="border-t border-slate-100 pt-4 mt-auto flex justify-between items-center">
+                  <div className="flex items-center text-xs text-slate-600 font-medium">
+                     <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center mr-2 text-slate-400 border border-slate-200">
+                        <i className="fas fa-user"></i>
+                     </div>
+                     {post.author}
+                  </div>
+                  <span className="text-lt-orange font-bold text-sm group-hover:translate-x-1 transition-transform duration-200 flex items-center group-hover:text-lt-red">
+                    Read Article <i className="fas fa-arrow-right ml-2 text-xs"></i>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </AnimatedElement>
+        ))}
+      </div>
+      );
+  };
+
+  return (
+    <>
+        <section id="blog" className="py-20 md:py-32 bg-slate-50 overflow-hidden min-h-screen">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <AnimatedElement>
+            <div className="text-center mb-12">
+                <h2 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">Travel Blog</h2>
+                <p className="mt-4 text-lg text-slate-600 max-w-3xl mx-auto">
+                Read stories, guides, and tips from travelers and locals to help you plan your perfect La Trinidad adventure.
+                </p>
+                
+                {/* Share Story Button */}
+                <div className="mt-8">
+                    <button 
+                        onClick={() => setIsSubmissionOpen(true)}
+                        className="bg-white border-2 border-lt-orange text-lt-orange hover:bg-lt-orange hover:text-white font-bold py-3 px-8 rounded-full shadow-md transition-all duration-300 flex items-center mx-auto gap-2 group transform hover:scale-105"
+                    >
+                        <i className="fas fa-pen-nib group-hover:rotate-12 transition-transform"></i>
+                        Share Your Story
+                    </button>
+                    <p className="text-xs text-slate-400 mt-2">Have a unique experience? Post it here!</p>
+                </div>
+            </div>
+            </AnimatedElement>
+
+            {renderContent()}
+            
+            {!isLoading && !error && posts.length > 0 && (
+                <AnimatedElement className="mt-16 text-center">
+                    <button className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-lt-orange font-bold py-3 px-8 rounded-full text-lg transition duration-300 shadow-lg">
+                        View Archive
+                    </button>
+                </AnimatedElement>
+            )}
+        </div>
+        </section>
+
+        {selectedPost && (
+            <BlogPostModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+        )}
+
+        {isSubmissionOpen && (
+            <BlogSubmissionModal onClose={() => setIsSubmissionOpen(false)} />
+        )}
+    </>
+  );
+};
+
+export default BlogPage;
