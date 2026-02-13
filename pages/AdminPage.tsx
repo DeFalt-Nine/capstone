@@ -110,7 +110,7 @@ const AdminPage: React.FC = () => {
             } else {
                 await deleteItem(activeTab, id);
             }
-            setData(prev => prev.filter(item => item._id !== id));
+            setData((prev: any[]) => prev.filter((item: any) => item._id !== id));
         } catch (error: any) {
             alert(error.message || 'Operation failed.');
         }
@@ -120,7 +120,7 @@ const AdminPage: React.FC = () => {
         if(!window.confirm("Approve this post for public view?")) return;
         try {
             const updated = await updateItem(activeTab, id, { status: 'approved' });
-            setData(prev => prev.map(item => item._id === id ? updated : item));
+            setData((prev: any[]) => prev.map((item: any) => item._id === id ? updated : item));
         } catch (error: any) {
             alert(error.message || 'Failed to approve.');
         }
@@ -148,7 +148,7 @@ const AdminPage: React.FC = () => {
             const updatedReviews = currentReviewItem.reviews.filter((r: any) => r._id !== reviewId);
             const updatedItem = { ...currentReviewItem, reviews: updatedReviews };
             setCurrentReviewItem(updatedItem);
-            setData(prev => prev.map(item => item._id === currentReviewItem._id ? updatedItem : item));
+            setData((prev: any[]) => prev.map((item: any) => item._id === currentReviewItem._id ? updatedItem : item));
         } catch (error: any) {
             alert(error.message || "Failed to delete review.");
         }
@@ -179,10 +179,10 @@ const AdminPage: React.FC = () => {
 
             if (editItem) {
                 const updated = await updateItem(activeTab, editItem._id, payload);
-                setData(prev => prev.map(item => item._id === editItem._id ? updated : item));
+                setData((prev: any[]) => prev.map((item: any) => item._id === editItem._id ? updated : item));
             } else {
                 const created = await createItem(activeTab, payload);
-                setData(prev => [created, ...prev]);
+                setData((prev: any[]) => [created, ...prev]);
             }
             setIsModalOpen(false);
         } catch (error: any) {
@@ -267,8 +267,8 @@ const AdminPage: React.FC = () => {
     }
 
     const sortedData = activeTab === 'blog-posts' 
-        ? [...data].sort((a, b) => {
-            const statusOrder = { pending: 0, approved: 1, rejected: 2 };
+        ? [...data].sort((a: any, b: any) => {
+            const statusOrder: any = { pending: 0, approved: 1, rejected: 2 };
             return (statusOrder[a.status as keyof typeof statusOrder] || 1) - (statusOrder[b.status as keyof typeof statusOrder] || 1);
         })
         : data;
@@ -347,7 +347,7 @@ const AdminPage: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {sortedData.map((item) => (
+                                    {sortedData.map((item: any) => (
                                         <tr key={item._id} className="hover:bg-slate-50/50 transition-colors group">
                                             {activeTab !== 'reports' && (
                                                 <td className="p-4">

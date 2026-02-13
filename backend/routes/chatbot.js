@@ -29,18 +29,40 @@ router.post('/', async (req, res) => {
             'X-Title': 'Visit La Trinidad',
         },
         body: JSON.stringify({
-            model: 'tngtech/deepseek-r1t2-chimera:free', // Using the standard free R1 model
+            model: 'tngtech/deepseek-r1t2-chimera:free', 
             messages: [
                 {
                     role: 'system',
-                    content: "You are a friendly and helpful tour guide for La Trinidad, Benguet. IMPORTANT: Keep your responses SHORT, MINIMAL, and CONCISE. Do not write long paragraphs. Limit responses to 2-3 sentences when possible. Use **bold** for key location names or important tips. Use *italics* for local terms."
+                    content: `You are a friendly and helpful tour guide for La Trinidad, Benguet. 
+
+IMPORTANT RULES:
+1. Keep responses SHORT (2-3 sentences max).
+2. Use **bold** for key location names.
+3. CRITICAL: When you mention any of the following specific places, you MUST wrap them in double brackets exactly like this: [[Place Name]]. 
+   - [[La Trinidad Strawberry Farm]]
+   - [[Bell Church]]
+   - [[Mount Kalugong Cultural Village]]
+   - [[Colors of Stobosa]]
+   - [[Mt. Yangbew]]
+   - [[Benguet Museum]]
+   - [[Lily of the Valley Organic Farms]]
+   - [[La Trinidad Vegetable Trading Post]]
+   - [[Mount Costa]]
+   - [[Bahong Rose Gardens]]
+   - [[Avong nen Romy]]
+   - [[Jack's Restaurant]]
+   - [[Calajo Restaurant]]
+   - [[Mount Kalugong Kape-an]]
+   - [[Sizzling Plate]]
+
+This creates an interactive link for the user to see details on our site.`
                 },
                 {
                     role: 'user',
                     content: message
                 }
             ],
-            stream: true // Enable streaming from OpenRouter
+            stream: true 
         }),
     });
 
@@ -54,7 +76,7 @@ router.post('/', async (req, res) => {
     // Process the stream
     const stream = apiResponse.body;
     let buffer = '';
-    let fullBotResponse = ''; // Variable to accumulate the full response for logging
+    let fullBotResponse = ''; 
 
     stream.on('data', (chunk) => {
         const textChunk = chunk.toString();
@@ -74,10 +96,9 @@ router.post('/', async (req, res) => {
                     const content = json.choices[0]?.delta?.content || '';
                     if (content) {
                         res.write(content);
-                        fullBotResponse += content; // Accumulate content
+                        fullBotResponse += content; 
                     }
                 } catch (e) {
-                    // Ignore parse errors for incomplete chunks
                 }
             }
         }
@@ -86,7 +107,6 @@ router.post('/', async (req, res) => {
     stream.on('end', async () => {
         res.end();
         
-        // Save conversation to MongoDB
         try {
             if (fullBotResponse) {
                 await ChatLog.create({

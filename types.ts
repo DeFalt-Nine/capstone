@@ -16,7 +16,7 @@ export interface Review {
   email: string;
   rating: number;
   comment?: string;
-  images?: string[]; // Added images array
+  images?: string[]; 
   createdAt?: string;
 }
 
@@ -33,6 +33,10 @@ export interface TouristSpot {
   bestTimeToVisit: string;
   category: string;
   tags: string[];
+  // Added transportation fields
+  jeepneyFare?: string;
+  taxiFare?: string;
+  terminalLocation?: string;
   nearbyEmergency: {
     type: 'Hospital' | 'Police';
     name: string;
@@ -76,12 +80,11 @@ export interface BlogPost {
   author: string;
   date: string;
   content: string;
-  // User Submission Fields
   status?: 'approved' | 'pending' | 'rejected';
-  email?: string; // Private email for admin to contact
-  socialLink?: string; // Public social link
-  videoLink?: string; // Optional YouTube/TikTok link
-  adminFeedback?: string; // Notes from admin
+  email?: string;
+  socialLink?: string;
+  videoLink?: string;
+  adminFeedback?: string;
 }
 
 export interface HistoryEvent {
@@ -122,4 +125,12 @@ export interface Report {
   description: string;
   status: 'pending' | 'resolved';
   createdAt?: string;
+}
+
+export interface PlannerItem {
+  id: string;
+  name: string;
+  image: string;
+  category: string;
+  type: 'tourist' | 'dining';
 }
