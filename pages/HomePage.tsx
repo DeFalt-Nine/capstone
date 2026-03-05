@@ -1,8 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { gsap } from 'gsap';
 import AnimatedElement from '../components/AnimatedElement';
 import IntroAnimation from '../components/IntroAnimation';
+import ParallaxElement from '../components/ParallaxElement';
 
 const HERO_IMAGES = [
     {
@@ -22,6 +24,27 @@ const HERO_IMAGES = [
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const heroTextRef = useRef<HTMLDivElement>(null);
+
+    // Hero Text Stagger
+    useEffect(() => {
+        if (heroTextRef.current) {
+            const children = heroTextRef.current.children;
+            gsap.fromTo(
+                children,
+                { opacity: 0, y: 50, scale: 0.8 },
+                { 
+                    opacity: 1, 
+                    y: 0, 
+                    scale: 1, 
+                    duration: 1.2, 
+                    stagger: 0.2, 
+                    ease: 'back.out(1.7)',
+                    delay: 2.5 // Wait for intro animation
+                }
+            );
+        }
+    }, []);
 
     // Image rotation logic
     useEffect(() => {
@@ -58,8 +81,8 @@ const HomePage: React.FC = () => {
                     </div>
                 ))}
 
-                <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-                    <div className="animate-fade-in-down">
+                <div className="relative z-10 text-center px-4 max-w-4xl mx-auto" ref={heroTextRef}>
+                    <div>
                         <h2 className="text-lt-yellow font-bold tracking-[0.3em] uppercase text-sm md:text-base mb-4 drop-shadow-md">
                             Welcome to the Valley of Colors
                         </h2>
@@ -71,11 +94,11 @@ const HomePage: React.FC = () => {
                         </h1>
                     </div>
                     
-                    <p className="text-lg md:text-xl text-slate-200 mb-10 max-w-2xl mx-auto font-light animate-fade-in-up drop-shadow-sm">
+                    <p className="text-lg md:text-xl text-slate-200 mb-10 max-w-2xl mx-auto font-light drop-shadow-sm">
                         Experience the Philippines' Strawberry Capital. A highland haven of culture, nature, and fresh flavors.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                         <button 
                             onClick={() => navigate('/tourist-spots')}
                             className="btn-shine bg-lt-yellow hover:bg-white text-slate-900 font-bold py-4 px-8 rounded-full shadow-lg shadow-lt-yellow/30 transform transition-all hover:-translate-y-1 hover:scale-105 active:scale-95 w-full sm:w-auto"
@@ -111,7 +134,9 @@ const HomePage: React.FC = () => {
                                 desc: 'Pick fresh strawberries and vegetables straight from the farm.',
                                 color: 'text-lt-moss',
                                 bg: 'bg-lt-moss/10',
-                                border: 'border-lt-moss/20'
+                                border: 'border-lt-moss/20',
+                                direction: 'left' as const,
+                                rotate: -5
                             },
                             {
                                 icon: 'fas fa-palette',
@@ -119,7 +144,9 @@ const HomePage: React.FC = () => {
                                 desc: 'Witness the giant Stobosa mural and rich Ibaloi heritage.',
                                 color: 'text-lt-blue',
                                 bg: 'bg-lt-blue/10',
-                                border: 'border-lt-blue/20'
+                                border: 'border-lt-blue/20',
+                                direction: 'up' as const,
+                                rotate: 0
                             },
                             {
                                 icon: 'fas fa-utensils',
@@ -127,10 +154,19 @@ const HomePage: React.FC = () => {
                                 desc: 'Taste the sweetness of strawberry taho, wine, and cakes.',
                                 color: 'text-lt-red',
                                 bg: 'bg-lt-red/10',
-                                border: 'border-lt-red/20'
+                                border: 'border-lt-red/20',
+                                direction: 'right' as const,
+                                rotate: 5
                             }
                         ].map((feature, i) => (
-                            <AnimatedElement key={i} delay={i * 150}>
+                            <AnimatedElement 
+                                key={i} 
+                                delay={i * 150} 
+                                direction={feature.direction} 
+                                distance={100} 
+                                rotate={feature.rotate}
+                                scale={0.8}
+                            >
                                 <div className="bg-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-slate-100 group h-full relative overflow-hidden">
                                     <div className={`absolute top-0 right-0 w-32 h-32 ${feature.bg} rounded-bl-full -mr-10 -mt-10 opacity-50 transition-transform group-hover:scale-110`}></div>
                                     <div className={`w-16 h-16 rounded-2xl ${feature.bg} ${feature.color} flex items-center justify-center text-3xl mb-6 shadow-sm border ${feature.border}`}>
@@ -146,29 +182,31 @@ const HomePage: React.FC = () => {
             </section>
 
             {/* --- CTA Section --- */}
-            <section className="py-20 bg-white">
+            <section className="py-20 bg-white overflow-hidden">
                 <div className="container mx-auto px-4">
-                    <AnimatedElement>
-                        <div className="bg-gradient-to-r from-lt-orange to-lt-yellow rounded-[3rem] p-12 md:p-20 text-center text-slate-900 shadow-2xl shadow-lt-orange/30 relative overflow-hidden">
-                            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                            {/* Floating Bubbles */}
-                            <div className="absolute top-10 left-10 w-20 h-20 bg-white/20 rounded-full animate-float"></div>
-                            <div className="absolute bottom-10 right-10 w-32 h-32 bg-white/20 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
-                            
-                            <div className="relative z-10">
-                                <h2 className="text-3xl md:text-5xl font-extrabold mb-6">Ready for your adventure?</h2>
-                                <p className="text-lg md:text-xl mb-10 max-w-2xl mx-auto opacity-80 font-medium">
-                                    Let our AI guide help you plan the perfect itinerary for your trip to La Trinidad.
-                                </p>
-                                <button 
-                                    onClick={() => document.querySelector<HTMLButtonElement>('button[aria-label="Open chatbot"]')?.click()}
-                                    className="bg-white text-lt-orange hover:bg-slate-50 font-bold py-4 px-10 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95"
-                                >
-                                    Chat with Guide
-                                </button>
+                    <ParallaxElement speed={0.2}>
+                        <AnimatedElement direction="none" duration={1.5} scale={0.5} rotate={2}>
+                            <div className="bg-gradient-to-r from-lt-orange to-lt-yellow rounded-[3rem] p-12 md:p-20 text-center text-slate-900 shadow-2xl shadow-lt-orange/30 relative overflow-hidden">
+                                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                                {/* Floating Bubbles */}
+                                <div className="absolute top-10 left-10 w-20 h-20 bg-white/20 rounded-full animate-float"></div>
+                                <div className="absolute bottom-10 right-10 w-32 h-32 bg-white/20 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
+                                
+                                <div className="relative z-10">
+                                    <h2 className="text-3xl md:text-5xl font-extrabold mb-6">Ready for your adventure?</h2>
+                                    <p className="text-lg md:text-xl mb-10 max-w-2xl mx-auto opacity-80 font-medium">
+                                        Let our AI guide help you plan the perfect itinerary for your trip to La Trinidad.
+                                    </p>
+                                    <button 
+                                        onClick={() => document.querySelector<HTMLButtonElement>('button[aria-label="Open chatbot"]')?.click()}
+                                        className="bg-white text-lt-orange hover:bg-slate-50 font-bold py-4 px-10 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95"
+                                    >
+                                        Chat with Guide
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </AnimatedElement>
+                        </AnimatedElement>
+                    </ParallaxElement>
                 </div>
             </section>
         </div>

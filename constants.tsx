@@ -231,37 +231,67 @@ export const LOCAL_NORMS: Norm[] = [
         icon: 'fas fa-heart',
         title: 'Respect Local Culture',
         description: 'The people of La Trinidad are proud of their Ibaloi and Kankanaey heritage.',
-        points: ['Ask permission before taking photos of elders', 'Dress modestly when visiting sacred grounds', 'Learn basic greetings like "Kamusta"']
+        points: ['Ask permission before taking photos of elders', 'Dress modestly when visiting sacred grounds', 'Learn basic greetings like "Kamusta"'],
+        facts: [
+            'The Ibaloi people are known for their "Tayaw" dance, a sacred dance of celebration.',
+            'Saying "Agbiag!" is a common way to express well-wishes or "Long live!"',
+            'Ibaloi culture values "Inayan" - a moral compass that prevents doing bad to others.'
+        ]
     },
     {
         icon: 'fas fa-leaf',
         title: 'Environmental Stewardship',
         description: 'Nature is sacred. Help us preserve the beauty of the mountains.',
-        points: ['Clean as you go (CLAYGO) policy', 'Stay on marked trails when hiking', 'Do not pick flowers or plants']
+        points: ['Clean as you go (CLAYGO) policy', 'Stay on marked trails when hiking', 'Do not pick flowers or plants'],
+        facts: [
+            'La Trinidad has strict plastic bans in many areas to protect the valley.',
+            'The valley was once a vast swamp before it was developed for agriculture.',
+            'Many local farms are transitioning to organic methods to preserve soil health.'
+        ]
     },
     {
         icon: 'fas fa-users',
         title: 'Community Etiquette',
         description: 'La Trinidad is a close-knit community built on mutual respect.',
-        points: ['Greet locals with a smile', 'Support local farmers by buying directly', 'Avoid loud noises in residential areas']
+        points: ['Greet locals with a smile', 'Support local farmers by buying directly', 'Avoid loud noises in residential areas'],
+        facts: [
+            'The "Bayanihan" spirit is very much alive here, especially during harvest season.',
+            'Locals often share their harvest with neighbors as a sign of goodwill.',
+            'A simple nod or smile is a standard way to acknowledge people you pass by.'
+        ]
     },
     {
         icon: 'fas fa-camera',
         title: 'Responsible Photography',
         description: 'Capture memories without intruding on privacy.',
-        points: ['Ask before photographing private homes', 'No drones near government buildings', 'Tag location responsibly to avoid overcrowding']
+        points: ['Ask before photographing private homes', 'No drones near government buildings', 'Tag location responsibly to avoid overcrowding'],
+        facts: [
+            'The Stobosa mural was designed to be viewed from a distance for the best effect.',
+            'Some elders believe that taking their photo without permission can "capture their spirit".',
+            'Early morning light in the valley provides the most magical "golden hour" for photos.'
+        ]
     },
     {
         icon: 'fas fa-shield-alt',
         title: 'Safety & Preparedness',
         description: 'The mountain weather and terrain require preparation.',
-        points: ['Bring warm clothing for sudden temp drops', 'Hydrate often due to altitude', 'Register at barangay halls before hiking']
+        points: ['Bring warm clothing for sudden temp drops', 'Hydrate often due to altitude', 'Register at barangay halls before hiking'],
+        facts: [
+            'Every Jeep/Taxi follows a form of payment. If they overcharge, please contact local authorities.',
+            'Temperatures can drop by 5-10 degrees Celsius as soon as the sun goes down.',
+            'The local police station is centrally located at Km. 5 for quick assistance.'
+        ]
     },
     {
         icon: 'fas fa-hands-helping',
         title: 'Support Local',
         description: 'Your tourism dollars help the community thrive.',
-        points: ['Hire accredited local guides', 'Buy pasalubong from the Trading Post', 'Respect suggested retail prices']
+        points: ['Hire accredited local guides', 'Buy pasalubong from the Trading Post', 'Respect suggested retail prices'],
+        facts: [
+            'The Trading Post is the largest vegetable distribution hub in the Philippines.',
+            'Buying directly from farmers ensures they get the full value of their hard work.',
+            'Local strawberry wine is made using traditional fermentation methods.'
+        ]
     },
 ];
 

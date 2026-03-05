@@ -1,7 +1,6 @@
-
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const Subscriber = require('../models/Subscriber');
+import Subscriber from '../models/Subscriber.js';
 
 // @desc    Subscribe to newsletter
 // @route   POST /api/subscribers
@@ -28,4 +27,4 @@ router.post('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

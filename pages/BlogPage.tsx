@@ -65,7 +65,14 @@ const BlogPage: React.FC = () => {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {posts.map((post, index) => (
-          <AnimatedElement key={post._id || index} delay={index * 100}>
+          <AnimatedElement 
+            key={post._id || index} 
+            delay={(index % 3) * 100} 
+            direction="up" 
+            distance={100}
+            scale={0.5}
+            rotate={index % 2 === 0 ? -10 : 10}
+          >
             <div 
                 className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col group h-full cursor-pointer transform hover:-translate-y-2 transition-all duration-300 border border-slate-100 hover:shadow-xl"
                 onClick={() => handlePostClick(post)}

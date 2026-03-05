@@ -3,6 +3,7 @@ import { LOCAL_NORMS, EMERGENCY_CONTACTS, EMERGENCY_HOTLINES } from '../constant
 import { fetchLocalEvents, trackEvent } from '../services/apiService';
 import type { LocalEvent } from '../types';
 import AnimatedElement from '../components/AnimatedElement';
+import FunFactBubble from '../components/FunFactBubble';
 
 /**
  * LANDMARKS WITH COORDINATES
@@ -202,6 +203,8 @@ const VisitorInfoPage: React.FC = () => {
   const [emergencyFilter, setEmergencyFilter] = useState<'All' | 'Hospital' | 'Police' | 'Fire Station' | 'Rescue' | 'Vet' | 'Pharmacy'>('All');
   const [selectedContact, setSelectedContact] = useState(EMERGENCY_CONTACTS[0]);
 
+  const [activeFact, setActiveFact] = useState<{ text: string; x: number; y: number } | null>(null);
+
   useEffect(() => {
       const loadEvents = async () => {
           setIsLoadingEvents(true);
@@ -219,7 +222,21 @@ const VisitorInfoPage: React.FC = () => {
 
   const handleTabChange = (tab: 'culture' | 'events' | 'emergency') => {
       setActiveTab(tab);
+      setActiveFact(null); // Clear facts when switching tabs
       trackEvent('view', `tab_${tab}`, '/visitor-info');
+  };
+
+  const handleNormClick = (e: React.MouseEvent, norm: any) => {
+    if (!norm.facts || norm.facts.length === 0) return;
+    
+    const randomFact = norm.facts[Math.floor(Math.random() * norm.facts.length)];
+    setActiveFact({
+      text: randomFact,
+      x: e.clientX,
+      y: e.clientY
+    });
+    
+    trackEvent('click', `norm_fact_${norm.title}`, '/visitor-info');
   };
 
   const filteredContacts = EMERGENCY_CONTACTS.filter(
@@ -274,12 +291,26 @@ const VisitorInfoPage: React.FC = () => {
                                         
                                         <div className="grid md:grid-cols-2 gap-4">
                                             {/* White Taxi Info */}
-                                            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 border-l-4 border-slate-400">
+                                            <div 
+                                                className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 border-l-4 border-slate-400 cursor-pointer hover:bg-slate-50 transition-colors active:scale-95"
+                                                onClick={(e) => setActiveFact({
+                                                    text: "White taxis are the only ones allowed to pick up in Baguio for LT trips. Always check the meter!",
+                                                    x: e.clientX,
+                                                    y: e.clientY
+                                                })}
+                                            >
                                                 <h4 className="text-xs font-black text-slate-900 uppercase tracking-tighter mb-2">Baguio (White) Taxis</h4>
                                                 <p className="text-[11px] text-slate-600 leading-tight">These are city-based taxis. They can take you from Baguio to any point in La Trinidad and back. Preferred for cross-boundary travel.</p>
                                             </div>
                                             {/* Grey Taxi Info */}
-                                            <div className="bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-700 border-l-4 border-slate-400">
+                                            <div 
+                                                className="bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-700 border-l-4 border-slate-400 cursor-pointer hover:bg-slate-700 transition-colors active:scale-95"
+                                                onClick={(e) => setActiveFact({
+                                                    text: "Grey taxis are proud locals! They know the shortcuts within La Trinidad like the back of their hand.",
+                                                    x: e.clientX,
+                                                    y: e.clientY
+                                                })}
+                                            >
                                                 <h4 className="text-xs font-black text-white uppercase tracking-tighter mb-2">LT (Grey) Taxis</h4>
                                                 <p className="text-[11px] text-slate-300 leading-tight">Specifically for La Trinidad operations. They generally <strong>cannot</strong> pick up passengers within Baguio City bound for the valley.</p>
                                             </div>
@@ -295,38 +326,48 @@ const VisitorInfoPage: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Jeepney Section */}
-                                    <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
-                                        <h3 className="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
-                                            <i className="fas fa-bus text-lt-blue"></i> Jeepney Hubs
-                                        </h3>
-                                        <div className="grid md:grid-cols-2 gap-4">
-                                            {[
-                                                { 
-                                                    name: 'Baguio City Hall', 
-                                                    desc: 'Beside Fire Station. Routes: Buyagan, Km. 5, Km. 6.', 
-                                                    tags: ['Best for Farm'],
-                                                    icon: 'fa-landmark' 
-                                                },
-                                                { 
-                                                    name: 'Baguio Center Mall', 
-                                                    desc: 'LG Floor. Frequent LT Proper trips.', 
-                                                    tags: ['Central'],
-                                                    icon: 'fa-shopping-bag' 
-                                                }
-                                            ].map((terminal, idx) => (
-                                                <div key={idx} className="flex gap-3 p-4 bg-white rounded-2xl shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
-                                                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
-                                                        <i className={`fas ${terminal.icon} text-sm`}></i>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-800 text-xs mb-1">{terminal.name}</h4>
-                                                        <p className="text-[10px] text-slate-500 leading-relaxed">{terminal.desc}</p>
-                                                    </div>
+                                            {/* Jeepney Section */}
+                                            <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+                                                <h3 className="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
+                                                    <i className="fas fa-bus text-lt-blue"></i> Jeepney Hubs
+                                                </h3>
+                                                <div className="grid md:grid-cols-2 gap-4">
+                                                    {[
+                                                        { 
+                                                            name: 'Baguio City Hall', 
+                                                            desc: 'Beside Fire Station. Routes: Buyagan, Km. 5, Km. 6.', 
+                                                            tags: ['Best for Farm'],
+                                                            icon: 'fa-landmark',
+                                                            fact: 'Jeepneys are the heartbeat of the valley. Riding one is the most authentic local experience!'
+                                                        },
+                                                        { 
+                                                            name: 'Baguio Center Mall', 
+                                                            desc: 'LG Floor. Frequent LT Proper trips.', 
+                                                            tags: ['Central'],
+                                                            icon: 'fa-shopping-bag',
+                                                            fact: 'The Center Mall terminal is the most convenient if you are coming from the city center.'
+                                                        }
+                                                    ].map((terminal, idx) => (
+                                                        <div 
+                                                            key={idx} 
+                                                            className="flex gap-3 p-4 bg-white rounded-2xl shadow-sm border border-blue-100 hover:shadow-md transition-all cursor-pointer active:scale-95"
+                                                            onClick={(e) => setActiveFact({
+                                                                text: terminal.fact,
+                                                                x: e.clientX,
+                                                                y: e.clientY
+                                                            })}
+                                                        >
+                                                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                                                                <i className={`fas ${terminal.icon} text-sm`}></i>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-bold text-slate-800 text-xs mb-1">{terminal.name}</h4>
+                                                                <p className="text-[10px] text-slate-500 leading-relaxed">{terminal.desc}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                            </div>
                                 </div>
 
                                 {/* Smart Estimator Tool - Col 3 */}
@@ -351,12 +392,27 @@ const VisitorInfoPage: React.FC = () => {
                     {/* Norms Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {LOCAL_NORMS.map((norm, index) => (
-                            <AnimatedElement key={index} delay={index * 100}>
-                                <div className="bg-white rounded-3xl p-8 shadow-md hover:shadow-xl h-full flex flex-col group border border-slate-100 hover:border-lt-blue relative overflow-hidden">
+                            <AnimatedElement 
+                                key={index} 
+                                delay={(index % 3) * 100} 
+                                direction="up" 
+                                distance={80}
+                                scale={0.6}
+                                rotate={index % 2 === 0 ? -5 : 5}
+                            >
+                                <div 
+                                    className="bg-white rounded-3xl p-8 shadow-md hover:shadow-xl h-full flex flex-col group border border-slate-100 hover:border-lt-blue relative overflow-hidden cursor-pointer active:scale-95 transition-transform"
+                                    onClick={(e) => handleNormClick(e, norm)}
+                                >
                                     <div className="w-14 h-14 bg-lt-blue/10 text-lt-blue rounded-2xl flex items-center justify-center text-2xl mb-6 relative z-10 group-hover:scale-110 transition-transform"><i className={norm.icon}></i></div>
                                     <h3 className="text-xl font-bold text-slate-800 mb-3 group-hover:text-lt-blue transition-colors">{norm.title}</h3>
                                     <p className="text-slate-600 text-sm mb-6 flex-grow leading-relaxed">{norm.description}</p>
                                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-100"><ul className="space-y-2">{norm.points.map((p, i) => (<li key={i} className="flex items-start text-xs text-slate-600"><i className="fas fa-check text-lt-blue mt-1 mr-2"></i><span>{p}</span></li>))}</ul></div>
+                                    
+                                    <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-lt-orange opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <i className="fas fa-lightbulb"></i>
+                                        <span>Click for a fun fact!</span>
+                                    </div>
                                 </div>
                             </AnimatedElement>
                         ))}
@@ -364,12 +420,28 @@ const VisitorInfoPage: React.FC = () => {
                 </div>
             )}
 
+            {activeFact && (
+                <FunFactBubble 
+                    fact={activeFact.text} 
+                    x={activeFact.x} 
+                    y={activeFact.y} 
+                    onClose={() => setActiveFact(null)} 
+                />
+            )}
+
             {activeTab === 'events' && (
                 <div className="animate-fade-in">
                     <AnimatedElement><div className="bg-gradient-to-r from-lt-yellow to-lt-orange rounded-3xl p-8 text-center text-slate-900 mb-10 shadow-xl"><h2 className="text-3xl font-bold mb-2">Festivities & Celebrations</h2><p className="opacity-80 font-medium">Join the community gatherings of La Trinidad.</p></div></AnimatedElement>
                     {isLoadingEvents ? <div className="text-center py-20"><i className="fas fa-spinner fa-spin text-4xl text-lt-orange"></i></div> : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">{events.map((event, index) => (
-                            <AnimatedElement key={event._id || index} delay={index * 150}>
+                            <AnimatedElement 
+                                key={event._id || index} 
+                                delay={(index % 2) * 150} 
+                                direction={index % 2 === 0 ? 'left' : 'right'} 
+                                distance={100}
+                                scale={0.8}
+                                rotate={index % 2 === 0 ? -3 : 3}
+                            >
                                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row h-full border border-slate-100 hover:shadow-2xl transition-shadow group">
                                     <div className="w-full md:w-2/5 relative h-48 md:h-auto overflow-hidden"><img src={event.image} alt={event.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500" /><div className="absolute top-4 left-4"><span className="bg-lt-yellow/90 backdrop-blur text-slate-900 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm uppercase">{event.badge}</span></div></div>
                                     <div className="p-6 w-full md:w-3/5 flex flex-col justify-center"><div className="text-lt-orange font-bold text-sm mb-1 uppercase tracking-wide">{event.date}</div><h3 className="text-2xl font-bold text-slate-800 mb-2 group-hover:text-lt-orange transition-colors">{event.title}</h3><p className="text-slate-600 text-sm mb-4">{event.description}</p><div className="mt-auto flex items-center text-xs text-slate-500 font-medium"><i className="fas fa-map-pin mr-2 text-lt-blue"></i> {event.location}</div></div>

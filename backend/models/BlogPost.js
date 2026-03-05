@@ -1,15 +1,15 @@
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const BlogPostSchema = new mongoose.Schema({
   image: { type: String, required: true },
-  alt: { type: String, required: true },
+  alt: { type: String, required: false },
   badge: { type: String, required: true },
   readTime: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
   author: { type: String, required: true },
-  date: { type: String, required: true },
+  date: { type: String, required: false },
   content: { type: String, required: true }, // HTML content for the full article
   
   // Submission Workflow
@@ -24,4 +24,4 @@ const BlogPostSchema = new mongoose.Schema({
   adminFeedback: { type: String, required: false } // Notes from admin
 }, { timestamps: true });
 
-module.exports = mongoose.models.BlogPost || mongoose.model('BlogPost', BlogPostSchema, 'blogposts');
+export default mongoose.models.BlogPost || mongoose.model('BlogPost', BlogPostSchema, 'blogposts');

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
     fetchTouristSpots, fetchDiningSpots, fetchBlogPosts, fetchLocalEvents, fetchReports,
@@ -7,11 +6,11 @@ import {
 import AnimatedElement from '../components/AnimatedElement';
 
 const TABS = [
-    { id: 'tourist-spots', label: 'Tourist Spots' },
-    { id: 'dining-spots', label: 'Dining' },
-    { id: 'blog-posts', label: 'Blog Moderation' },
-    { id: 'events', label: 'Events' },
-    { id: 'reports', label: 'Reports' }
+    { id: 'tourist-spots', label: 'Tourist Spots', icon: 'fa-map-marked-alt' },
+    { id: 'dining-spots', label: 'Dining', icon: 'fa-utensils' },
+    { id: 'blog-posts', label: 'Blog Moderation', icon: 'fa-newspaper' },
+    { id: 'events', label: 'Events', icon: 'fa-calendar-alt' },
+    { id: 'reports', label: 'Reports', icon: 'fa-flag' }
 ];
 
 const AdminPage: React.FC = () => {
@@ -25,6 +24,7 @@ const AdminPage: React.FC = () => {
     const [data, setData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
     const [editItem, setEditItem] = useState<any | null>(null);
     const [formData, setFormData] = useState<any>({});
     
@@ -58,6 +58,32 @@ const AdminPage: React.FC = () => {
         }
     }, [activeTab, isAuthenticated]);
 
+    // Inactivity Auto-Logout (10 minutes)
+    useEffect(() => {
+        if (!isAuthenticated) return;
+
+        let timeout: ReturnType<typeof setTimeout>;
+
+        const resetTimer = () => {
+            if (timeout) clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                handleLogout();
+                alert("You have been logged out due to 10 minutes of inactivity.");
+            }, 10 * 60 * 1000); // 10 minutes
+        };
+
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+        const handleActivity = () => resetTimer();
+
+        events.forEach(event => document.addEventListener(event, handleActivity));
+        resetTimer(); // Initialize timer
+
+        return () => {
+            if (timeout) clearTimeout(timeout);
+            events.forEach(event => document.removeEventListener(event, handleActivity));
+        };
+    }, [isAuthenticated]);
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoginError(null);
@@ -80,6 +106,7 @@ const AdminPage: React.FC = () => {
         setIsAuthenticated(false);
         setAccessCode('');
         setData([]);
+        setIsLogoutConfirmOpen(false);
     };
 
     const loadData = async (tab: string) => {
@@ -190,7 +217,7 @@ const AdminPage: React.FC = () => {
         }
     };
 
-    const renderInput = (key: string, label: string, type = 'text', placeholder = '') => (
+    const renderInput = (key: string, label: string, type: string = 'text', placeholder: string = ''): React.ReactElement => (
         <div className="mb-4">
             <label className="block text-sm font-bold text-slate-700 mb-1">{label}</label>
             {type === 'textarea' ? (
@@ -274,115 +301,170 @@ const AdminPage: React.FC = () => {
         : data;
 
     return (
-        <div className="min-h-screen bg-slate-50 pt-24 pb-20 px-4">
-            <div className="container mx-auto">
-                <AnimatedElement>
-                    <div className="flex justify-between items-center mb-8">
-                        <div className="flex items-center gap-4">
-                             <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
-                             <span className="text-xs bg-lt-orange text-white px-2 py-1 rounded font-bold tracking-widest">BETA</span>
+        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+            {/* Sidebar */}
+            <aside className="w-full md:w-72 bg-white border-r border-slate-200 flex flex-col sticky top-0 md:h-screen z-30">
+                <div className="p-6 border-b border-slate-100">
+                    <div className="flex items-center gap-3 mb-1">
+                        <div className="w-10 h-10 bg-lt-blue rounded-xl flex items-center justify-center text-white shadow-lg shadow-lt-blue/20">
+                            <i className="fas fa-user-shield text-xl"></i>
                         </div>
-                        <button onClick={handleLogout} className="bg-white text-red-500 border border-red-100 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-50 transition-colors shadow-sm">
-                            <i className="fas fa-power-off mr-2"></i> Logout
-                        </button>
+                        <div>
+                            <h1 className="text-lg font-bold text-slate-900 leading-none">Admin</h1>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Control Panel</p>
+                        </div>
                     </div>
-                </AnimatedElement>
+                </div>
 
-                {/* Tabs */}
-                <div className="flex overflow-x-auto gap-2 mb-6 pb-2 custom-scrollbar">
-                    {TABS.map(tab => (
+                <nav className="flex-grow p-4 space-y-1 overflow-y-auto custom-scrollbar">
+                    <div className="px-3 mb-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Management</p>
+                    </div>
+                    {TABS.map((tab: any) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-6 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${activeTab === tab.id ? 'bg-lt-blue text-white shadow-md' : 'bg-white text-slate-500 hover:text-slate-700 border border-slate-200'}`}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all group ${
+                                activeTab === tab.id 
+                                ? 'bg-lt-blue text-white shadow-md shadow-lt-blue/20' 
+                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                            }`}
                         >
+                            <i className={`fas ${tab.icon} w-5 text-center ${activeTab === tab.id ? 'text-white' : 'text-slate-400 group-hover:text-lt-blue'}`}></i>
                             {tab.label}
+                            {activeTab === tab.id && (
+                                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white"></div>
+                            )}
                         </button>
                     ))}
-                </div>
+                </nav>
 
-                {/* Content */}
-                <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 backdrop-blur">
-                        <h2 className="font-bold text-slate-700 flex items-center gap-2">
-                             <span className="w-2 h-2 rounded-full bg-lt-orange"></span>
-                             Manage {TABS.find(t => t.id === activeTab)?.label} ({data.length})
+                <div className="p-4 border-t border-slate-100">
+                    <button 
+                        onClick={() => setIsLogoutConfirmOpen(true)} 
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-red-500 hover:bg-red-50 transition-all"
+                    >
+                        <i className="fas fa-power-off w-5 text-center"></i>
+                        Sign Out
+                    </button>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
+                {/* Top Header */}
+                <header className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-20">
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-xl font-bold text-slate-800">
+                            {TABS.find(t => t.id === activeTab)?.label}
                         </h2>
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
+                            {data.length} Records
+                        </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
                         {activeTab !== 'reports' && (
-                            <button onClick={() => handleOpenModal()} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all transform hover:-translate-y-0.5 active:scale-95">
-                                <i className="fas fa-plus mr-1"></i> Add New
+                            <button 
+                                onClick={() => handleOpenModal()} 
+                                className="bg-lt-blue hover:bg-lt-moss text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md shadow-lt-blue/10 transition-all flex items-center gap-2 active:scale-95"
+                            >
+                                <i className="fas fa-plus"></i> Add New
                             </button>
                         )}
+                        <div className="h-8 w-px bg-slate-200 mx-2"></div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-lt-orange/10 text-lt-orange flex items-center justify-center text-xs font-bold">
+                                AD
+                            </div>
+                            <span className="text-xs font-bold text-slate-600 hidden sm:block">Administrator</span>
+                        </div>
                     </div>
+                </header>
 
-                    {isLoading ? (
-                        <div className="p-20 text-center text-slate-400">
-                             <i className="fas fa-circle-notch fa-spin text-3xl mb-4"></i>
-                             <p className="text-sm font-medium">Fetching Records...</p>
-                        </div>
-                    ) : data.length === 0 ? (
-                        <div className="p-20 text-center text-slate-400">
-                             <i className="fas fa-folder-open text-4xl mb-4 opacity-20"></i>
-                             <p className="text-sm font-medium">No records found for this section.</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
-                                    <tr>
-                                        {activeTab !== 'reports' && <th className="p-4 w-16 text-center">Thumb</th>}
-                                        {activeTab === 'reports' ? (
-                                            <>
-                                                <th className="p-4">Target</th>
-                                                <th className="p-4">Reason</th>
-                                                <th className="p-4">Description</th>
-                                            </>
-                                        ) : (
-                                            <th className="p-4">Information</th>
-                                        )}
-                                        {activeTab === 'blog-posts' && <th className="p-4">Status</th>}
-                                        {activeTab === 'blog-posts' && <th className="p-4">Author</th>}
-                                        {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && <th className="p-4 text-center">Reviews</th>}
-                                        <th className="p-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {sortedData.map((item: any) => (
-                                        <tr key={item._id} className="hover:bg-slate-50/50 transition-colors group">
-                                            {activeTab !== 'reports' && (
-                                                <td className="p-4">
-                                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-200 shadow-inner">
-                                                        <img src={item.image} alt="" className="w-full h-full object-cover" />
-                                                    </div>
-                                                </td>
-                                            )}
-                                            
-                                            {activeTab === 'reports' ? (
-                                                <>
-                                                    <td className="p-4">
-                                                        <div className="font-bold text-slate-800 text-sm">{item.targetName}</div>
-                                                        <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{item.targetType}</div>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <span className="text-xs text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full font-bold">
-                                                            {item.reason}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 text-xs text-slate-600 max-w-xs truncate">{item.description}</td>
-                                                </>
-                                            ) : (
-                                                <td className="p-4">
-                                                    <div className="font-bold text-slate-800 text-sm">{item.name || item.title}</div>
-                                                    <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                                                        <i className="fas fa-map-marker-alt text-[8px]"></i>
-                                                        {item.location || item.date || 'No meta'}
-                                                    </div>
-                                                </td>
-                                            )}
+                {/* Content Area */}
+                <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+                    <AnimatedElement>
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                            {isLoading ? (
+                                <div className="p-32 text-center text-slate-400">
+                                    <i className="fas fa-circle-notch fa-spin text-4xl mb-4 text-lt-blue"></i>
+                                    <p className="text-sm font-medium">Synchronizing data...</p>
+                                </div>
+                            ) : data.length === 0 ? (
+                                <div className="p-32 text-center text-slate-400">
+                                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <i className="fas fa-folder-open text-3xl opacity-20"></i>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-900 mb-1">No results found</h3>
+                                    <p className="text-sm text-slate-500">There are no records to display in this section yet.</p>
+                                    {activeTab !== 'reports' && (
+                                        <button 
+                                            onClick={() => handleOpenModal()}
+                                            className="mt-6 text-lt-blue font-bold text-sm hover:underline"
+                                        >
+                                            Create your first entry
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
+                                            <tr>
+                                                {activeTab !== 'reports' && <th className="p-5 w-20 text-center">Media</th>}
+                                                {activeTab === 'reports' ? (
+                                                    <>
+                                                        <th className="p-5">Target</th>
+                                                        <th className="p-5">Reason</th>
+                                                        <th className="p-5">Description</th>
+                                                    </>
+                                                ) : (
+                                                    <th className="p-5">Information</th>
+                                                )}
+                                                {activeTab === 'blog-posts' && <th className="p-5">Status</th>}
+                                                {activeTab === 'blog-posts' && <th className="p-5">Author</th>}
+                                                {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && <th className="p-5 text-center">Reviews</th>}
+                                                <th className="p-5 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {sortedData.map((item: any) => (
+                                                <tr key={item._id} className="hover:bg-slate-50/30 transition-colors group">
+                                                    {activeTab !== 'reports' && (
+                                                        <td className="p-5">
+                                                            <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
+                                                                <img src={item.image} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                    
+                                                    {activeTab === 'reports' ? (
+                                                        <>
+                                                            <td className="p-5">
+                                                                <div className="font-bold text-slate-800 text-sm">{item.targetName}</div>
+                                                                <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{item.targetType}</div>
+                                                            </td>
+                                                            <td className="p-5">
+                                                                <span className="text-[10px] text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-lg font-bold uppercase tracking-wider">
+                                                                    {item.reason}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-5 text-xs text-slate-500 max-w-xs truncate">{item.description}</td>
+                                                        </>
+                                                    ) : (
+                                                        <td className="p-5">
+                                                            <div className="font-bold text-slate-800 text-sm group-hover:text-lt-blue transition-colors">{item.name || item.title}</div>
+                                                            <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-1">
+                                                                <i className="fas fa-map-marker-alt text-[8px]"></i>
+                                                                {item.location || item.date || 'No meta provided'}
+                                                            </div>
+                                                        </td>
+                                                    )}
 
                                             {activeTab === 'blog-posts' && (
-                                                <td className="p-4">
-                                                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full border ${
+                                                <td className="p-5">
+                                                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-lg border ${
                                                         item.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' :
                                                         item.status === 'approved' ? 'bg-green-50 text-green-600 border-green-200' :
                                                         'bg-red-50 text-red-600 border-red-200'
@@ -392,24 +474,24 @@ const AdminPage: React.FC = () => {
                                                 </td>
                                             )}
                                             {activeTab === 'blog-posts' && (
-                                                <td className="p-4">
+                                                <td className="p-5">
                                                     <div className="text-xs font-bold text-slate-700">{item.author}</div>
                                                     {item.email && <div className="text-[10px] text-slate-400">{item.email}</div>}
                                                 </td>
                                             )}
                                             {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
-                                                <td className="p-4 text-center">
+                                                <td className="p-5 text-center">
                                                     <button 
                                                         onClick={() => handleOpenReviewModal(item)}
-                                                        className="inline-flex items-center gap-2 text-slate-400 hover:text-lt-orange transition-colors bg-white border border-slate-200 px-3 py-1 rounded-lg text-xs font-bold"
+                                                        className="inline-flex items-center gap-2 text-slate-400 hover:text-lt-orange transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm"
                                                     >
                                                         <i className="fas fa-comment-dots text-[10px]"></i> 
                                                         {item.reviews?.length || 0}
                                                     </button>
                                                 </td>
                                             )}
-                                            <td className="p-4 text-right">
-                                                <div className="flex justify-end gap-1">
+                                            <td className="p-5 text-right">
+                                                <div className="flex justify-end gap-2">
                                                     {activeTab === 'blog-posts' && item.status === 'pending' && (
                                                         <button onClick={() => handleApprove(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Approve Story">
                                                             Approve
@@ -438,7 +520,9 @@ const AdminPage: React.FC = () => {
                         </div>
                     )}
                 </div>
-            </div>
+            </AnimatedElement>
+        </div>
+    </main>
 
             {/* Edit/Create Modal */}
             {isModalOpen && (
@@ -623,6 +707,36 @@ const AdminPage: React.FC = () => {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Logout Confirmation Modal */}
+            {isLogoutConfirmOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => setIsLogoutConfirmOpen(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-slide-up border border-slate-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i className="fas fa-sign-out-alt text-2xl"></i>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Confirm Sign Out</h3>
+                            <p className="text-sm text-slate-500 mb-6">Are you sure you want to end your administrative session?</p>
+                            
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => setIsLogoutConfirmOpen(false)}
+                                    className="flex-1 px-4 py-3 rounded-xl font-bold text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleLogout}
+                                    className="flex-1 px-4 py-3 rounded-xl font-bold text-sm text-white bg-red-500 hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                                >
+                                    Sign Out
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

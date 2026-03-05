@@ -1,14 +1,13 @@
 
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const checkAdmin = require('../middleware/auth');
+import checkAdmin from '../middleware/auth.js';
 
 // @desc    Verify admin access code
 // @route   POST /api/auth/verify
-// @access  Public (protected by middleware)
 router.post('/verify', checkAdmin, (req, res) => {
-  // If checkAdmin passes, the token is valid
+  console.log('[Auth] Token verified successfully.');
   res.status(200).json({ success: true, message: 'Authorized' });
 });
 
-module.exports = router;
+export default router;

@@ -1,8 +1,7 @@
-
-const express = require('express');
-const fetch = require('node-fetch');
+import express from 'express';
+import fetch from 'node-fetch';
 const router = express.Router();
-const ChatLog = require('../models/ChatLog');
+import ChatLog from '../models/ChatLog.js';
 
 router.post('/', async (req, res) => {
   try {
@@ -135,4 +134,4 @@ This creates an interactive link for the user to see details on our site.`
   }
 });
 
-module.exports = router;
+export default router;

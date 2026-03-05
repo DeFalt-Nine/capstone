@@ -1,8 +1,7 @@
-
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const ChatLog = require('../models/ChatLog');
-const AnalyticsEvent = require('../models/AnalyticsEvent');
+import ChatLog from '../models/ChatLog.js';
+import AnalyticsEvent from '../models/AnalyticsEvent.js';
 
 // @desc    Log a chat interaction (used for frontend intents)
 // @route   POST /api/analytics/chat
@@ -55,4 +54,4 @@ router.post('/event', async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

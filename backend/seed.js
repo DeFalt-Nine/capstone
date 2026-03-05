@@ -1,19 +1,18 @@
-
-require('dotenv').config();
-const mongoose = require('mongoose');
-const { connectDB } = require('./config/db');
+import 'dotenv/config';
+import mongoose from 'mongoose';
+import { connectDB } from './config/db.js';
 
 // Import Models
-const TouristSpot = require('./models/TouristSpot');
-const DiningSpot = require('./models/DiningSpot'); // NEW
-const BlogPost = require('./models/BlogPost');
-const LocalEvent = require('./models/LocalEvent');
+import TouristSpot from './models/TouristSpot.js';
+import DiningSpot from './models/DiningSpot.js';
+import BlogPost from './models/BlogPost.js';
+import LocalEvent from './models/LocalEvent.js';
 
 // Import Data
-const touristSpotsData = require('./data/touristSpotsData');
-const diningSpotsData = require('./data/diningSpotsData'); // NEW
-const blogPostsData = require('./data/blogPostsData');
-const eventsData = require('./data/eventsData');
+import touristSpotsData from './data/touristSpotsData.js';
+import diningSpotsData from './data/diningSpotsData.js';
+import blogPostsData from './data/blogPostsData.js';
+import eventsData from './data/eventsData.js';
 
 const seedData = async () => {
   try {

@@ -1,5 +1,5 @@
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 // We reuse the review schema structure
 const reviewSchema = new mongoose.Schema({
@@ -14,7 +14,7 @@ const reviewSchema = new mongoose.Schema({
 
 const DiningSpotSchema = new mongoose.Schema({
   image: { type: String, required: true },
-  alt: { type: String, required: true },
+  alt: { type: String, required: false },
   name: { type: String, required: true },
   description: { type: String, required: true },
   location: { type: String, required: true },
@@ -31,8 +31,8 @@ const DiningSpotSchema = new mongoose.Schema({
       distance: { type: String, required: true },
     },
   ],
-  mapEmbedUrl: { type: String, required: true },
+  mapEmbedUrl: { type: String, required: false },
   reviews: [reviewSchema],
 });
 
-module.exports = mongoose.models.DiningSpot || mongoose.model('DiningSpot', DiningSpotSchema, 'diningspots');
+export default mongoose.models.DiningSpot || mongoose.model('DiningSpot', DiningSpotSchema, 'diningspots');

@@ -365,4 +365,4 @@ const touristSpots = [
   }
 ];
 
-module.exports = touristSpots;
+export default touristSpots;

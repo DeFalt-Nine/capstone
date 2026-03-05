@@ -115,7 +115,14 @@ const TouristSpotsPage: React.FC = () => {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {filteredItems.map((item, index) => (
-          <AnimatedElement key={item._id || index} delay={index * 100}>
+          <AnimatedElement 
+            key={item._id || index} 
+            delay={(index % 4) * 100} 
+            direction="up" 
+            distance={60}
+            scale={0.7}
+            rotate={index % 2 === 0 ? -2 : 2}
+          >
             <div 
               className="bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden group cursor-pointer flex flex-col h-full transform transition-all duration-300 hover:-translate-y-2 border border-slate-100 relative"
               onClick={() => handleItemClick(item)}

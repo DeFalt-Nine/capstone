@@ -67,6 +67,7 @@ export interface Norm {
   title: string;
   description: string;
   points: string[];
+  facts?: string[];
 }
 
 export interface BlogPost {

@@ -1,5 +1,5 @@
 
-import { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -10,18 +10,18 @@ interface State {
   error: Error | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+class ErrorBoundary extends React.Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null
+  };
 
-  static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): State {
     // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // You can also log the error to an error reporting service here
     console.error("Uncaught error:", error, errorInfo);
   }
@@ -49,7 +49,7 @@ class ErrorBoundary extends Component<Props, State> {
                 <i className="fas fa-redo-alt"></i> Refresh Page
             </button>
             
-            {/* Developer Error Details (Only visible in dev mode usually, but helpful here) */}
+            {/* Developer Error Details */}
             {this.state.error && (
                 <div className="mt-8 p-4 bg-slate-50 rounded-xl text-left border border-slate-200 overflow-hidden">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Error Details</p>

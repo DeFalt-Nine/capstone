@@ -1,10 +1,16 @@
 
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
-const { connectDB } = require('./config/db');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { connectDB } from './config/db.js';
+
+// ES Module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 
@@ -50,24 +56,37 @@ const ensureDbConnection = async (req, res, next) => {
 // Define routes
 console.log('Mounting routes...');
 
+// Import routes
+import authRoutes from './routes/auth.js';
+import healthRoutes from './routes/health.js';
+import uploadRoutes from './routes/upload.js';
+import chatbotRoutes from './routes/chatbot.js';
+import analyticsRoutes from './routes/analytics.js';
+import touristSpotsRoutes from './routes/touristSpots.js';
+import diningSpotsRoutes from './routes/diningSpots.js';
+import blogPostsRoutes from './routes/blogPosts.js';
+import eventsRoutes from './routes/events.js';
+import subscribersRoutes from './routes/subscribers.js';
+import reportsRoutes from './routes/reports.js';
+
 // 1. Auth (No DB required for secret code check if using env variable)
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', authRoutes);
 
 // 2. Public Health Check
-app.use('/api/health', require('./routes/health'));
+app.use('/api/health', healthRoutes);
 
 // 3. File Uploads (No DB required)
-app.use('/api/upload', require('./routes/upload')); 
+app.use('/api/upload', uploadRoutes); 
 
 // 4. Routes requiring Database
-app.use('/api/chatbot', ensureDbConnection, require('./routes/chatbot'));
-app.use('/api/analytics', ensureDbConnection, require('./routes/analytics'));
-app.use('/api/tourist-spots', ensureDbConnection, require('./routes/touristSpots'));
-app.use('/api/dining-spots', ensureDbConnection, require('./routes/diningSpots'));
-app.use('/api/blog-posts', ensureDbConnection, require('./routes/blogPosts'));
-app.use('/api/events', ensureDbConnection, require('./routes/events'));
-app.use('/api/subscribers', ensureDbConnection, require('./routes/subscribers'));
-app.use('/api/reports', ensureDbConnection, require('./routes/reports')); 
+app.use('/api/chatbot', ensureDbConnection, chatbotRoutes);
+app.use('/api/analytics', ensureDbConnection, analyticsRoutes);
+app.use('/api/tourist-spots', ensureDbConnection, touristSpotsRoutes);
+app.use('/api/dining-spots', ensureDbConnection, diningSpotsRoutes);
+app.use('/api/blog-posts', ensureDbConnection, blogPostsRoutes);
+app.use('/api/events', ensureDbConnection, eventsRoutes);
+app.use('/api/subscribers', ensureDbConnection, subscribersRoutes);
+app.use('/api/reports', ensureDbConnection, reportsRoutes); 
 
 console.log('Routes mounted successfully.');
 
@@ -92,4 +111,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📂 Uploads: http://localhost:${PORT}/uploads/\n`);
 });
 
-module.exports = app;
+export default app;

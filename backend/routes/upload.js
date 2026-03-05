@@ -1,9 +1,14 @@
-
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const path = require('path');
-const fs = require('fs');
-const multer = require('multer');
+import path from 'path';
+import fs from 'fs';
+import multer from 'multer';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ES Module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Define upload directory path relative to this file
 // __dirname is backend/routes, so ../uploads puts it in backend/uploads
@@ -81,4 +86,4 @@ router.post('/', (req, res) => {
   });
 });
 
-module.exports = router;
+export default router;

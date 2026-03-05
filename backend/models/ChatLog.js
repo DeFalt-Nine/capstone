@@ -1,5 +1,5 @@
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const ChatLogSchema = new mongoose.Schema({
   userMessage: { type: String, required: true },
@@ -9,4 +9,4 @@ const ChatLogSchema = new mongoose.Schema({
 });
 
 // Use 'chatlogs' as the collection name
-module.exports = mongoose.models.ChatLog || mongoose.model('ChatLog', ChatLogSchema, 'chatlogs');
+export default mongoose.models.ChatLog || mongoose.model('ChatLog', ChatLogSchema, 'chatlogs');

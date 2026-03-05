@@ -1,5 +1,5 @@
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const ReportSchema = new mongoose.Schema({
   targetId: { type: String, required: true },
@@ -10,4 +10,4 @@ const ReportSchema = new mongoose.Schema({
   status: { type: String, default: 'pending', enum: ['pending', 'resolved'] },
 }, { timestamps: true });
 
-module.exports = mongoose.models.Report || mongoose.model('Report', ReportSchema, 'reports');
+export default mongoose.models.Report || mongoose.model('Report', ReportSchema, 'reports');

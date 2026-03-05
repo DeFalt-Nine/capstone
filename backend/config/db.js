@@ -1,7 +1,7 @@
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
-const connectDB = async () => {
+export const connectDB = async () => {
   // If already connected, do nothing
   if (mongoose.connection.readyState >= 1) {
     return;
@@ -19,5 +19,3 @@ const connectDB = async () => {
     throw error; // Re-throw so middleware can handle it
   }
 };
-
-module.exports = { connectDB };

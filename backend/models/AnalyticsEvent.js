@@ -1,5 +1,5 @@
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const AnalyticsEventSchema = new mongoose.Schema({
   eventType: { type: String, required: true }, // e.g., 'click', 'view', 'filter'
@@ -9,4 +9,4 @@ const AnalyticsEventSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.models.AnalyticsEvent || mongoose.model('AnalyticsEvent', AnalyticsEventSchema, 'analyticsevents');
+export default mongoose.models.AnalyticsEvent || mongoose.model('AnalyticsEvent', AnalyticsEventSchema, 'analyticsevents');

@@ -5,9 +5,10 @@ const checkAdmin = (req, res, next) => {
   const secret = process.env.ADMIN_ACCESS_CODE || 'admin123';
   
   if (token !== secret) {
+    console.log(`[Auth] Failed attempt. Token provided: '${token ? '***' : 'none'}'`);
     return res.status(403).json({ message: 'Unauthorized: Invalid Access Code' });
   }
   next();
 };
 
-module.exports = checkAdmin;
+export default checkAdmin;

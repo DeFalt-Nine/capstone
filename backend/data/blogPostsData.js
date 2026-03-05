@@ -1,4 +1,3 @@
-
 const blogPosts = [
     {
         image: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/fa/89/bf/strawberry-farm.jpg?w=1200&h=-1&s=1',
@@ -9,7 +8,6 @@ const blogPosts = [
         description: 'Everything you need to know about visiting the famous strawberry farms, from the best time to visit to what to bring.',
         author: 'Maria Santos',
         date: 'October 15, 2025',
-        status: 'approved',
         content: `
             <p class="lead">La Trinidad is synonymous with strawberries. Known as the Strawberry Capital of the Philippines, a visit here isn't complete without experiencing the joy of picking your own fresh berries.</p>
             
@@ -39,7 +37,6 @@ const blogPosts = [
         description: 'My first experience climbing Mount Kalugong and why it\'s perfect for beginner hikers looking for stunning views.',
         author: 'Juan Reyes',
         date: 'October 10, 2025',
-        status: 'approved',
         content: `
             <p class="lead">If you're looking for a hiking destination that rewards you with breathtaking views without demanding expert-level endurance, Mount Kalugong is the place to be.</p>
 
@@ -70,7 +67,6 @@ const blogPosts = [
         description: 'Discover the best spots for photography in La Trinidad\'s colorful flower gardens and when to visit for the best blooms.',
         author: 'Ana Cruz',
         date: 'October 5, 2025',
-        status: 'approved',
         content: `
             <p class="lead">Beyond strawberries, La Trinidad is also known as the "Rose Capital of the Philippines". The flower gardens here are a visual feast, offering a kaleidoscope of colors perfect for photography enthusiasts.</p>
 
@@ -97,7 +93,6 @@ const blogPosts = [
         description: 'From fresh vegetables to unique Cordilleran dishes, here\'s what to eat when visiting La Trinidad.',
         author: 'Pedro Garcia',
         date: 'September 28, 2025',
-        status: 'approved',
         content: `
             <p class="lead">La Trinidad offers a culinary journey that highlights the freshness of its highland produce and the richness of Cordilleran heritage.</p>
 
@@ -107,7 +102,7 @@ const blogPosts = [
             <h3>Strawberry Specialties</h3>
             <p>You cannot leave without trying these strawberry-infused treats:</p>
             <ul>
-                <li><strong>Strawberry Taho:</strong> Silken tofu with sweet strawberry syrup and sago pearls.</li>
+                <li><strong>Strawberry Taho:</strong> Silken tofu with sweet strawberry strawberry syrup and sago pearls.</li>
                 <li><strong>Strawberry Ice Cream:</strong> Creamy and made with real fruit chunks.</li>
                 <li><strong>Strawberry Shortcake:</strong> La Trinidad once held the Guinness World Record for the largest fruit shortcake!</li>
             </ul>
@@ -125,7 +120,6 @@ const blogPosts = [
         description: 'Make the most of your weekend with this carefully planned itinerary covering the best attractions and experiences.',
         author: 'Lisa Mendoza',
         date: 'September 20, 2025',
-        status: 'approved',
         content: `
             <p class="lead">Planning a quick getaway? Here is the perfect 2-day itinerary to experience the best of La Trinidad.</p>
 
@@ -159,7 +153,6 @@ const blogPosts = [
         description: 'Learn about the indigenous Ibaloi people, their customs, and how their culture shapes La Trinidad today.',
         author: 'Dr. Carmen Flores',
         date: 'September 15, 2025',
-        status: 'approved',
         content: `
             <p class="lead">The Ibaloi are the original inhabitants of La Trinidad and southern Benguet. Their rich culture is deeply woven into the fabric of the municipality.</p>
 
@@ -182,7 +175,6 @@ const blogPosts = [
         description: 'Unwind with a cup of locally sourced Benguet Arabica coffee while enjoying panoramic views of the valley.',
         author: 'Miguel Santos',
         date: 'September 08, 2025',
-        status: 'approved',
         content: `
             <p class="lead">Coffee tastes better with a view. In La Trinidad, you don't just get great coffee; you get front-row seats to rolling hills, cloud-kissed mountains, and vibrant vegetable terraces.</p>
 
@@ -205,7 +197,6 @@ const blogPosts = [
         description: 'A guide to the best souvenirs and treats to buy for your loved ones from the Strawberry Capital.',
         author: 'Elena Gomez',
         date: 'September 01, 2025',
-        status: 'approved',
         content: `
             <p class="lead">"Pasalubong" is the Filipino tradition of bringing back gifts for family and friends. In La Trinidad, your bags will be heavy with delicious treats!</p>
 
@@ -223,4 +214,4 @@ const blogPosts = [
     }
 ];
 
-module.exports = blogPosts;
+export default blogPosts;

@@ -1,4 +1,4 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
 
 // @desc    Health check
@@ -8,4 +8,4 @@ router.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
 
-module.exports = router;
+export default router;

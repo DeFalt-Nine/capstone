@@ -1,10 +1,9 @@
-
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const DiningSpot = require('../models/DiningSpot');
-const Subscriber = require('../models/Subscriber');
-const mongoose = require('mongoose');
-const checkAdmin = require('../middleware/auth');
+import DiningSpot from '../models/DiningSpot.js';
+import Subscriber from '../models/Subscriber.js';
+import mongoose from 'mongoose';
+import checkAdmin from '../middleware/auth.js';
 
 // @desc    Fetch all dining spots
 // @route   GET /api/dining-spots
@@ -109,4 +108,4 @@ router.post('/:id/reviews', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

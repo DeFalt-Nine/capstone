@@ -1,8 +1,7 @@
-
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const BlogPost = require('../models/BlogPost');
-const checkAdmin = require('../middleware/auth');
+import BlogPost from '../models/BlogPost.js';
+import checkAdmin from '../middleware/auth.js';
 
 // @desc    Fetch blog posts
 // @route   GET /api/blog-posts?mode=admin
@@ -94,4 +93,4 @@ router.delete('/:id', checkAdmin, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

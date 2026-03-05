@@ -29,7 +29,14 @@ const AboutPage: React.FC = () => {
         <div className="container mx-auto px-4 relative z-20 -mt-16">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                 {STATS.map((stat, index) => (
-                    <AnimatedElement key={index} delay={index * 100}>
+                    <AnimatedElement 
+                        key={index} 
+                        delay={index * 100} 
+                        direction="down" 
+                        distance={30}
+                        scale={0.5}
+                        rotate={index % 2 === 0 ? -10 : 10}
+                    >
                         <div className="bg-white/95 backdrop-blur-sm p-6 rounded-xl shadow-xl text-center border border-slate-100 transform hover:-translate-y-1 transition-transform duration-300 h-full group">
                             <i className={`${stat.icon} text-3xl text-lt-orange mb-3 group-hover:text-lt-red transition-colors`}></i>
                             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{stat.label}</p>
@@ -76,7 +83,14 @@ const AboutPage: React.FC = () => {
                     <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-lt-moss/30 rounded-full hidden md:block"></div>
                     
                     {HISTORY_MILESTONES.map((event, index) => (
-                        <AnimatedElement key={index} delay={index * 150}>
+                        <AnimatedElement 
+                            key={index} 
+                            delay={index * 150} 
+                            direction={index % 2 === 0 ? 'right' : 'left'} 
+                            distance={100}
+                            scale={0.8}
+                            rotate={index % 2 === 0 ? 5 : -5}
+                        >
                             <div className={`flex flex-col md:flex-row items-center mb-12 ${index % 2 === 0 ? 'md:flex-row-reverse' : ''}`}>
                                 
                                 {/* Content Card */}
@@ -120,7 +134,7 @@ const AboutPage: React.FC = () => {
             </div>
 
             {/* Why Visit Section */}
-            <AnimatedElement delay={300}>
+            <AnimatedElement delay={300} direction="up" distance={40}>
                 <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl mb-24 border border-slate-100">
                     <div className="text-center mb-12">
                          <h2 className="text-3xl font-bold text-slate-800">Why Visit Us?</h2>

@@ -1,5 +1,5 @@
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const reviewSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -14,7 +14,7 @@ const reviewSchema = new mongoose.Schema({
 
 const TouristSpotSchema = new mongoose.Schema({
   image: { type: String, required: true },
-  alt: { type: String, required: true },
+  alt: { type: String, required: false },
   name: { type: String, required: true },
   description: { type: String, required: true },
   location: { type: String, required: true },
@@ -31,10 +31,10 @@ const TouristSpotSchema = new mongoose.Schema({
       distance: { type: String, required: true },
     },
   ],
-  mapEmbedUrl: { type: String, required: true },
+  mapEmbedUrl: { type: String, required: false },
   reviews: [reviewSchema],
 });
 
 // This is the key change: Check if the model is already registered.
 // This prevents an error in serverless environments where the file might be re-evaluated.
-module.exports = mongoose.models.TouristSpot || mongoose.model('TouristSpot', TouristSpotSchema, 'touristspots');
+export default mongoose.models.TouristSpot || mongoose.model('TouristSpot', TouristSpotSchema, 'touristspots');

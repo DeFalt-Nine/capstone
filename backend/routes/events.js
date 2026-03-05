@@ -1,8 +1,7 @@
-
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const LocalEvent = require('../models/LocalEvent');
-const checkAdmin = require('../middleware/auth');
+import LocalEvent from '../models/LocalEvent.js';
+import checkAdmin from '../middleware/auth.js';
 
 // @desc    Fetch all local events
 router.get('/', async (req, res) => {
@@ -44,4 +43,4 @@ router.delete('/:id', checkAdmin, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

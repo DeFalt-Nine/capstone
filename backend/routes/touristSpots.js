@@ -1,10 +1,9 @@
-
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const TouristSpot = require('../models/TouristSpot');
-const Subscriber = require('../models/Subscriber');
-const mongoose = require('mongoose');
-const checkAdmin = require('../middleware/auth');
+import TouristSpot from '../models/TouristSpot.js';
+import Subscriber from '../models/Subscriber.js';
+import mongoose from 'mongoose';
+import checkAdmin from '../middleware/auth.js';
 
 // @desc    Fetch all tourist spots
 // @route   GET /api/tourist-spots
@@ -116,4 +115,4 @@ router.post('/:id/reviews', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

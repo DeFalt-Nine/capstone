@@ -1,8 +1,7 @@
-
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const Report = require('../models/Report');
-const checkAdmin = require('../middleware/auth');
+import Report from '../models/Report.js';
+import checkAdmin from '../middleware/auth.js';
 
 // @desc    Create a report
 // @route   POST /api/reports
@@ -46,4 +45,4 @@ router.delete('/:id', checkAdmin, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
