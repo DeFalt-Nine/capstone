@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { LOCAL_NORMS, EMERGENCY_CONTACTS, EMERGENCY_HOTLINES } from '../constants';
 import { fetchLocalEvents, trackEvent } from '../services/apiService';
 import type { LocalEvent } from '../types';
@@ -196,6 +197,7 @@ const TaxiEstimator: React.FC = () => {
 };
 
 const VisitorInfoPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'culture' | 'events' | 'emergency'>('culture');
   const [events, setEvents] = useState<LocalEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
@@ -204,6 +206,14 @@ const VisitorInfoPage: React.FC = () => {
   const [selectedContact, setSelectedContact] = useState(EMERGENCY_CONTACTS[0]);
 
   const [activeFact, setActiveFact] = useState<{ text: string; x: number; y: number } | null>(null);
+
+  // Handle tab deep linking
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'culture' || tab === 'events' || tab === 'emergency') {
+        setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
       const loadEvents = async () => {
