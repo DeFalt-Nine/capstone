@@ -4,6 +4,7 @@ import TouristSpot from '../models/TouristSpot.js';
 import Subscriber from '../models/Subscriber.js';
 import mongoose from 'mongoose';
 import checkAdmin from '../middleware/auth.js';
+import { deleteImage } from '../services/storageService.js';
 
 // @desc    Fetch all tourist spots
 // @route   GET /api/tourist-spots
@@ -53,8 +54,34 @@ router.put('/:id', checkAdmin, async (req, res) => {
 // @route   DELETE /api/tourist-spots/:id
 router.delete('/:id', checkAdmin, async (req, res) => {
   try {
+    const spot = await TouristSpot.findById(req.params.id);
+    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+
+    // Delete main image
+    if (spot.image) {
+        await deleteImage(spot.image);
+    }
+
+    // Delete gallery images
+    if (spot.gallery && spot.gallery.length > 0) {
+        for (const imgUrl of spot.gallery) {
+            await deleteImage(imgUrl);
+        }
+    }
+
+    // Delete review images
+    if (spot.reviews && spot.reviews.length > 0) {
+        for (const review of spot.reviews) {
+            if (review.images && review.images.length > 0) {
+                for (const imgUrl of review.images) {
+                    await deleteImage(imgUrl);
+                }
+            }
+        }
+    }
+
     await TouristSpot.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Spot removed' });
+    res.json({ message: 'Spot removed and images deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
