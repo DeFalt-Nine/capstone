@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 import LocalEvent from '../models/LocalEvent.js';
 import checkAdmin from '../middleware/auth.js';
+import { deleteImage } from '../services/storageService.js';
 
 // @desc    Fetch all local events
 router.get('/', async (req, res) => {
@@ -36,8 +37,16 @@ router.put('/:id', checkAdmin, async (req, res) => {
 // @desc    Delete
 router.delete('/:id', checkAdmin, async (req, res) => {
   try {
+    const event = await LocalEvent.findById(req.params.id);
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+
+    // Delete image from storage
+    if (event.image) {
+        await deleteImage(event.image);
+    }
+
     await LocalEvent.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Event removed' });
+    res.json({ message: 'Event removed and image deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

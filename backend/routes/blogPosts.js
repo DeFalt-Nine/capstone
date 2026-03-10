@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 import BlogPost from '../models/BlogPost.js';
 import checkAdmin from '../middleware/auth.js';
+import { deleteImage } from '../services/storageService.js';
 
 // @desc    Fetch blog posts
 // @route   GET /api/blog-posts?mode=admin
@@ -86,8 +87,16 @@ router.put('/:id', checkAdmin, async (req, res) => {
 // @desc    Delete (Admin)
 router.delete('/:id', checkAdmin, async (req, res) => {
   try {
+    const post = await BlogPost.findById(req.params.id);
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+
+    // Delete image from storage
+    if (post.image) {
+        await deleteImage(post.image);
+    }
+
     await BlogPost.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Post removed' });
+    res.json({ message: 'Post removed and image deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
