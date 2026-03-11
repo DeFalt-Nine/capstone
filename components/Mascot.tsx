@@ -42,14 +42,17 @@ const Mascot: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (isVisible && mascotRef.current) {
-            gsap.fromTo(mascotRef.current, 
+        const { current: mascot } = mascotRef;
+        const { current: bubble } = bubbleRef;
+        
+        if (isVisible && mascot) {
+            gsap.fromTo(mascot, 
                 { y: 100, opacity: 0 },
                 { y: 0, opacity: 1, duration: 1, ease: 'back.out(1.7)' }
             );
             
-            if (bubbleRef.current) {
-                gsap.fromTo(bubbleRef.current,
+            if (bubble) {
+                gsap.fromTo(bubble,
                     { scale: 0, opacity: 0 },
                     { scale: 1, opacity: 1, delay: 0.8, duration: 0.5, ease: 'back.out(2)' }
                 );
@@ -66,7 +69,7 @@ const Mascot: React.FC = () => {
     return (
         <div 
             ref={mascotRef}
-            className="fixed bottom-8 right-8 z-[60] flex flex-col items-end group cursor-pointer"
+            className="fixed bottom-8 left-8 z-[60] flex flex-col items-start group cursor-pointer"
             onClick={handleClick}
         >
             {/* Speech Bubble */}
@@ -79,7 +82,7 @@ const Mascot: React.FC = () => {
                 </p>
                 <p className="text-[10px] text-slate-500 mt-1">Click me to see details!</p>
                 {/* Triangle */}
-                <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white border-r-2 border-b-2 border-lt-orange rotate-45"></div>
+                <div className="absolute -bottom-2 left-6 w-4 h-4 bg-white border-l-2 border-b-2 border-lt-orange -rotate-45"></div>
             </div>
 
             {/* Mascot Character (Cute Strawberry) */}

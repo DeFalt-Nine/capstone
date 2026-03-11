@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { askLaTrinidadGuide } from '../services/LaTrinidadAiService';
+import { askLaTrinidadGuide } from '../services/laTrinidadAiService';
 import { analyzeIntent } from '../services/intentService';
 import { logChatInteraction } from '../services/apiService';
 import type { ChatMessage } from '../types';
