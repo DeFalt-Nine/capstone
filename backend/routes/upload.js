@@ -112,11 +112,10 @@ router.post('/', (req, res) => {
   });
 });
 
-// @route   DELETE /api/upload/:publicId
+// @route   DELETE /api/upload?publicId=...
 // @desc    Delete an image from storage
-router.delete('/*', async (req, res) => {
-    // In Express 5, the wildcard '*' is captured in req.params[0]
-    const publicId = req.params[0];
+router.delete('/', async (req, res) => {
+    const { publicId } = req.query;
     
     if (!publicId) return res.status(400).json({ message: 'Public ID is required' });
 

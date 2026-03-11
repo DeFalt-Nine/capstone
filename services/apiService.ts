@@ -132,7 +132,11 @@ export const submitPublicBlogPost = async (data: Partial<BlogPost>) => {
 };
 
 export const deleteItem = async (endpoint: string, id: string) => {
-    return safeFetch(`${API_BASE}/api/${endpoint}/${id}`, {
+    const url = endpoint === 'upload' 
+        ? `${API_BASE}/api/${endpoint}?publicId=${encodeURIComponent(id)}`
+        : `${API_BASE}/api/${endpoint}/${id}`;
+        
+    return safeFetch(url, {
         method: 'DELETE',
         headers: getHeaders()
     });
