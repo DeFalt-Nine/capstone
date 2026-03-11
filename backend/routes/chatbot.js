@@ -52,7 +52,7 @@ This creates an interactive link for the user to see details on our site.`;
     ];
 
     const payload = {
-      model: 'tngtech/deepseek-r1t2-chimera:free',
+      model: 'openai/gpt-oss-20b:free',
       messages,
       stream: true,
     };

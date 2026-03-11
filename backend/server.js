@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 import { connectDB } from './config/db.js';
-import { createServer as createViteServer } from 'vite';
+// import { createServer as createViteServer } from 'vite'; // Moved to dynamic import inside startServer
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -147,6 +147,7 @@ console.log('Routes mounted successfully.');
 
 // Vite middleware for development
 if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
         server: { 
             middlewareMode: true,
@@ -206,15 +207,20 @@ app.use((err, req, res, next) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 Unified Server running on port ${PORT}`);
-    console.log(`🔗 Local Access: http://localhost:${PORT}`);
-    console.log(`📡 API Base: http://localhost:${PORT}/api/`);
-    if (process.env.NODE_ENV === 'production') {
-        console.log(`📂 Serving static files from: ${path.join(__dirname, '..', 'dist')}`);
-    }
-});
+// Skip app.listen on Vercel
+if (process.env.NODE_ENV === 'production' && process.env.VERCEL) {
+    console.log('Running on Vercel - skipping app.listen');
+} else {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n🚀 Unified Server running on port ${PORT}`);
+        console.log(`🔗 Local Access: http://localhost:${PORT}`);
+        console.log(`📡 API Base: http://localhost:${PORT}/api/`);
+        if (process.env.NODE_ENV === 'production') {
+            console.log(`📂 Serving static files from: ${path.join(__dirname, '..', 'dist')}`);
+        }
+    });
+}
 }
 
 startServer();
