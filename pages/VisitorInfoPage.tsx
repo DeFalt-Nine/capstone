@@ -1,10 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { LOCAL_NORMS, EMERGENCY_CONTACTS, EMERGENCY_HOTLINES } from '../constants';
 import { fetchLocalEvents, trackEvent } from '../services/apiService';
-import type { LocalEvent } from '../types';
+import type { LocalEvent, Norm } from '../types';
 import AnimatedElement from '../components/AnimatedElement';
 import FunFactBubble from '../components/FunFactBubble';
+import JeepneyRouteNavigator from '../components/JeepneyRouteNavigator';
+
+// Fix for Leaflet default marker icons
+// @ts-ignore
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 /**
  * LANDMARKS WITH COORDINATES
@@ -38,18 +52,158 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => 
     return R * c;
 };
 
+const MapPicker: React.FC<{ 
+    onPick: (lat: number, lng: number) => void, 
+    onClose: () => void,
+    initialPos?: [number, number]
+}> = ({ onPick, onClose, initialPos }) => {
+    const [pos, setPos] = useState<[number, number]>(initialPos || [16.435, 120.59]);
+
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
+    const MapEvents = () => {
+        useMapEvents({
+            click(e: L.LeafletMouseEvent) {
+                setPos([e.latlng.lat, e.latlng.lng]);
+            },
+        });
+        return null;
+    };
+
+    const MapCenterer = ({ center }: { center: [number, number] }) => {
+        const map = useMap();
+        useEffect(() => {
+            map.setView(center);
+        }, [center]);
+        return null;
+    };
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-300">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+                    <div>
+                        <h3 className="text-lg font-black text-slate-800">Pick Location</h3>
+                        <p className="text-xs text-slate-400 font-medium">Click on the map to set coordinates</p>
+                    </div>
+                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors">
+                        <i className="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div className="flex-grow relative h-[400px]">
+                    <MapContainer center={pos} zoom={14} style={{ height: '100%', width: '100%' }}>
+                        <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <Marker position={pos} />
+                        <MapEvents />
+                        <MapCenterer center={pos} />
+                    </MapContainer>
+                    
+                    <div className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none">
+                        <div className="bg-white/90 backdrop-blur shadow-lg p-3 rounded-2xl border border-white/20 pointer-events-auto">
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="text-[10px] font-mono text-slate-500">
+                                    {pos[0].toFixed(5)}, {pos[1].toFixed(5)}
+                                </div>
+                                <button 
+                                    onClick={() => onPick(pos[0], pos[1])}
+                                    className="bg-lt-blue text-white px-6 py-2 rounded-xl text-xs font-black shadow-lg shadow-lt-blue/20 hover:scale-105 transition-transform"
+                                >
+                                    Confirm Location
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
 const TaxiEstimator: React.FC = () => {
     const [originId, setOriginId] = useState('sm');
     const [destId, setDestId] = useState('strawberry');
     const [isHeavyTraffic, setIsHeavyTraffic] = useState(false);
     const [showMap, setShowMap] = useState(true);
+    const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
+    const [customOrigin, setCustomOrigin] = useState<{ lat: number, lng: number } | null>(null);
+    const [customDest, setCustomDest] = useState<{ lat: number, lng: number } | null>(null);
+    const [isLocating, setIsLocating] = useState(false);
+    const [locationError, setLocationError] = useState<string | null>(null);
+    const [pickingFor, setPickingFor] = useState<'origin' | 'dest' | null>(null);
+
+    const handleUseCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            setLocationError("Geolocation is not supported by your browser.");
+            return;
+        }
+
+        setIsLocating(true);
+        setLocationError(null);
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setUserLocation({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                });
+                setOriginId('current');
+                setIsLocating(false);
+                trackEvent('click', 'use_current_location', '/visitor-info');
+            },
+            (error) => {
+                console.error("Geolocation error:", error);
+                let msg = "Unable to retrieve your location.";
+                if (error.code === 1) msg = "Location permission denied. Please enable it in settings.";
+                setLocationError(msg);
+                setIsLocating(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    };
+
+    const handleMapPick = (lat: number, lng: number) => {
+        if (pickingFor === 'origin') {
+            setCustomOrigin({ lat, lng });
+            setOriginId('custom');
+        } else if (pickingFor === 'dest') {
+            setCustomDest({ lat, lng });
+            setDestId('custom');
+        }
+        setPickingFor(null);
+    };
 
     const result = useMemo(() => {
-        if (originId === destId) return null;
+        if (originId === destId && originId !== 'custom') return null;
         
-        const origin = LANDMARKS.find(l => l.id === originId)!;
-        const dest = LANDMARKS.find(l => l.id === destId)!;
+        let origin;
+        if (originId === 'current' && userLocation) {
+            origin = { name: 'Your Current Location', lat: userLocation.lat, lng: userLocation.lng, area: 'Unknown' };
+        } else if (originId === 'custom' && customOrigin) {
+            origin = { name: 'Custom Point (Origin)', lat: customOrigin.lat, lng: customOrigin.lng, area: 'Unknown' };
+        } else {
+            origin = LANDMARKS.find(l => l.id === originId)!;
+        }
+
+        let dest;
+        if (destId === 'custom' && customDest) {
+            dest = { name: 'Custom Point (Destination)', lat: customDest.lat, lng: customDest.lng, area: 'Unknown' };
+        } else {
+            dest = LANDMARKS.find(l => l.id === destId)!;
+        }
         
+        if (!origin || !dest) return null;
+
         // Calculate raw distance
         const rawDist = getDistance(origin.lat, origin.lng, dest.lat, dest.lng);
         
@@ -70,127 +224,261 @@ const TaxiEstimator: React.FC = () => {
         const timeMins = Math.round((actualDist / avgSpeed) * 60) + (isHeavyTraffic ? 15 : 5);
 
         return {
+            originName: origin.name,
+            destName: dest.name,
             distance: actualDist.toFixed(1),
             fare: estimatedFare,
             time: timeMins,
-            isBoundaryIssue: origin.area === 'LT' && dest.area === 'Baguio',
-            mapUrl: `https://www.google.com/maps/embed/v1/directions?key=API_KEY_NOT_NEEDED_FOR_EMBED&origin=${origin.lat},${origin.lng}&destination=${dest.lat},${dest.lng}&mode=driving`
+            isBoundaryIssue: (origin.area === 'LT' && dest.area === 'Baguio') || (origin.area === 'Baguio' && dest.area === 'LT'),
+            mapUrl: `https://maps.google.com/maps?saddr=${origin.lat},${origin.lng}&daddr=${dest.lat},${dest.lng}&t=&z=14&ie=UTF8&iwloc=&output=embed`
         };
-    }, [originId, destId, isHeavyTraffic]);
+    }, [originId, destId, isHeavyTraffic, userLocation, customOrigin, customDest]);
 
     return (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full">
-            <div className="bg-slate-900 p-5 text-white flex items-center justify-between">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col h-full transition-all hover:shadow-lt-blue/5">
+            {pickingFor && (
+                <MapPicker 
+                    onClose={() => setPickingFor(null)} 
+                    onPick={handleMapPick}
+                    initialPos={
+                        pickingFor === 'origin' 
+                            ? (customOrigin ? [customOrigin.lat, customOrigin.lng] : [16.435, 120.59])
+                            : (customDest ? [customDest.lat, customDest.lng] : [16.435, 120.59])
+                    }
+                />
+            )}
+            <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-5 text-white flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-lt-yellow rounded-lg flex items-center justify-center">
-                        <i className="fas fa-calculator text-slate-900 text-sm"></i>
+                    <div className="w-10 h-10 bg-lt-yellow rounded-xl flex items-center justify-center shadow-lg shadow-lt-yellow/20">
+                        <i className="fas fa-taxi text-slate-900 text-lg"></i>
                     </div>
-                    <span className="font-bold text-sm uppercase tracking-widest">Taxi Fare Engine</span>
+                    <div>
+                        <span className="font-black text-sm uppercase tracking-tighter block">Fare Engine</span>
+                        <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Metered Estimate</span>
+                    </div>
                 </div>
-                <button onClick={() => setShowMap(!showMap)} className="text-[10px] font-bold bg-white/10 px-3 py-1.5 rounded-full hover:bg-white/20 transition-colors">
+                <button 
+                    onClick={() => setShowMap(!showMap)} 
+                    className={`text-[10px] font-bold px-4 py-2 rounded-full transition-all border ${showMap ? 'bg-white/10 border-white/20 text-white' : 'bg-lt-yellow text-slate-900 border-lt-yellow shadow-lg shadow-lt-yellow/20'}`}
+                >
                     {showMap ? 'Hide Map' : 'Show Map'}
                 </button>
             </div>
 
             <div className="p-6 space-y-6 flex-grow">
                 {/* Selectors */}
-                <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-4">
                     <div className="relative">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 block">From</label>
-                        <i className="fas fa-circle-dot absolute left-4 top-[38px] text-lt-blue text-xs z-10"></i>
-                        <select 
-                            value={originId} 
-                            onChange={e => setOriginId(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-lt-blue outline-none appearance-none cursor-pointer"
-                        >
-                            {LANDMARKS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        </select>
+                        <div className="flex justify-between items-end mb-1 px-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Starting Point</label>
+                            <button 
+                                onClick={handleUseCurrentLocation}
+                                disabled={isLocating}
+                                className={`text-[10px] font-bold flex items-center gap-1.5 transition-colors ${isLocating ? 'text-slate-400' : 'text-lt-blue hover:text-lt-orange'}`}
+                            >
+                                {isLocating ? (
+                                    <><i className="fas fa-spinner fa-spin"></i> Locating...</>
+                                ) : (
+                                    <><i className="fas fa-crosshairs"></i> Use Current Location</>
+                                )}
+                            </button>
+                        </div>
+                        <div className="flex gap-2">
+                            <div className="relative flex-grow">
+                                <i className="fas fa-circle-dot absolute left-4 top-1/2 -translate-y-1/2 text-lt-blue text-xs z-10"></i>
+                                <select 
+                                    value={originId} 
+                                    onChange={e => {
+                                        setOriginId(e.target.value);
+                                        if (e.target.value !== 'current') setLocationError(null);
+                                    }}
+                                    className="w-full pl-10 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-lt-blue/10 focus:border-lt-blue outline-none appearance-none cursor-pointer transition-all"
+                                >
+                                    {originId === 'current' && <option value="current">📍 Your Current Location</option>}
+                                    {originId === 'custom' && <option value="custom">🗺️ Custom Map Point</option>}
+                                    <optgroup label="La Trinidad Landmarks">
+                                        {LANDMARKS.filter(l => l.area === 'LT').map(l => (
+                                            <option key={l.id} value={l.id}>{l.name}</option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Baguio Landmarks">
+                                        {LANDMARKS.filter(l => l.area === 'Baguio').map(l => (
+                                            <option key={l.id} value={l.id}>{l.name}</option>
+                                        ))}
+                                    </optgroup>
+                                </select>
+                                <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] pointer-events-none"></i>
+                            </div>
+                            <button 
+                                onClick={() => setPickingFor('origin')}
+                                className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-lt-blue hover:text-white transition-all shadow-sm shrink-0"
+                                title="Pick on Map"
+                            >
+                                <i className="fas fa-map"></i>
+                            </button>
+                        </div>
+                        {locationError && (
+                            <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold animate-shake">
+                                <i className="fas fa-exclamation-circle mr-1"></i> {locationError}
+                            </p>
+                        )}
                     </div>
-                    <div className="relative">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 block">To</label>
-                        <i className="fas fa-location-dot absolute left-4 top-[38px] text-lt-red text-xs z-10"></i>
-                        <select 
-                            value={destId} 
-                            onChange={e => setDestId(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-lt-red outline-none appearance-none cursor-pointer"
+
+                    <div className="flex justify-center -my-2 relative z-10">
+                        <button 
+                            onClick={() => {
+                                const temp = originId;
+                                setOriginId(destId);
+                                setDestId(temp);
+                                
+                                // Swap custom locations if applicable
+                                if (originId === 'custom' || destId === 'custom') {
+                                    const tempCustom = customOrigin;
+                                    setCustomOrigin(customDest);
+                                    setCustomDest(tempCustom);
+                                }
+                            }}
+                            className="w-8 h-8 bg-white border border-slate-200 rounded-full shadow-md flex items-center justify-center text-slate-400 hover:text-lt-blue transition-all hover:rotate-180"
                         >
-                            {LANDMARKS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        </select>
+                            <i className="fas fa-exchange-alt rotate-90 text-[10px]"></i>
+                        </button>
+                    </div>
+
+                    <div className="relative">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Destination</label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-grow">
+                                <i className="fas fa-location-dot absolute left-4 top-1/2 -translate-y-1/2 text-lt-red text-xs z-10"></i>
+                                <select 
+                                    value={destId} 
+                                    onChange={e => setDestId(e.target.value)}
+                                    className="w-full pl-10 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-lt-red/10 focus:border-lt-red outline-none appearance-none cursor-pointer transition-all"
+                                >
+                                    {destId === 'custom' && <option value="custom">🗺️ Custom Map Point</option>}
+                                    <optgroup label="La Trinidad Landmarks">
+                                        {LANDMARKS.filter(l => l.area === 'LT').map(l => (
+                                            <option key={l.id} value={l.id}>{l.name}</option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Baguio Landmarks">
+                                        {LANDMARKS.filter(l => l.area === 'Baguio').map(l => (
+                                            <option key={l.id} value={l.id}>{l.name}</option>
+                                        ))}
+                                    </optgroup>
+                                </select>
+                                <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] pointer-events-none"></i>
+                            </div>
+                            <button 
+                                onClick={() => setPickingFor('dest')}
+                                className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-lt-blue hover:text-white transition-all shadow-sm shrink-0"
+                                title="Pick on Map"
+                            >
+                                <i className="fas fa-map"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Traffic Toggle */}
-                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100 group cursor-pointer" onClick={() => setIsHeavyTraffic(!isHeavyTraffic)}>
                     <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isHeavyTraffic ? 'bg-red-100 text-red-600' : 'bg-lt-yellow/20 text-lt-orange'}`}>
-                            <i className={`fas ${isHeavyTraffic ? 'fa-car-side' : 'fa-sun'}`}></i>
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shadow-sm ${isHeavyTraffic ? 'bg-red-100 text-red-600' : 'bg-lt-yellow/20 text-lt-orange'}`}>
+                            <i className={`fas ${isHeavyTraffic ? 'fa-car-side text-xl' : 'fa-sun text-xl'}`}></i>
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-slate-800">{isHeavyTraffic ? 'Heavy Rush Hour' : 'Light Traffic'}</p>
-                            <p className="text-[10px] text-slate-500">Affects time & per-min charge</p>
+                            <p className="text-xs font-black text-slate-800 uppercase tracking-tight">{isHeavyTraffic ? 'Heavy Rush Hour' : 'Light Traffic'}</p>
+                            <p className="text-[10px] text-slate-500 font-medium">Adjusts time & per-min charge</p>
                         </div>
                     </div>
                     <button 
-                        onClick={() => setIsHeavyTraffic(!isHeavyTraffic)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isHeavyTraffic ? 'bg-red-500' : 'bg-slate-300'}`}
                     >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isHeavyTraffic ? 'translate-x-6' : 'translate-x-1'}`} />
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${isHeavyTraffic ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                 </div>
 
                 {/* Boundary Warning */}
                 {result?.isBoundaryIssue && (
-                    <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex gap-3 animate-fade-in">
-                        <i className="fas fa-exclamation-triangle text-amber-500 mt-1"></i>
-                        <p className="text-[10px] text-amber-800 leading-tight">
-                            <strong>Note:</strong> You are crossing from La Trinidad to Baguio. Grey Taxis cannot legally make this trip. Ensure you hail a <strong>White Taxi</strong>.
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex gap-3 animate-fade-in shadow-sm">
+                        <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                            <i className="fas fa-exclamation-triangle text-amber-600 text-xs"></i>
+                        </div>
+                        <p className="text-[11px] text-amber-900 leading-tight font-medium">
+                            <strong>Boundary Rule:</strong> You are crossing between LT and Baguio. <strong>Grey Taxis</strong> cannot legally pick up across boundaries. Ensure you hail a <strong>White Taxi</strong> for this trip.
                         </p>
                     </div>
                 )}
 
                 {/* Result Card */}
                 {result ? (
-                    <div className="space-y-4">
-                        <div className="bg-lt-moss/5 border border-lt-moss/10 rounded-2xl p-5 text-center relative overflow-hidden group">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-lt-yellow to-lt-orange"></div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Estimated Fare</p>
-                            <h3 className="text-4xl font-black text-slate-900 flex items-center justify-center gap-1">
-                                <span className="text-xl font-bold text-slate-400">₱</span>{result.fare}
-                            </h3>
-                            <div className="flex justify-center gap-6 mt-4 border-t border-slate-100 pt-4">
-                                <div>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Distance</p>
-                                    <p className="text-sm font-bold text-slate-800">{result.distance} km</p>
+                    <div className="space-y-4 animate-slide-up">
+                        <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 text-center relative overflow-hidden shadow-xl shadow-slate-200/50">
+                            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-lt-yellow via-lt-orange to-lt-red"></div>
+                            
+                            <div className="mb-4">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Estimated Fare</p>
+                                <div className="flex items-center justify-center gap-1">
+                                    <span className="text-2xl font-bold text-slate-300">₱</span>
+                                    <h3 className="text-5xl font-black text-slate-900 tracking-tighter">
+                                        {result.fare}
+                                    </h3>
                                 </div>
-                                <div className="w-px h-8 bg-slate-200"></div>
-                                <div>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Duration</p>
-                                    <p className="text-sm font-bold text-slate-800">~{result.time} mins</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mt-6 border-t border-slate-50 pt-6">
+                                <div className="text-center">
+                                    <div className="flex items-center justify-center gap-1.5 text-slate-400 mb-1">
+                                        <i className="fas fa-road text-[10px]"></i>
+                                        <p className="text-[9px] font-black uppercase tracking-widest">Distance</p>
+                                    </div>
+                                    <p className="text-lg font-black text-slate-800">{result.distance} <span className="text-xs font-bold text-slate-400">km</span></p>
+                                </div>
+                                <div className="text-center border-l border-slate-100">
+                                    <div className="flex items-center justify-center gap-1.5 text-slate-400 mb-1">
+                                        <i className="fas fa-clock text-[10px]"></i>
+                                        <p className="text-[9px] font-black uppercase tracking-widest">Duration</p>
+                                    </div>
+                                    <p className="text-lg font-black text-slate-800">~{result.time} <span className="text-xs font-bold text-slate-400">min</span></p>
                                 </div>
                             </div>
                         </div>
 
                         {showMap && (
-                            <div className="h-48 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner relative animate-fade-in">
+                            <div className="h-56 rounded-3xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner relative animate-fade-in group">
                                 <iframe 
-                                    src={`https://maps.google.com/maps?q=${LANDMARKS.find(l => l.id === destId)?.lat},${LANDMARKS.find(l => l.id === destId)?.lng}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
-                                    className="w-full h-full grayscale opacity-80"
+                                    key={result.mapUrl}
+                                    src={result.mapUrl}
+                                    className="w-full h-full transition-all duration-700 group-hover:scale-105"
                                     title="Route Preview"
                                 ></iframe>
-                                <div className="absolute inset-0 bg-slate-900/10 pointer-events-none"></div>
+                                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-slate-200 flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                    <span className="text-[9px] font-bold text-slate-700 uppercase tracking-wider">Live Route View</span>
+                                </div>
                             </div>
                         )}
                     </div>
                 ) : (
-                    <div className="h-32 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-xs text-center p-6 italic">
-                        Select an origin and destination to calculate the metered fare.
+                    <div className="h-40 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-400 text-center p-8 space-y-3">
+                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center">
+                            <i className="fas fa-taxi text-xl opacity-20"></i>
+                        </div>
+                        <p className="text-xs font-medium italic leading-relaxed">
+                            Select an origin and destination to calculate your estimated metered fare.
+                        </p>
                     </div>
                 )}
             </div>
 
-            <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[9px] text-slate-400 font-medium italic">Rates: ₱45 + ₱13.50/km (2025)</span>
-                <i className="fas fa-shield-alt text-slate-300 text-xs"></i>
+            <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-lt-orange"></span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">LTFRB Rates 2025</span>
+                </div>
+                <div className="flex items-center gap-4">
+                    <i className="fas fa-info-circle text-slate-300 text-xs cursor-help" title="₱45 flag-down + ₱13.50/km + time charges"></i>
+                    <i className="fas fa-shield-alt text-slate-300 text-xs"></i>
+                </div>
             </div>
         </div>
     );
@@ -207,11 +495,15 @@ const VisitorInfoPage: React.FC = () => {
 
   const [activeFact, setActiveFact] = useState<{ text: string; x: number; y: number } | null>(null);
 
-  // Handle tab deep linking
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab === 'culture' || tab === 'events' || tab === 'emergency') {
         setActiveTab(tab);
+    }
+    
+    // If we have an event parameter, ensure we are on the events tab
+    if (searchParams.get('event')) {
+        setActiveTab('events');
     }
   }, [searchParams]);
 
@@ -221,6 +513,22 @@ const VisitorInfoPage: React.FC = () => {
           try {
               const data = await fetchLocalEvents();
               setEvents(data);
+              
+              // After events are loaded, check if we need to scroll to a specific one
+              const eventTitle = searchParams.get('event');
+              if (eventTitle) {
+                  setTimeout(() => {
+                      const element = document.getElementById(`event-${eventTitle.replace(/\s+/g, '-').toLowerCase()}`);
+                      if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          // Add a temporary highlight class
+                          element.classList.add('ring-4', 'ring-lt-orange', 'ring-offset-4');
+                          setTimeout(() => {
+                              element.classList.remove('ring-4', 'ring-lt-orange', 'ring-offset-4');
+                          }, 3000);
+                      }
+                  }, 500);
+              }
           } catch (err) {
               console.error("Unable to load events at this time:", err);
           } finally {
@@ -228,7 +536,7 @@ const VisitorInfoPage: React.FC = () => {
           }
       };
       loadEvents();
-  }, []);
+  }, [searchParams]);
 
   const handleTabChange = (tab: 'culture' | 'events' | 'emergency') => {
       setActiveTab(tab);
@@ -236,7 +544,7 @@ const VisitorInfoPage: React.FC = () => {
       trackEvent('view', `tab_${tab}`, '/visitor-info');
   };
 
-  const handleNormClick = (e: React.MouseEvent, norm: any) => {
+  const handleNormClick = (e: React.MouseEvent, norm: Norm) => {
     if (!norm.facts || norm.facts.length === 0) return;
     
     const randomFact = norm.facts[Math.floor(Math.random() * norm.facts.length)];
@@ -336,48 +644,8 @@ const VisitorInfoPage: React.FC = () => {
                                         </div>
                                     </div>
 
-                                            {/* Jeepney Section */}
-                                            <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
-                                                <h3 className="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
-                                                    <i className="fas fa-bus text-lt-blue"></i> Jeepney Hubs
-                                                </h3>
-                                                <div className="grid md:grid-cols-2 gap-4">
-                                                    {[
-                                                        { 
-                                                            name: 'Baguio City Hall', 
-                                                            desc: 'Beside Fire Station. Routes: Buyagan, Km. 5, Km. 6.', 
-                                                            tags: ['Best for Farm'],
-                                                            icon: 'fa-landmark',
-                                                            fact: 'Jeepneys are the heartbeat of the valley. Riding one is the most authentic local experience!'
-                                                        },
-                                                        { 
-                                                            name: 'Baguio Center Mall', 
-                                                            desc: 'LG Floor. Frequent LT Proper trips.', 
-                                                            tags: ['Central'],
-                                                            icon: 'fa-shopping-bag',
-                                                            fact: 'The Center Mall terminal is the most convenient if you are coming from the city center.'
-                                                        }
-                                                    ].map((terminal, idx) => (
-                                                        <div 
-                                                            key={idx} 
-                                                            className="flex gap-3 p-4 bg-white rounded-2xl shadow-sm border border-blue-100 hover:shadow-md transition-all cursor-pointer active:scale-95"
-                                                            onClick={(e) => setActiveFact({
-                                                                text: terminal.fact,
-                                                                x: e.clientX,
-                                                                y: e.clientY
-                                                            })}
-                                                        >
-                                                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
-                                                                <i className={`fas ${terminal.icon} text-sm`}></i>
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-slate-800 text-xs mb-1">{terminal.name}</h4>
-                                                                <p className="text-[10px] text-slate-500 leading-relaxed">{terminal.desc}</p>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                    {/* Jeepney Route Navigator */}
+                                    <JeepneyRouteNavigator />
                                 </div>
 
                                 {/* Smart Estimator Tool - Col 3 */}
@@ -452,7 +720,10 @@ const VisitorInfoPage: React.FC = () => {
                                 scale={0.8}
                                 rotate={index % 2 === 0 ? -3 : 3}
                             >
-                                <div className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row h-full border border-slate-100 hover:shadow-2xl transition-shadow group">
+                                <div 
+                                    id={`event-${event.title.replace(/\s+/g, '-').toLowerCase()}`}
+                                    className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row h-full border border-slate-100 hover:shadow-2xl transition-all group"
+                                >
                                     <div className="w-full md:w-2/5 relative h-48 md:h-auto overflow-hidden"><img src={event.image} alt={event.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500" /><div className="absolute top-4 left-4"><span className="bg-lt-yellow/90 backdrop-blur text-slate-900 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm uppercase">{event.badge}</span></div></div>
                                     <div className="p-6 w-full md:w-3/5 flex flex-col justify-center"><div className="text-lt-orange font-bold text-sm mb-1 uppercase tracking-wide">{event.date}</div><h3 className="text-2xl font-bold text-slate-800 mb-2 group-hover:text-lt-orange transition-colors">{event.title}</h3><p className="text-slate-600 text-sm mb-4">{event.description}</p><div className="mt-auto flex items-center text-xs text-slate-500 font-medium"><i className="fas fa-map-pin mr-2 text-lt-blue"></i> {event.location}</div></div>
                                 </div>

@@ -1,5 +1,5 @@
 
-import type { NavLinkItem, Stat, EmergencyContact, Hotline, Norm, BlogPost, HistoryEvent, LocalEvent } from './types';
+import type { NavLinkItem, Stat, EmergencyContact, Hotline, Norm, BlogPost, HistoryEvent, LocalEvent, JeepneyRoute } from './types';
 
 export const NAV_LINKS: NavLinkItem[] = [
   { name: 'Home', path: '/' },
@@ -463,4 +463,239 @@ export const BLOG_POSTS: BlogPost[] = [
             <p>The native language is Ibaloi. However, Ilokano is widely used as a lingua franca in the region, along with Tagalog and English. Learning a few basic words like <em>"Kamusta"</em> (How are you?) goes a long way in connecting with locals.</p>
         `,
     },
+];
+
+export const JEEPNEY_ROUTES: JeepneyRoute[] = [
+    {
+        name: 'Pico - La Trinidad',
+        signboard: {
+            text: 'PICO - LA TRINIDAD',
+            color: 'text-red-600',
+            backgroundColor: 'bg-white'
+        },
+        terminal: {
+            name: 'Magsaysay Terminal',
+            location: 'Near Baguio Center Mall / Magsaysay Ave',
+            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+        },
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Pico+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        fare: {
+            minimum: 13,
+            studentSenior: 11,
+            fullRoute: 15
+        },
+        path: [
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
+            { stop: 'Bokawkan Road', isLandmark: false },
+            { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship' },
+            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store' },
+            { stop: 'Pico Proper', isLandmark: false },
+            { stop: 'Km. 5 (Public Market)', isLandmark: true, landmarkIcon: 'fas fa-store' }
+        ],
+        operatingHours: '5:00 AM - 9:00 PM',
+        frequency: 'Every 5-10 minutes'
+    },
+    {
+        name: 'Tomay - La Trinidad',
+        signboard: {
+            text: 'TOMAY - LA TRINIDAD',
+            color: 'text-blue-600',
+            backgroundColor: 'bg-white'
+        },
+        terminal: {
+            name: 'Magsaysay Terminal',
+            location: 'Magsaysay Avenue, Baguio City',
+            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+        },
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Bokawkan+Road+Baguio+to:Km+3+La+Trinidad+to:Km+4+La+Trinidad+to:Tomay+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        fare: {
+            minimum: 13,
+            studentSenior: 11,
+            fullRoute: 20
+        },
+        path: [
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
+            { stop: 'Bokawkan Road', isLandmark: false },
+            { stop: 'Km. 3 (Bell Church)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship' },
+            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store' },
+            { stop: 'Km. 5 (Municipal Hall)', isLandmark: true, landmarkIcon: 'fas fa-landmark' },
+            { stop: 'Km. 6 (BSU)', isLandmark: true, landmarkIcon: 'fas fa-university' },
+            { stop: 'Strawberry Farm', isLandmark: true, landmarkIcon: 'fas fa-leaf' },
+            { stop: 'Tomay', isLandmark: false }
+        ],
+        operatingHours: '5:00 AM - 10:00 PM',
+        frequency: 'Every 10-15 minutes'
+    },
+    {
+        name: 'Beckel - La Trinidad',
+        signboard: {
+            text: 'BECKEL - LA TRINIDAD',
+            color: 'text-pink-600',
+            backgroundColor: 'bg-white'
+        },
+        terminal: {
+            name: 'Magsaysay Terminal',
+            location: 'Magsaysay Avenue, Baguio City',
+            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+        },
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Beckel+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        fare: {
+            minimum: 13,
+            studentSenior: 11,
+            fullRoute: 25
+        },
+        path: [
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
+            { stop: 'Bokawkan Road', isLandmark: false },
+            { stop: 'Km. 4', isLandmark: false },
+            { stop: 'Beckel Road', isLandmark: false },
+            { stop: 'Beckel Proper', isLandmark: true, landmarkIcon: 'fas fa-mountain' }
+        ],
+        operatingHours: '6:00 AM - 7:00 PM',
+        frequency: 'Every 30 minutes'
+    },
+    {
+        name: 'Ambiong - La Trinidad',
+        signboard: {
+            text: 'AMBIONG - LA TRINIDAD',
+            color: 'text-teal-600',
+            backgroundColor: 'bg-white'
+        },
+        terminal: {
+            name: 'Magsaysay Terminal',
+            location: 'Magsaysay Avenue, Baguio City',
+            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+        },
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Ambiong+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        fare: {
+            minimum: 13,
+            studentSenior: 11,
+            fullRoute: 18
+        },
+        path: [
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
+            { stop: 'Bokawkan Road', isLandmark: false },
+            { stop: 'Km. 3', isLandmark: false },
+            { stop: 'Ambiong Road', isLandmark: false },
+            { stop: 'Ambiong Proper', isLandmark: true, landmarkIcon: 'fas fa-home' }
+        ],
+        operatingHours: '6:00 AM - 8:00 PM',
+        frequency: 'Every 20 minutes'
+    },
+    {
+        name: 'Buyagan - La Trinidad',
+        signboard: {
+            text: 'BUYAGAN - LA TRINIDAD',
+            color: 'text-green-600',
+            backgroundColor: 'bg-white'
+        },
+        terminal: {
+            name: 'Magsaysay Terminal',
+            location: 'Magsaysay Avenue, Baguio City',
+            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+        },
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Buyagan+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        fare: {
+            minimum: 13,
+            studentSenior: 11,
+            fullRoute: 18
+        },
+        path: [
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
+            { stop: 'Bokawkan Road', isLandmark: false },
+            { stop: 'Km. 3', isLandmark: false },
+            { stop: 'Km. 4', isLandmark: false },
+            { stop: 'Km. 5 (Public Market)', isLandmark: true, landmarkIcon: 'fas fa-store' },
+            { stop: 'Buyagan Proper', isLandmark: false }
+        ],
+        operatingHours: '5:00 AM - 9:00 PM',
+        frequency: 'Every 10 minutes'
+    },
+    {
+        name: 'Puguis - La Trinidad',
+        signboard: {
+            text: 'PUGUIS - LA TRINIDAD',
+            color: 'text-orange-600',
+            backgroundColor: 'bg-white'
+        },
+        terminal: {
+            name: 'Magsaysay Terminal',
+            location: 'Magsaysay Avenue, Baguio City',
+            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+        },
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Puguis+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        fare: {
+            minimum: 13,
+            studentSenior: 11,
+            fullRoute: 15
+        },
+        path: [
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
+            { stop: 'Bokawkan Road', isLandmark: false },
+            { stop: 'Km. 3', isLandmark: false },
+            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store' },
+            { stop: 'Puguis Road', isLandmark: false },
+            { stop: 'Strawberry Farm (Puguis)', isLandmark: true, landmarkIcon: 'fas fa-leaf' }
+        ],
+        operatingHours: '5:00 AM - 8:00 PM',
+        frequency: 'Every 15 minutes'
+    },
+    {
+        name: 'Wangal - La Trinidad',
+        signboard: {
+            text: 'WANGAL - LA TRINIDAD',
+            color: 'text-purple-600',
+            backgroundColor: 'bg-white'
+        },
+        terminal: {
+            name: 'Magsaysay Terminal',
+            location: 'Magsaysay Avenue, Baguio City',
+            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+        },
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Wangal+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        fare: {
+            minimum: 13,
+            studentSenior: 11,
+            fullRoute: 22
+        },
+        path: [
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
+            { stop: 'Bokawkan Road', isLandmark: false },
+            { stop: 'Km. 4', isLandmark: false },
+            { stop: 'Km. 5 (Municipal Hall)', isLandmark: true, landmarkIcon: 'fas fa-landmark' },
+            { stop: 'Wangal Road', isLandmark: false },
+            { stop: 'Benguet Sports Complex', isLandmark: true, landmarkIcon: 'fas fa-running' }
+        ],
+        operatingHours: '6:00 AM - 8:00 PM',
+        frequency: 'Every 20 minutes'
+    },
+    {
+        name: 'Shilan - La Trinidad',
+        signboard: {
+            text: 'SHILAN - LA TRINIDAD',
+            color: 'text-blue-800',
+            backgroundColor: 'bg-white'
+        },
+        terminal: {
+            name: 'Magsaysay Terminal',
+            location: 'Magsaysay Avenue, Baguio City',
+            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+        },
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Shilan+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        fare: {
+            minimum: 13,
+            studentSenior: 11,
+            fullRoute: 25
+        },
+        path: [
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
+            { stop: 'Bokawkan Road', isLandmark: false },
+            { stop: 'Km. 4', isLandmark: false },
+            { stop: 'Km. 5', isLandmark: false },
+            { stop: 'Km. 6 (BSU)', isLandmark: true, landmarkIcon: 'fas fa-university' },
+            { stop: 'Shilan Proper', isLandmark: true, landmarkIcon: 'fas fa-mountain' }
+        ],
+        operatingHours: '6:00 AM - 7:00 PM',
+        frequency: 'Every 30 minutes'
+    }
 ];
