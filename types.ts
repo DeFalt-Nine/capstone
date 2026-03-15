@@ -135,3 +135,31 @@ export interface PlannerItem {
   category: string;
   type: 'tourist' | 'dining';
 }
+
+export interface JeepneyRoute {
+  _id?: string;
+  name: string;
+  signboard: {
+    text: string;
+    color: string;
+    backgroundColor: string;
+  };
+  terminal: {
+    name: string;
+    location: string;
+    mapUrl?: string;
+  };
+  routeMapUrl?: string;
+  fare: {
+    minimum: number;
+    studentSenior?: number;
+    fullRoute?: number;
+  };
+  path: {
+    stop: string;
+    isLandmark: boolean;
+    landmarkIcon?: string;
+  }[];
+  operatingHours: string;
+  frequency: string;
+}

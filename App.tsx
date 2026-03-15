@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { HashRouter, Route, Routes } from 'react-router-dom';
+import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -18,24 +18,33 @@ import AdminPage from './pages/AdminPage'; // Import AdminPage
 const App: React.FC = () => {
   return (
     <HashRouter>
-        <div className="flex flex-col min-h-screen">
-          <Header />
-          <main className="flex-grow">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/tourist-spots" element={<TouristSpotsPage />} />
-              <Route path="/visitor-info" element={<VisitorInfoPage />} />
-              <Route path="/blog" element={<BlogPage />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-              <Route path="/admin" element={<AdminPage />} /> {/* New Route */}
-            </Routes>
-          </main>
-          <Footer />
-          <Chatbot />
-          <DataConsentBanner />
-        </div>
+        <AppContent />
     </HashRouter>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin');
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      {!isAdminPage && <Header />}
+      <main className="flex-grow">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/tourist-spots" element={<TouristSpotsPage />} />
+          <Route path="/visitor-info" element={<VisitorInfoPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+        </Routes>
+      </main>
+      {!isAdminPage && <Footer />}
+      {!isAdminPage && <Chatbot />}
+      {!isAdminPage && <DataConsentBanner />}
+    </div>
   );
 };
 

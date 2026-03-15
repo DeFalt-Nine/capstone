@@ -3,6 +3,7 @@ import {
     fetchTouristSpots, fetchDiningSpots, fetchBlogPosts, fetchLocalEvents, fetchReports,
     deleteItem, createItem, updateItem, uploadImage, deleteReview, deleteReport, verifyAdminToken
 } from '../services/apiService';
+import { NAV_LINKS } from '../constants';
 import AnimatedElement from '../components/AnimatedElement';
 
 const TABS = [
@@ -21,6 +22,10 @@ const AdminPage: React.FC = () => {
     const [accessCode, setAccessCode] = useState('');
     
     const [activeTab, setActiveTab] = useState('tourist-spots');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [viewMode, setViewMode] = useState<'management' | 'preview'>('management');
+    const [previewUrl, setPreviewUrl] = useState('/');
+    
     const [data, setData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -278,6 +283,9 @@ const AdminPage: React.FC = () => {
                                 disabled={loginLoading}
                                 required
                             />
+                            <p className="mt-2 text-[10px] text-slate-400 italic">
+                                Hint: The default access code is <span className="font-bold text-slate-500">admin123</span>
+                            </p>
                         </div>
                         <button 
                             type="submit" 
@@ -301,11 +309,25 @@ const AdminPage: React.FC = () => {
         : data;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+        <div className="min-h-screen bg-slate-50 flex relative overflow-hidden">
+            {/* Sidebar Toggle Button (when closed) */}
+            {!isSidebarOpen && (
+                <button 
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="fixed left-0 top-1/2 -translate-y-1/2 z-50 bg-lt-blue text-white p-2 rounded-r-xl shadow-lg hover:bg-lt-moss transition-all"
+                >
+                    <i className="fas fa-chevron-right"></i>
+                </button>
+            )}
+
             {/* Sidebar */}
-            <aside className="w-full md:w-72 bg-white border-r border-slate-200 flex flex-col sticky top-0 md:h-screen z-30">
-                <div className="p-6 border-b border-slate-100">
-                    <div className="flex items-center gap-3 mb-1">
+            <aside 
+                className={`bg-white border-r border-slate-200 flex flex-col h-screen z-40 transition-all duration-300 ease-in-out ${
+                    isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full'
+                }`}
+            >
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between min-w-[288px]">
+                    <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-lt-blue rounded-xl flex items-center justify-center text-white shadow-lg shadow-lt-blue/20">
                             <i className="fas fa-user-shield text-xl"></i>
                         </div>
@@ -314,32 +336,49 @@ const AdminPage: React.FC = () => {
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Control Panel</p>
                         </div>
                     </div>
+                    <button 
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="text-slate-400 hover:text-lt-blue transition-colors"
+                    >
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
                 </div>
 
-                <nav className="flex-grow p-4 space-y-1 overflow-y-auto custom-scrollbar">
-                    <div className="px-3 mb-2">
+                <nav className="flex-grow p-4 space-y-1 overflow-y-auto custom-scrollbar min-w-[288px]">
+                    <div className="px-3 mb-2 flex items-center justify-between">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Management</p>
+                        {viewMode === 'preview' && (
+                            <button 
+                                onClick={() => setViewMode('management')}
+                                className="text-[10px] font-bold text-lt-blue hover:underline"
+                            >
+                                Back to Data
+                            </button>
+                        )}
                     </div>
                     {TABS.map((tab: any) => (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => {
+                                setActiveTab(tab.id);
+                                setViewMode('management');
+                            }}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all group ${
-                                activeTab === tab.id 
+                                activeTab === tab.id && viewMode === 'management'
                                 ? 'bg-lt-blue text-white shadow-md shadow-lt-blue/20' 
                                 : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                         >
-                            <i className={`fas ${tab.icon} w-5 text-center ${activeTab === tab.id ? 'text-white' : 'text-slate-400 group-hover:text-lt-blue'}`}></i>
+                            <i className={`fas ${tab.icon} w-5 text-center ${activeTab === tab.id && viewMode === 'management' ? 'text-white' : 'text-slate-400 group-hover:text-lt-blue'}`}></i>
                             {tab.label}
-                            {activeTab === tab.id && (
+                            {activeTab === tab.id && viewMode === 'management' && (
                                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white"></div>
                             )}
                         </button>
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-slate-100">
+                <div className="p-4 border-t border-slate-100 min-w-[288px]">
                     <button 
                         onClick={() => setIsLogoutConfirmOpen(true)} 
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-red-500 hover:bg-red-50 transition-all"
@@ -351,20 +390,44 @@ const AdminPage: React.FC = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
+            <main className="flex-1 flex flex-col h-screen overflow-hidden">
                 {/* Top Header */}
-                <header className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-20">
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-bold text-slate-800">
-                            {TABS.find(t => t.id === activeTab)?.label}
-                        </h2>
-                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
-                            {data.length} Records
-                        </span>
+                <header className="bg-white border-b border-slate-200 px-8 py-4 flex flex-col md:flex-row justify-between items-center sticky top-0 z-20 gap-4">
+                    <div className="flex items-center gap-6 w-full md:w-auto">
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-xl font-bold text-slate-800">
+                                {viewMode === 'management' ? TABS.find(t => t.id === activeTab)?.label : 'Site Preview'}
+                            </h2>
+                            {viewMode === 'management' && (
+                                <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
+                                    {data.length} Records
+                                </span>
+                            )}
+                        </div>
+                        
+                        {/* Preview Tabs */}
+                        <nav className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl">
+                            {NAV_LINKS.map((link) => (
+                                <button
+                                    key={link.name}
+                                    onClick={() => {
+                                        setPreviewUrl(link.path);
+                                        setViewMode('preview');
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                                        viewMode === 'preview' && previewUrl === link.path
+                                        ? 'bg-white text-lt-blue shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-800'
+                                    }`}
+                                >
+                                    {link.name}
+                                </button>
+                            ))}
+                        </nav>
                     </div>
                     
-                    <div className="flex items-center gap-4">
-                        {activeTab !== 'reports' && (
+                    <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+                        {viewMode === 'management' && activeTab !== 'reports' && (
                             <button 
                                 onClick={() => handleOpenModal()} 
                                 className="bg-lt-blue hover:bg-lt-moss text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md shadow-lt-blue/10 transition-all flex items-center gap-2 active:scale-95"
@@ -372,7 +435,21 @@ const AdminPage: React.FC = () => {
                                 <i className="fas fa-plus"></i> Add New
                             </button>
                         )}
-                        <div className="h-8 w-px bg-slate-200 mx-2"></div>
+                        <button 
+                            onClick={() => {
+                                if (viewMode === 'preview') setViewMode('management');
+                                else setViewMode('preview');
+                            }}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 border ${
+                                viewMode === 'preview' 
+                                ? 'bg-lt-orange text-white border-lt-orange shadow-md shadow-lt-orange/20' 
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }`}
+                        >
+                            <i className={`fas ${viewMode === 'preview' ? 'fa-edit' : 'fa-eye'}`}></i>
+                            {viewMode === 'preview' ? 'Exit Preview' : 'Live Preview'}
+                        </button>
+                        <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block"></div>
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-full bg-lt-orange/10 text-lt-orange flex items-center justify-center text-xs font-bold">
                                 AD
@@ -383,146 +460,164 @@ const AdminPage: React.FC = () => {
                 </header>
 
                 {/* Content Area */}
-                <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
-                    <AnimatedElement>
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                            {isLoading ? (
-                                <div className="p-32 text-center text-slate-400">
-                                    <i className="fas fa-circle-notch fa-spin text-4xl mb-4 text-lt-blue"></i>
-                                    <p className="text-sm font-medium">Synchronizing data...</p>
-                                </div>
-                            ) : data.length === 0 ? (
-                                <div className="p-32 text-center text-slate-400">
-                                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <i className="fas fa-folder-open text-3xl opacity-20"></i>
-                                    </div>
-                                    <h3 className="text-lg font-bold text-slate-900 mb-1">No results found</h3>
-                                    <p className="text-sm text-slate-500">There are no records to display in this section yet.</p>
-                                    {activeTab !== 'reports' && (
-                                        <button 
-                                            onClick={() => handleOpenModal()}
-                                            className="mt-6 text-lt-blue font-bold text-sm hover:underline"
-                                        >
-                                            Create your first entry
-                                        </button>
+                <div className="flex-1 overflow-hidden relative">
+                    {viewMode === 'management' ? (
+                        <div className="h-full overflow-y-auto p-8 custom-scrollbar">
+                            <AnimatedElement>
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                    {isLoading ? (
+                                        <div className="p-32 text-center text-slate-400">
+                                            <i className="fas fa-circle-notch fa-spin text-4xl mb-4 text-lt-blue"></i>
+                                            <p className="text-sm font-medium">Synchronizing data...</p>
+                                        </div>
+                                    ) : data.length === 0 ? (
+                                        <div className="p-32 text-center text-slate-400">
+                                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                <i className="fas fa-folder-open text-3xl opacity-20"></i>
+                                            </div>
+                                            <h3 className="text-lg font-bold text-slate-900 mb-1">No results found</h3>
+                                            <p className="text-sm text-slate-500">There are no records to display in this section yet.</p>
+                                            {activeTab !== 'reports' && (
+                                                <button 
+                                                    onClick={() => handleOpenModal()}
+                                                    className="mt-6 text-lt-blue font-bold text-sm hover:underline"
+                                                >
+                                                    Create your first entry
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
+                                                    <tr>
+                                                        {activeTab !== 'reports' && <th className="p-5 w-20 text-center">Media</th>}
+                                                        {activeTab === 'reports' ? (
+                                                            <>
+                                                                <th className="p-5">Target</th>
+                                                                <th className="p-5">Reason</th>
+                                                                <th className="p-5">Description</th>
+                                                            </>
+                                                        ) : (
+                                                            <th className="p-5">Information</th>
+                                                        )}
+                                                        {activeTab === 'blog-posts' && <th className="p-5">Status</th>}
+                                                        {activeTab === 'blog-posts' && <th className="p-5">Author</th>}
+                                                        {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && <th className="p-5 text-center">Reviews</th>}
+                                                        <th className="p-5 text-right">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {sortedData.map((item: any) => (
+                                                        <tr key={item._id} className="hover:bg-slate-50/30 transition-colors group">
+                                                            {activeTab !== 'reports' && (
+                                                                <td className="p-5">
+                                                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
+                                                                        <img src={item.image} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                            
+                                                            {activeTab === 'reports' ? (
+                                                                <>
+                                                                    <td className="p-5">
+                                                                        <div className="font-bold text-slate-800 text-sm">{item.targetName}</div>
+                                                                        <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{item.targetType}</div>
+                                                                    </td>
+                                                                    <td className="p-5">
+                                                                        <span className="text-[10px] text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-lg font-bold uppercase tracking-wider">
+                                                                            {item.reason}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="p-5 text-xs text-slate-500 max-w-xs truncate">{item.description}</td>
+                                                                </>
+                                                            ) : (
+                                                                <td className="p-5">
+                                                                    <div className="font-bold text-slate-800 text-sm group-hover:text-lt-blue transition-colors">{item.name || item.title}</div>
+                                                                    <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-1">
+                                                                        <i className="fas fa-map-marker-alt text-[8px]"></i>
+                                                                        {item.location || item.date || 'No meta provided'}
+                                                                    </div>
+                                                                </td>
+                                                            )}
+
+                                                            {activeTab === 'blog-posts' && (
+                                                                <td className="p-5">
+                                                                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-lg border ${
+                                                                        item.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' :
+                                                                        item.status === 'approved' ? 'bg-green-50 text-green-600 border-green-200' :
+                                                                        'bg-red-50 text-red-600 border-red-200'
+                                                                    }`}>
+                                                                        {item.status || 'approved'}
+                                                                    </span>
+                                                                </td>
+                                                            )}
+                                                            {activeTab === 'blog-posts' && (
+                                                                <td className="p-5">
+                                                                    <div className="text-xs font-bold text-slate-700">{item.author}</div>
+                                                                    {item.email && <div className="text-[10px] text-slate-400">{item.email}</div>}
+                                                                </td>
+                                                            )}
+                                                            {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
+                                                                <td className="p-5 text-center">
+                                                                    <button 
+                                                                        onClick={() => handleOpenReviewModal(item)}
+                                                                        className="inline-flex items-center gap-2 text-slate-400 hover:text-lt-orange transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm"
+                                                                    >
+                                                                        <i className="fas fa-comment-dots text-[10px]"></i> 
+                                                                        {item.reviews?.length || 0}
+                                                                    </button>
+                                                                </td>
+                                                            )}
+                                                            <td className="p-5 text-right">
+                                                                <div className="flex justify-end gap-2">
+                                                                    {activeTab === 'blog-posts' && item.status === 'pending' && (
+                                                                        <button onClick={() => handleApprove(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Approve Story">
+                                                                            Approve
+                                                                        </button>
+                                                                    )}
+                                                                    {activeTab === 'reports' ? (
+                                                                        <button onClick={() => handleDelete(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Resolve Report">
+                                                                            Resolve
+                                                                        </button>
+                                                                    ) : (
+                                                                        <>
+                                                                            <button onClick={() => handleOpenModal(item)} className="p-2 text-slate-400 hover:text-lt-blue hover:bg-slate-100 rounded-lg transition-colors" title="Edit Item">
+                                                                                <i className="fas fa-pen text-xs"></i>
+                                                                            </button>
+                                                                            <button onClick={() => handleDelete(item._id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete Item">
+                                                                                <i className="fas fa-trash-alt text-xs"></i>
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     )}
                                 </div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
-                                            <tr>
-                                                {activeTab !== 'reports' && <th className="p-5 w-20 text-center">Media</th>}
-                                                {activeTab === 'reports' ? (
-                                                    <>
-                                                        <th className="p-5">Target</th>
-                                                        <th className="p-5">Reason</th>
-                                                        <th className="p-5">Description</th>
-                                                    </>
-                                                ) : (
-                                                    <th className="p-5">Information</th>
-                                                )}
-                                                {activeTab === 'blog-posts' && <th className="p-5">Status</th>}
-                                                {activeTab === 'blog-posts' && <th className="p-5">Author</th>}
-                                                {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && <th className="p-5 text-center">Reviews</th>}
-                                                <th className="p-5 text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {sortedData.map((item: any) => (
-                                                <tr key={item._id} className="hover:bg-slate-50/30 transition-colors group">
-                                                    {activeTab !== 'reports' && (
-                                                        <td className="p-5">
-                                                            <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
-                                                                <img src={item.image} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                            </div>
-                                                        </td>
-                                                    )}
-                                                    
-                                                    {activeTab === 'reports' ? (
-                                                        <>
-                                                            <td className="p-5">
-                                                                <div className="font-bold text-slate-800 text-sm">{item.targetName}</div>
-                                                                <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{item.targetType}</div>
-                                                            </td>
-                                                            <td className="p-5">
-                                                                <span className="text-[10px] text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-lg font-bold uppercase tracking-wider">
-                                                                    {item.reason}
-                                                                </span>
-                                                            </td>
-                                                            <td className="p-5 text-xs text-slate-500 max-w-xs truncate">{item.description}</td>
-                                                        </>
-                                                    ) : (
-                                                        <td className="p-5">
-                                                            <div className="font-bold text-slate-800 text-sm group-hover:text-lt-blue transition-colors">{item.name || item.title}</div>
-                                                            <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-1">
-                                                                <i className="fas fa-map-marker-alt text-[8px]"></i>
-                                                                {item.location || item.date || 'No meta provided'}
-                                                            </div>
-                                                        </td>
-                                                    )}
-
-                                            {activeTab === 'blog-posts' && (
-                                                <td className="p-5">
-                                                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-lg border ${
-                                                        item.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' :
-                                                        item.status === 'approved' ? 'bg-green-50 text-green-600 border-green-200' :
-                                                        'bg-red-50 text-red-600 border-red-200'
-                                                    }`}>
-                                                        {item.status || 'approved'}
-                                                    </span>
-                                                </td>
-                                            )}
-                                            {activeTab === 'blog-posts' && (
-                                                <td className="p-5">
-                                                    <div className="text-xs font-bold text-slate-700">{item.author}</div>
-                                                    {item.email && <div className="text-[10px] text-slate-400">{item.email}</div>}
-                                                </td>
-                                            )}
-                                            {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
-                                                <td className="p-5 text-center">
-                                                    <button 
-                                                        onClick={() => handleOpenReviewModal(item)}
-                                                        className="inline-flex items-center gap-2 text-slate-400 hover:text-lt-orange transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm"
-                                                    >
-                                                        <i className="fas fa-comment-dots text-[10px]"></i> 
-                                                        {item.reviews?.length || 0}
-                                                    </button>
-                                                </td>
-                                            )}
-                                            <td className="p-5 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    {activeTab === 'blog-posts' && item.status === 'pending' && (
-                                                        <button onClick={() => handleApprove(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Approve Story">
-                                                            Approve
-                                                        </button>
-                                                    )}
-                                                    {activeTab === 'reports' ? (
-                                                        <button onClick={() => handleDelete(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Resolve Report">
-                                                            Resolve
-                                                        </button>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => handleOpenModal(item)} className="p-2 text-slate-400 hover:text-lt-blue hover:bg-slate-100 rounded-lg transition-colors" title="Edit Item">
-                                                                <i className="fas fa-pen text-xs"></i>
-                                                            </button>
-                                                            <button onClick={() => handleDelete(item._id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete Item">
-                                                                <i className="fas fa-trash-alt text-xs"></i>
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            </AnimatedElement>
+                        </div>
+                    ) : (
+                        <div className="w-full h-full bg-slate-200 animate-in fade-in duration-500">
+                            <iframe 
+                                src={`${window.location.origin}${window.location.pathname}#${previewUrl}`}
+                                className="w-full h-full border-none shadow-inner"
+                                title="Site Preview"
+                            ></iframe>
+                            <div className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-slate-200 flex items-center gap-3 z-10">
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Live Preview Mode</span>
+                                <div className="h-4 w-px bg-slate-200"></div>
+                                <p className="text-[10px] text-slate-400 font-mono">{previewUrl}</p>
+                            </div>
                         </div>
                     )}
                 </div>
-            </AnimatedElement>
-        </div>
-    </main>
+            </main>
 
             {/* Edit/Create Modal */}
             {isModalOpen && (

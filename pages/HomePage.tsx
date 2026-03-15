@@ -29,8 +29,12 @@ const HomePage: React.FC = () => {
 
     // Hero Text Stagger
     useEffect(() => {
-        if (heroTextRef.current) {
-            const children = heroTextRef.current.children;
+        const { current: heroText } = heroTextRef;
+        if (heroText) {
+            const hasSeenIntro = sessionStorage.getItem('hasSeenIntro') === 'true';
+            const delay = hasSeenIntro ? 0.2 : 2.5;
+
+            const { children } = heroText;
             gsap.fromTo(
                 children,
                 { opacity: 0, y: 50, scale: 0.8 },
@@ -41,7 +45,7 @@ const HomePage: React.FC = () => {
                     duration: 1.2, 
                     stagger: 0.2, 
                     ease: 'back.out(1.7)',
-                    delay: 2.5 // Wait for intro animation
+                    delay: delay
                 }
             );
         }
@@ -49,8 +53,9 @@ const HomePage: React.FC = () => {
 
     // Image rotation logic
     useEffect(() => {
+        const { length } = HERO_IMAGES;
         const interval = setInterval(() => {
-            setCurrentImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+            setCurrentImageIndex((prev) => (prev + 1) % length);
         }, 6000); // Change image every 6 seconds
 
         return () => clearInterval(interval);
@@ -65,7 +70,7 @@ const HomePage: React.FC = () => {
             <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-slate-900">
                 
                 {/* Dynamic Background Slideshow */}
-                {HERO_IMAGES.map((img, index) => (
+                {HERO_IMAGES.map(({ url, alt }, index) => (
                     <div
                         key={index}
                         className={`absolute inset-0 transition-opacity duration-[1500ms] ease-in-out ${
@@ -73,8 +78,8 @@ const HomePage: React.FC = () => {
                         }`}
                     >
                         <img
-                            src={img.url}
-                            alt={img.alt}
+                            src={url}
+                            alt={alt}
                             className={`w-full h-full object-cover ${index === currentImageIndex ? 'animate-ken-burns' : ''}`}
                         />
                         {/* Overlay Gradient */}
@@ -159,22 +164,22 @@ const HomePage: React.FC = () => {
                                 direction: 'right' as const,
                                 rotate: 5
                             }
-                        ].map((feature, i) => (
+                        ].map(({ direction, rotate, bg, color, border, icon, title, desc }, i) => (
                             <AnimatedElement 
                                 key={i} 
                                 delay={i * 150} 
-                                direction={feature.direction} 
+                                direction={direction} 
                                 distance={100} 
-                                rotate={feature.rotate}
+                                rotate={rotate}
                                 scale={0.8}
                             >
                                 <div className="bg-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-slate-100 group h-full relative overflow-hidden">
-                                    <div className={`absolute top-0 right-0 w-32 h-32 ${feature.bg} rounded-bl-full -mr-10 -mt-10 opacity-50 transition-transform group-hover:scale-110`}></div>
-                                    <div className={`w-16 h-16 rounded-2xl ${feature.bg} ${feature.color} flex items-center justify-center text-3xl mb-6 shadow-sm border ${feature.border}`}>
-                                        <i className={feature.icon}></i>
+                                    <div className={`absolute top-0 right-0 w-32 h-32 ${bg} rounded-bl-full -mr-10 -mt-10 opacity-50 transition-transform group-hover:scale-110`}></div>
+                                    <div className={`w-16 h-16 rounded-2xl ${bg} ${color} flex items-center justify-center text-3xl mb-6 shadow-sm border ${border}`}>
+                                        <i className={icon}></i>
                                     </div>
-                                    <h3 className="text-2xl font-bold text-slate-800 mb-3 group-hover:text-lt-orange transition-colors">{feature.title}</h3>
-                                    <p className="text-slate-600 leading-relaxed">{feature.desc}</p>
+                                    <h3 className="text-2xl font-bold text-slate-800 mb-3 group-hover:text-lt-orange transition-colors">{title}</h3>
+                                    <p className="text-slate-600 leading-relaxed">{desc}</p>
                                 </div>
                             </AnimatedElement>
                         ))}

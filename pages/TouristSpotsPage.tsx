@@ -23,16 +23,22 @@ const TouristSpotsPage: React.FC = () => {
 
   const categories = viewMode === 'tourist' ? TOURIST_CATEGORIES : DINING_CATEGORIES;
 
-  // Handle URL deep linking (e.g., /tourist-spots?spot=Strawberry+Farm)
+  // Handle URL deep linking and search query
   useEffect(() => {
     const spotName = searchParams.get('spot');
+    const searchParam = searchParams.get('search');
+
     if (spotName && items.length > 0) {
         const found = items.find(item => item.name.toLowerCase().includes(spotName.toLowerCase()));
         if (found) {
             setSelectedSpot(found);
-            // Optional: Clear param after opening so it doesn't reopen if page refreshes
-            // setSearchParams({}, { replace: true });
         }
+    }
+
+    if (searchParam) {
+        setSearchQuery(searchParam);
+        // Scroll to search results if needed
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [searchParams, items]);
 
