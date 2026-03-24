@@ -1,7 +1,7 @@
 
 import AdminLog from '../models/AdminLog.js';
 
-const logAdminAction = async ({ action, targetType, targetId, targetName, details, adminEmail = 'admin' }) => {
+const logAdminAction = async ({ action, targetType = 'system', targetId, targetName, details, adminEmail = 'admin' }) => {
   try {
     const log = new AdminLog({
       action,

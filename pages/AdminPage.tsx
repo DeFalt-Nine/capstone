@@ -490,11 +490,11 @@ const AdminPage: React.FC = () => {
                                                 log.action === 'create' || log.action === 'approve' ? 'bg-blue-50 text-blue-600 border-blue-200' :
                                                 'bg-slate-50 text-slate-600 border-slate-200'
                                             }`}>
-                                                {log.action.replace('_', ' ')}
+                                                {(log.action || 'unknown').replace('_', ' ')}
                                             </span>
                                         </td>
                                         <td className="p-5 text-xs font-bold text-slate-700 capitalize">
-                                            {log.targetType.replace('-', ' ')}
+                                            {(log.targetType || 'system').replace('-', ' ')}
                                         </td>
                                         <td className="p-5 text-xs text-slate-800 font-medium">
                                             {log.targetName || '-'}
