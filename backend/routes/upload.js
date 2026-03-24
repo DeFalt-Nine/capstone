@@ -44,10 +44,15 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 const supabaseBucket = process.env.SUPABASE_BUCKET || 'images';
 const isSupabaseConfigured = !!(supabaseUrl && supabaseKey && supabaseBucket);
+const isVercel = !!process.env.VERCEL;
 
 // Prioritize Supabase, then Local
 let selectedStorage = localStorage;
 if (isSupabaseConfigured) {
+    selectedStorage = memoryStorage;
+} else if (isVercel) {
+    // On Vercel, we can't use local disk storage reliably.
+    // We'll use memory storage but it won't be persistent unless Supabase is configured.
     selectedStorage = memoryStorage;
 }
 
@@ -60,6 +65,12 @@ const upload = multer({
 // @route   POST /api/upload
 // @desc    Upload an image to Supabase or Local Storage
 router.post('/', (req, res) => {
+  if (isVercel && !isSupabaseConfigured) {
+    return res.status(400).json({ 
+        message: 'Supabase is not configured. Local file uploads are not supported on Vercel. Please set SUPABASE_URL and SUPABASE_KEY in your Vercel environment variables.' 
+    });
+  }
+
   upload(req, res, async function (err) {
     if (err instanceof multer.MulterError) {
       return res.status(400).json({ message: `Upload error: ${err.message}` });

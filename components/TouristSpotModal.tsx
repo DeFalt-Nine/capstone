@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import type { TouristSpot } from '../types';
-import { submitReview, trackEvent } from '../services/apiService';
+import { uploadImage, submitReview, trackEvent } from '../services/apiService';
 import StarRating from './StarRating';
 import ReportModal from './ReportModal';
 import { useAnalytics } from '../hooks/useAnalytics';
@@ -42,7 +42,9 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
   const [reviewImages, setReviewImages] = useState<string[]>([]);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImages, setUploadingImages] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   
   // Audio Guide State
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -137,7 +139,18 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (reviewRating === 0 || !reviewName.trim()) return;
+    setReviewError(null);
+    if (reviewRating === 0 || !reviewName.trim()) {
+        setReviewError('Please provide a name and rating.');
+        return;
+    }
+    
+    // Basic email validation
+    if (reviewEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reviewEmail)) {
+        setReviewError('Please provide a valid email address.');
+        return;
+    }
+
     setIsSubmitting(true);
     try {
       const updatedSpot = await submitReview(spot._id!, {
@@ -148,10 +161,39 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
       setReviewName(''); setReviewEmail(''); setReviewRating(0); setReviewComment(''); setReviewImages([]);
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (error: any) { 
-        alert(error.message); 
+        setReviewError(error.message || 'Failed to submit review. Please try again.'); 
     } finally { 
         setIsSubmitting(false); 
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (reviewImages.length + files.length > 3) {
+        setReviewError('You can only upload up to 3 images per review.');
+        return;
+    }
+
+    setUploadingImages(true);
+    setReviewError(null);
+    try {
+        const uploadPromises = Array.from(files).map(file => uploadImage(file));
+        const results = await Promise.all(uploadPromises);
+        const urls = results.map(r => r.url);
+        setReviewImages(prev => [...prev, ...urls]);
+    } catch (error: any) {
+        console.error('Upload failed:', error);
+        setReviewError(error.message || 'Image upload failed. Please try again.');
+    } finally {
+        setUploadingImages(false);
+        e.target.value = '';
+    }
+  };
+
+  const removeReviewImage = (index: number) => {
+    setReviewImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const getModalDimensions = () => {
@@ -260,11 +302,47 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
                       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-6 shadow-sm">
                         <h3 className="text-lg font-bold text-lt-orange mb-2">Post a Review</h3>
                         <form onSubmit={handleReviewSubmit} className="space-y-4">
-                            <input type="text" placeholder="Your Name" value={reviewName} onChange={e => setReviewName(e.target.value)} required className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none" />
-                            <StarRatingInput rating={reviewRating} setRating={setReviewRating} disabled={isSubmitting} />
-                            <textarea placeholder="Write review..." value={reviewComment} onChange={e => setReviewComment(e.target.value)} rows={3} className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none"></textarea>
-                            <button type="submit" disabled={isSubmitting} className="w-full py-3 shadow-lg rounded-lg text-white bg-lt-red hover:bg-lt-orange font-bold transition-all">{isSubmitting ? 'Posting...' : 'Post Review'}</button>
-                            {submitSuccess && <p className="text-sm text-green-600 font-bold"><i className="fas fa-check-circle mr-1"></i> Posted!</p>}
+                            <div className="grid grid-cols-1 gap-3">
+                                <input type="text" placeholder="Your Name" value={reviewName} onChange={e => setReviewName(e.target.value)} required className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-lt-orange/20" />
+                                <input type="email" placeholder="Email (Private)" value={reviewEmail} onChange={e => setReviewEmail(e.target.value)} required className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-lt-orange/20" />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Rating</label>
+                                <StarRatingInput rating={reviewRating} setRating={setReviewRating} disabled={isSubmitting} />
+                            </div>
+                            <textarea placeholder="Share your experience..." value={reviewComment} onChange={e => setReviewComment(e.target.value)} rows={3} className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-lt-orange/20"></textarea>
+                            
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Add Photos (Max 3)</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {reviewImages.map((img, idx) => (
+                                        <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 group">
+                                            <img src={img} alt="" className="w-full h-full object-cover" />
+                                            <button 
+                                                type="button"
+                                                onClick={() => removeReviewImage(idx)}
+                                                className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <i className="fas fa-times text-[10px]"></i>
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {reviewImages.length < 3 && (
+                                        <label className={`w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-lt-orange hover:bg-orange-50 transition-all ${isUploadingImages ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} disabled={isUploadingImages} />
+                                            {isUploadingImages ? <i className="fas fa-spinner fa-spin text-lt-orange"></i> : <i className="fas fa-plus text-slate-300"></i>}
+                                            <span className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Add</span>
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+
+                            {reviewError && <p className="text-xs text-red-500 font-bold bg-red-50 p-2 rounded border border-red-100 animate-shake">{reviewError}</p>}
+                            
+                            <button type="submit" disabled={isSubmitting || isUploadingImages} className="w-full py-3 shadow-lg rounded-xl text-white bg-lt-red hover:bg-lt-orange font-bold transition-all transform active:scale-95 disabled:opacity-50">
+                                {isSubmitting ? 'Posting...' : 'Post Review'}
+                            </button>
+                            {submitSuccess && <p className="text-sm text-green-600 font-bold text-center"><i className="fas fa-check-circle mr-1"></i> Review posted successfully!</p>}
                         </form>
                       </div>
                   </div>
@@ -272,17 +350,28 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
                 <div className="md:col-span-7">
                     {spot.reviews && spot.reviews.length > 0 ? (
                         <div className="space-y-4">
-                            {[...spot.reviews].reverse().map(review => (
-                                <div key={review._id} className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-lt-orange text-white flex items-center justify-center font-bold">{review.name.charAt(0)}</div>
-                                            <div><h4 className="font-bold text-slate-800 text-sm">{review.name}</h4><StarRating rating={review.rating} className="text-xs" /></div>
+                                    {[...spot.reviews].reverse().map(review => (
+                                        <div key={review._id} className="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-lt-orange text-white flex items-center justify-center font-bold">{review.name.charAt(0)}</div>
+                                                    <div><h4 className="font-bold text-slate-800 text-sm">{review.name}</h4><StarRating rating={review.rating} className="text-xs" /></div>
+                                                </div>
+                                                <span className="text-[10px] text-slate-400 font-medium">{new Date(review.createdAt || Date.now()).toLocaleDateString()}</span>
+                                            </div>
+                                            <p className="text-slate-700 text-sm mt-2 italic leading-relaxed">"{review.comment}"</p>
+                                            
+                                            {review.images && review.images.length > 0 && (
+                                                <div className="flex gap-2 mt-3">
+                                                    {review.images.map((img: string, i: number) => (
+                                                        <a key={i} href={img} target="_blank" rel="noreferrer" className="block w-16 h-16 rounded-lg overflow-hidden border border-slate-200 hover:ring-2 hover:ring-lt-orange transition-all">
+                                                            <img src={img} alt="" className="w-full h-full object-cover" />
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                    <p className="text-slate-700 text-sm mt-2 italic">"{review.comment}"</p>
-                                </div>
-                            ))}
+                                    ))}
                         </div>
                     ) : <p className="text-center text-slate-400 py-10 italic">No reviews yet.</p>}
                 </div>

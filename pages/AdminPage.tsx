@@ -43,6 +43,7 @@ const AdminPage: React.FC = () => {
 
     const [imageInputType, setImageInputType] = useState<'url' | 'file'>('url');
     const [isUploading, setIsUploading] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
 
     useEffect(() => {
         const checkExistingAuth = async () => {
@@ -183,6 +184,7 @@ const AdminPage: React.FC = () => {
         setEditItem(item || null);
         setFormData(item || {});
         setImageInputType('url'); 
+        setFormError(null);
         setIsModalOpen(true);
     };
 
@@ -210,12 +212,13 @@ const AdminPage: React.FC = () => {
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setIsUploading(true);
+            setFormError(null);
             try {
                 const file = e.target.files[0];
                 const result = await uploadImage(file);
                 setFormData({ ...formData, image: result.url });
             } catch (error: any) {
-                alert(`${error.message || "Upload failed."}`);
+                setFormError(error.message || "Upload failed.");
             } finally {
                 setIsUploading(false);
                 e.target.value = ''; 
@@ -225,6 +228,7 @@ const AdminPage: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError(null);
         try {
             const payload = { ...formData };
             if (typeof payload.tags === 'string') payload.tags = payload.tags.split(',').map((t: string) => t.trim());
@@ -238,8 +242,9 @@ const AdminPage: React.FC = () => {
                 setData((prev: any[]) => [created, ...prev]);
             }
             setIsModalOpen(false);
+            setFormData({});
         } catch (error: any) {
-            alert(error.message || 'Operation failed.');
+            setFormError(error.message || 'Operation failed.');
         }
     };
 
@@ -1041,8 +1046,14 @@ const AdminPage: React.FC = () => {
                                 </div>
                             )}
 
+                            {formError && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-500 text-xs font-bold animate-shake">
+                                    <i className="fas fa-exclamation-circle mr-2"></i> {formError}
+                                </div>
+                            )}
+
                             <div className="sticky bottom-0 bg-white pt-6 pb-2">
-                                <button type="submit" className="w-full bg-lt-blue text-white font-bold py-4 rounded-xl hover:bg-lt-moss transition-all shadow-lg active:scale-[0.98]">
+                                <button type="submit" disabled={isUploading} className="w-full bg-lt-blue text-white font-bold py-4 rounded-xl hover:bg-lt-moss transition-all shadow-lg active:scale-[0.98] disabled:opacity-50">
                                     {editItem ? 'Save Record' : 'Create Record'}
                                 </button>
                             </div>
