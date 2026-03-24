@@ -40,7 +40,10 @@ const fileFilter = (req, file, cb) => {
 };
 
 // Determine which storage to use
-const isSupabaseConfigured = process.env.SUPABASE_URL && process.env.SUPABASE_KEY && process.env.SUPABASE_BUCKET;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const supabaseBucket = process.env.SUPABASE_BUCKET || 'images';
+const isSupabaseConfigured = !!(supabaseUrl && supabaseKey && supabaseBucket);
 
 // Prioritize Supabase, then Local
 let selectedStorage = localStorage;
@@ -79,7 +82,7 @@ router.post('/', (req, res) => {
             const filePath = `uploads/${fileName}`;
 
             const { data, error } = await supabase.storage
-                .from(process.env.SUPABASE_BUCKET)
+                .from(supabaseBucket)
                 .upload(filePath, file.buffer, {
                     contentType: file.mimetype,
                     upsert: false
@@ -88,7 +91,7 @@ router.post('/', (req, res) => {
             if (error) throw error;
 
             const { data: { publicUrl } } = supabase.storage
-                .from(process.env.SUPABASE_BUCKET)
+                .from(supabaseBucket)
                 .getPublicUrl(filePath);
 
             fileUrl = publicUrl;

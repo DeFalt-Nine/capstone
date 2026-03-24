@@ -1,5 +1,5 @@
 
-import dotenv from 'dotenv';
+import './loadEnv.js';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -10,9 +10,6 @@ import { dirname } from 'path';
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Explicitly load .env from the root directory
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 import { connectDB } from './config/db.js';
 

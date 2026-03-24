@@ -22,7 +22,7 @@ export const extractPublicId = (url) => {
             const parts = url.split('/public/');
             if (parts.length > 1) {
                 const bucketAndPath = parts[1]; // images/uploads/123.png
-                const bucketName = process.env.SUPABASE_BUCKET || 'images';
+                const bucketName = process.env.SUPABASE_BUCKET || process.env.VITE_SUPABASE_BUCKET || 'images';
                 if (bucketAndPath.startsWith(bucketName + '/')) {
                     return bucketAndPath.replace(bucketName + '/', ''); // uploads/123.png
                 }
@@ -57,13 +57,16 @@ export const deleteImage = async (identifier) => {
 
     if (!publicId) return false;
 
-    const isSupabaseConfigured = process.env.SUPABASE_URL && process.env.SUPABASE_KEY && process.env.SUPABASE_BUCKET;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+    const supabaseBucket = process.env.SUPABASE_BUCKET || process.env.VITE_SUPABASE_BUCKET || 'images';
+    const isSupabaseConfigured = !!(supabaseUrl && supabaseKey && supabaseBucket);
 
     try {
         if (isSupabaseConfigured && supabase) {
             console.log(`[Storage] Deleting from Supabase: ${publicId}`);
             const { error } = await supabase.storage
-                .from(process.env.SUPABASE_BUCKET)
+                .from(supabaseBucket)
                 .remove([publicId]);
             
             if (error) throw error;
