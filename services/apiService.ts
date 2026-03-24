@@ -1,5 +1,5 @@
 
-import type { TouristSpot, BlogPost, LocalEvent, Report } from '../types';
+import type { TouristSpot, BlogPost, LocalEvent, Report, AdminLog } from '../types';
 
 // Use relative path by default to leverage Vite proxy in development
 const API_BASE = ((import.meta as any).env && (import.meta as any).env.VITE_API_URL) || '';
@@ -53,6 +53,13 @@ export const verifyAdminToken = async (token: string) => {
             'Content-Type': 'application/json',
             'x-admin-access-token': token
         }
+    });
+};
+
+export const logoutAdmin = async () => {
+    return safeFetch(`${API_BASE}/api/auth/logout`, {
+        method: 'POST',
+        headers: getHeaders()
     });
 };
 
@@ -199,6 +206,18 @@ export const subscribeToNewsletter = async (email: string) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
+    });
+};
+
+export const fetchAnalyticsSummary = async () => {
+    return safeFetch(`${API_BASE}/api/analytics/summary`, {
+        headers: getHeaders()
+    });
+};
+
+export const fetchAdminLogs = async (): Promise<AdminLog[]> => {
+    return safeFetch(`${API_BASE}/api/admin-logs`, {
+        headers: getHeaders()
     });
 };
 

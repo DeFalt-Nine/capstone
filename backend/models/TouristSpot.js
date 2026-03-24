@@ -33,6 +33,7 @@ const TouristSpotSchema = new mongoose.Schema({
   ],
   mapEmbedUrl: { type: String, required: false },
   reviews: [reviewSchema],
+  views: { type: Number, default: 0 },
 });
 
 // This is the key change: Check if the model is already registered.

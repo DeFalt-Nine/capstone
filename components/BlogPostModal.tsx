@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import type { BlogPost } from '../types';
 import ReportModal from './ReportModal';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface BlogPostModalProps {
   post: BlogPost;
@@ -9,6 +10,7 @@ interface BlogPostModalProps {
 }
 
 const BlogPostModal: React.FC<BlogPostModalProps> = ({ post, onClose }) => {
+  useAnalytics(post._id);
   const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {

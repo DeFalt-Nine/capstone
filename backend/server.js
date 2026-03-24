@@ -28,6 +28,7 @@ import blogPostsRoutes from './routes/blogPosts.js';
 import eventsRoutes from './routes/events.js';
 import subscribersRoutes from './routes/subscribers.js';
 import reportRoutes from './routes/reports.js';
+import adminLogRoutes from './routes/adminLogs.js';
 
 const app = express();
 
@@ -85,6 +86,7 @@ app.use('/api/blog-posts', ensureDbConnection, blogPostsRoutes);
 app.use('/api/events', ensureDbConnection, eventsRoutes);
 app.use('/api/subscribers', ensureDbConnection, subscribersRoutes);
 app.use('/api/reports', ensureDbConnection, reportRoutes); 
+app.use('/api/admin-logs', ensureDbConnection, adminLogRoutes); 
 
 console.log('Routes mounted successfully.');
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
     fetchTouristSpots, fetchDiningSpots, fetchBlogPosts, fetchLocalEvents, fetchReports,
-    deleteItem, createItem, updateItem, uploadImage, deleteReview, deleteReport, verifyAdminToken
+    deleteItem, createItem, updateItem, uploadImage, deleteReview, deleteReport, verifyAdminToken,
+    fetchAnalyticsSummary, fetchAdminLogs, logoutAdmin
 } from '../services/apiService';
 import { NAV_LINKS } from '../constants';
 import AnimatedElement from '../components/AnimatedElement';
@@ -11,7 +12,9 @@ const TABS = [
     { id: 'dining-spots', label: 'Dining', icon: 'fa-utensils' },
     { id: 'blog-posts', label: 'Blog Moderation', icon: 'fa-newspaper' },
     { id: 'events', label: 'Events', icon: 'fa-calendar-alt' },
-    { id: 'reports', label: 'Reports', icon: 'fa-flag' }
+    { id: 'reports', label: 'Reports', icon: 'fa-flag' },
+    { id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' },
+    { id: 'activity-log', label: 'Activity Log', icon: 'fa-history' }
 ];
 
 const AdminPage: React.FC = () => {
@@ -27,6 +30,8 @@ const AdminPage: React.FC = () => {
     const [previewUrl, setPreviewUrl] = useState('/');
     
     const [data, setData] = useState<any[]>([]);
+    const [analyticsSummary, setAnalyticsSummary] = useState<any>(null);
+    const [adminLogs, setAdminLogs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
@@ -106,7 +111,10 @@ const AdminPage: React.FC = () => {
         }
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await logoutAdmin();
+        } catch (e) {}
         localStorage.removeItem('adminToken');
         setIsAuthenticated(false);
         setAccessCode('');
@@ -123,6 +131,19 @@ const AdminPage: React.FC = () => {
             else if (tab === 'blog-posts') result = await fetchBlogPosts('admin');
             else if (tab === 'events') result = await fetchLocalEvents();
             else if (tab === 'reports') result = await fetchReports();
+            else if (tab === 'analytics') {
+                result = await fetchAnalyticsSummary();
+                setAnalyticsSummary(result);
+                setData([]); // Clear data for analytics tab
+                setIsLoading(false);
+                return;
+            } else if (tab === 'activity-log') {
+                result = await fetchAdminLogs();
+                setAdminLogs(result);
+                setData([]);
+                setIsLoading(false);
+                return;
+            }
             setData(result || []);
         } catch (error: any) {
             if (error.message.includes('403')) {
@@ -220,6 +241,275 @@ const AdminPage: React.FC = () => {
         } catch (error: any) {
             alert(error.message || 'Operation failed.');
         }
+    };
+
+    const renderAnalyticsDashboard = () => {
+        if (!analyticsSummary) return null;
+
+        const { summary, topTouristSpots, topBlogPosts, avgDwellTime, recentActivity } = analyticsSummary;
+
+        return (
+            <div className="space-y-8 animate-in fade-in duration-500">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 bg-lt-blue/10 text-lt-blue rounded-xl flex items-center justify-center">
+                                <i className="fas fa-map-marked-alt text-xl"></i>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tourist Spot Views</p>
+                                <h3 className="text-2xl font-bold text-slate-900">{summary.totalTouristSpotViews}</h3>
+                            </div>
+                        </div>
+                        <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-lt-blue" style={{ width: '70%' }}></div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 bg-lt-orange/10 text-lt-orange rounded-xl flex items-center justify-center">
+                                <i className="fas fa-newspaper text-xl"></i>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Blog Post Views</p>
+                                <h3 className="text-2xl font-bold text-slate-900">{summary.totalBlogPostViews}</h3>
+                            </div>
+                        </div>
+                        <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-lt-orange" style={{ width: '45%' }}></div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
+                                <i className="fas fa-clock text-xl"></i>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Avg. Dwell Time</p>
+                                <h3 className="text-2xl font-bold text-slate-900">
+                                    {avgDwellTime.length > 0 
+                                        ? `${Math.round(avgDwellTime.reduce((acc: number, curr: any) => acc + curr.avgDuration, 0) / avgDwellTime.length)}s`
+                                        : '0s'}
+                                </h3>
+                            </div>
+                        </div>
+                        <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500" style={{ width: '60%' }}></div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+                                <i className="fas fa-users text-xl"></i>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Interactions</p>
+                                <h3 className="text-2xl font-bold text-slate-900">{summary.totalTouristSpotViews + summary.totalBlogPostViews}</h3>
+                            </div>
+                        </div>
+                        <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-purple-500" style={{ width: '85%' }}></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Top Content */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <i className="fas fa-trophy text-lt-orange"></i>
+                                Top Performing Content
+                            </h3>
+                        </div>
+                        <div className="p-6 space-y-6">
+                            <div>
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Tourist Spots</h4>
+                                <div className="space-y-4">
+                                    {topTouristSpots.map((spot: any, index: number) => (
+                                        <div key={spot._id} className="flex items-center gap-4">
+                                            <div className="text-xs font-bold text-slate-300 w-4">{index + 1}</div>
+                                            <img src={spot.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-slate-800 truncate">{spot.name}</p>
+                                                <p className="text-[10px] text-slate-400">{spot.views} views</p>
+                                            </div>
+                                            <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-lt-blue" 
+                                                    style={{ width: `${(spot.views / topTouristSpots[0].views) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-50">
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Blog Posts</h4>
+                                <div className="space-y-4">
+                                    {topBlogPosts.map((post: any, index: number) => (
+                                        <div key={post._id} className="flex items-center gap-4">
+                                            <div className="text-xs font-bold text-slate-300 w-4">{index + 1}</div>
+                                            <img src={post.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-slate-800 truncate">{post.title}</p>
+                                                <p className="text-[10px] text-slate-400">{post.views} views</p>
+                                            </div>
+                                            <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-lt-orange" 
+                                                    style={{ width: `${(post.views / topBlogPosts[0].views) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Dwell Time & Activity */}
+                    <div className="space-y-8">
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="p-6 border-b border-slate-100">
+                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                    <i className="fas fa-hourglass-half text-lt-blue"></i>
+                                    Average Dwell Time by Page
+                                </h3>
+                            </div>
+                            <div className="p-6">
+                                <div className="space-y-4">
+                                    {avgDwellTime.map((item: any) => (
+                                        <div key={item._id} className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                                <p className="text-xs font-bold text-slate-700 truncate">{item._id}</p>
+                                                <div className="w-full h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-lt-blue" 
+                                                        style={{ width: `${Math.min((item.avgDuration / 120) * 100, 100)}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                            <div className="ml-4 text-right">
+                                                <p className="text-xs font-bold text-slate-900">{Math.round(item.avgDuration)}s</p>
+                                                <p className="text-[9px] text-slate-400">{item.totalEvents} samples</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="p-6 border-b border-slate-100">
+                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                    <i className="fas fa-history text-slate-400"></i>
+                                    Recent Activity
+                                </h3>
+                            </div>
+                            <div className="p-0">
+                                {recentActivity.map((event: any) => (
+                                    <div key={event._id} className="p-4 border-b border-slate-50 last:border-0 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${
+                                            event.eventType === 'view' ? 'bg-blue-50 text-blue-600' :
+                                            event.eventType === 'dwell' ? 'bg-green-50 text-green-600' :
+                                            'bg-slate-100 text-slate-600'
+                                        }`}>
+                                            <i className={`fas ${
+                                                event.eventType === 'view' ? 'fa-eye' :
+                                                event.eventType === 'dwell' ? 'fa-clock' :
+                                                'fa-mouse-pointer'
+                                            }`}></i>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-slate-800 truncate">
+                                                {event.eventType === 'view' ? 'Page View' : 'Dwell Time'} on {event.page}
+                                            </p>
+                                            <p className="text-[10px] text-slate-400">
+                                                {new Date(event.timestamp).toLocaleTimeString()} • {event.duration ? `${event.duration}s` : 'Interaction'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderActivityLog = () => {
+        return (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-500">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                        <i className="fas fa-history text-lt-blue"></i>
+                        Administrative Activity Log
+                    </h3>
+                    <button 
+                        onClick={() => loadData('activity-log')}
+                        className="text-xs font-bold text-lt-blue hover:underline flex items-center gap-1"
+                    >
+                        <i className="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
+                            <tr>
+                                <th className="p-5">Time</th>
+                                <th className="p-5">Action</th>
+                                <th className="p-5">Target Type</th>
+                                <th className="p-5">Target Name</th>
+                                <th className="p-5">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {adminLogs.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="p-10 text-center text-slate-400 text-sm">
+                                        No activity logs found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                adminLogs.map((log: any) => (
+                                    <tr key={log._id} className="hover:bg-slate-50/30 transition-colors">
+                                        <td className="p-5 text-xs text-slate-500 whitespace-nowrap">
+                                            {new Date(log.timestamp).toLocaleString()}
+                                        </td>
+                                        <td className="p-5">
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-lg border ${
+                                                log.action === 'login' ? 'bg-green-50 text-green-600 border-green-200' :
+                                                log.action === 'delete' || log.action === 'reject' ? 'bg-red-50 text-red-600 border-red-200' :
+                                                log.action === 'create' || log.action === 'approve' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                                'bg-slate-50 text-slate-600 border-slate-200'
+                                            }`}>
+                                                {log.action.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="p-5 text-xs font-bold text-slate-700 capitalize">
+                                            {log.targetType.replace('-', ' ')}
+                                        </td>
+                                        <td className="p-5 text-xs text-slate-800 font-medium">
+                                            {log.targetName || '-'}
+                                        </td>
+                                        <td className="p-5 text-xs text-slate-500 max-w-xs truncate">
+                                            {log.details}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
     };
 
     const renderInput = (key: string, label: string, type: string = 'text', placeholder: string = ''): React.ReactElement => (
@@ -398,7 +688,7 @@ const AdminPage: React.FC = () => {
                             <h2 className="text-xl font-bold text-slate-800">
                                 {viewMode === 'management' ? TABS.find(t => t.id === activeTab)?.label : 'Site Preview'}
                             </h2>
-                            {viewMode === 'management' && (
+                            {viewMode === 'management' && activeTab !== 'analytics' && (
                                 <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
                                     {data.length} Records
                                 </span>
@@ -427,12 +717,20 @@ const AdminPage: React.FC = () => {
                     </div>
                     
                     <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-                        {viewMode === 'management' && activeTab !== 'reports' && (
+                        {viewMode === 'management' && activeTab !== 'reports' && activeTab !== 'analytics' && activeTab !== 'activity-log' && (
                             <button 
                                 onClick={() => handleOpenModal()} 
                                 className="bg-lt-blue hover:bg-lt-moss text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md shadow-lt-blue/10 transition-all flex items-center gap-2 active:scale-95"
                             >
                                 <i className="fas fa-plus"></i> Add New
+                            </button>
+                        )}
+                        {activeTab === 'analytics' && (
+                            <button 
+                                onClick={() => loadData('analytics')} 
+                                className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95"
+                            >
+                                <i className="fas fa-sync-alt"></i> Refresh
                             </button>
                         )}
                         <button 
@@ -464,141 +762,156 @@ const AdminPage: React.FC = () => {
                     {viewMode === 'management' ? (
                         <div className="h-full overflow-y-auto p-8 custom-scrollbar">
                             <AnimatedElement>
-                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                                    {isLoading ? (
-                                        <div className="p-32 text-center text-slate-400">
-                                            <i className="fas fa-circle-notch fa-spin text-4xl mb-4 text-lt-blue"></i>
-                                            <p className="text-sm font-medium">Synchronizing data...</p>
-                                        </div>
-                                    ) : data.length === 0 ? (
-                                        <div className="p-32 text-center text-slate-400">
-                                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                                                <i className="fas fa-folder-open text-3xl opacity-20"></i>
+                                {activeTab === 'analytics' ? (
+                                    renderAnalyticsDashboard()
+                                ) : activeTab === 'activity-log' ? (
+                                    renderActivityLog()
+                                ) : (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                        {isLoading ? (
+                                            <div className="p-32 text-center text-slate-400">
+                                                <i className="fas fa-circle-notch fa-spin text-4xl mb-4 text-lt-blue"></i>
+                                                <p className="text-sm font-medium">Synchronizing data...</p>
                                             </div>
-                                            <h3 className="text-lg font-bold text-slate-900 mb-1">No results found</h3>
-                                            <p className="text-sm text-slate-500">There are no records to display in this section yet.</p>
-                                            {activeTab !== 'reports' && (
-                                                <button 
-                                                    onClick={() => handleOpenModal()}
-                                                    className="mt-6 text-lt-blue font-bold text-sm hover:underline"
-                                                >
-                                                    Create your first entry
-                                                </button>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left">
-                                                <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
-                                                    <tr>
-                                                        {activeTab !== 'reports' && <th className="p-5 w-20 text-center">Media</th>}
-                                                        {activeTab === 'reports' ? (
-                                                            <>
-                                                                <th className="p-5">Target</th>
-                                                                <th className="p-5">Reason</th>
-                                                                <th className="p-5">Description</th>
-                                                            </>
-                                                        ) : (
-                                                            <th className="p-5">Information</th>
-                                                        )}
-                                                        {activeTab === 'blog-posts' && <th className="p-5">Status</th>}
-                                                        {activeTab === 'blog-posts' && <th className="p-5">Author</th>}
-                                                        {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && <th className="p-5 text-center">Reviews</th>}
-                                                        <th className="p-5 text-right">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {sortedData.map((item: any) => (
-                                                        <tr key={item._id} className="hover:bg-slate-50/30 transition-colors group">
-                                                            {activeTab !== 'reports' && (
-                                                                <td className="p-5">
-                                                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
-                                                                        <img src={item.image} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                                    </div>
-                                                                </td>
-                                                            )}
-                                                            
+                                        ) : data.length === 0 ? (
+                                            <div className="p-32 text-center text-slate-400">
+                                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                    <i className="fas fa-folder-open text-3xl opacity-20"></i>
+                                                </div>
+                                                <h3 className="text-lg font-bold text-slate-900 mb-1">No results found</h3>
+                                                <p className="text-sm text-slate-500">There are no records to display in this section yet.</p>
+                                                {activeTab !== 'reports' && (
+                                                    <button 
+                                                        onClick={() => handleOpenModal()}
+                                                        className="mt-6 text-lt-blue font-bold text-sm hover:underline"
+                                                    >
+                                                        Create your first entry
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
+                                                        <tr>
+                                                            {activeTab !== 'reports' && <th className="p-5 w-20 text-center">Media</th>}
                                                             {activeTab === 'reports' ? (
                                                                 <>
-                                                                    <td className="p-5">
-                                                                        <div className="font-bold text-slate-800 text-sm">{item.targetName}</div>
-                                                                        <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{item.targetType}</div>
-                                                                    </td>
-                                                                    <td className="p-5">
-                                                                        <span className="text-[10px] text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-lg font-bold uppercase tracking-wider">
-                                                                            {item.reason}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="p-5 text-xs text-slate-500 max-w-xs truncate">{item.description}</td>
+                                                                    <th className="p-5">Target</th>
+                                                                    <th className="p-5">Reason</th>
+                                                                    <th className="p-5">Description</th>
                                                                 </>
                                                             ) : (
-                                                                <td className="p-5">
-                                                                    <div className="font-bold text-slate-800 text-sm group-hover:text-lt-blue transition-colors">{item.name || item.title}</div>
-                                                                    <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-1">
-                                                                        <i className="fas fa-map-marker-alt text-[8px]"></i>
-                                                                        {item.location || item.date || 'No meta provided'}
+                                                                <th className="p-5">Information</th>
+                                                            )}
+                                                            {activeTab === 'blog-posts' && <th className="p-5">Status</th>}
+                                                            {activeTab === 'blog-posts' && <th className="p-5">Author</th>}
+                                                            {(activeTab === 'tourist-spots' || activeTab === 'blog-posts') && <th className="p-5 text-center">Views</th>}
+                                                            {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && <th className="p-5 text-center">Reviews</th>}
+                                                            <th className="p-5 text-right">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {sortedData.map((item: any) => (
+                                                            <tr key={item._id} className="hover:bg-slate-50/30 transition-colors group">
+                                                                {activeTab !== 'reports' && (
+                                                                    <td className="p-5">
+                                                                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
+                                                                            <img src={item.image} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                                        </div>
+                                                                    </td>
+                                                                )}
+                                                                
+                                                                {activeTab === 'reports' ? (
+                                                                    <>
+                                                                        <td className="p-5">
+                                                                            <div className="font-bold text-slate-800 text-sm">{item.targetName}</div>
+                                                                            <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{item.targetType}</div>
+                                                                        </td>
+                                                                        <td className="p-5">
+                                                                            <span className="text-[10px] text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-lg font-bold uppercase tracking-wider">
+                                                                                {item.reason}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="p-5 text-xs text-slate-500 max-w-xs truncate">{item.description}</td>
+                                                                    </>
+                                                                ) : (
+                                                                    <td className="p-5">
+                                                                        <div className="font-bold text-slate-800 text-sm group-hover:text-lt-blue transition-colors">{item.name || item.title}</div>
+                                                                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-1">
+                                                                            <i className="fas fa-map-marker-alt text-[8px]"></i>
+                                                                            {item.location || item.date || 'No meta provided'}
+                                                                        </div>
+                                                                    </td>
+                                                                )}
+
+                                                                {activeTab === 'blog-posts' && (
+                                                                    <td className="p-5">
+                                                                        <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-lg border ${
+                                                                            item.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' :
+                                                                            item.status === 'approved' ? 'bg-green-50 text-green-600 border-green-200' :
+                                                                            'bg-red-50 text-red-600 border-red-200'
+                                                                        }`}>
+                                                                            {item.status || 'approved'}
+                                                                        </span>
+                                                                    </td>
+                                                                )}
+                                                                {activeTab === 'blog-posts' && (
+                                                                    <td className="p-5">
+                                                                        <div className="text-xs font-bold text-slate-700">{item.author}</div>
+                                                                        {item.email && <div className="text-[10px] text-slate-400">{item.email}</div>}
+                                                                    </td>
+                                                                )}
+                                                                {(activeTab === 'tourist-spots' || activeTab === 'blog-posts') && (
+                                                                    <td className="p-5 text-center">
+                                                                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold">
+                                                                            <i className="fas fa-eye text-[8px]"></i>
+                                                                            {item.views || 0}
+                                                                        </div>
+                                                                    </td>
+                                                                )}
+                                                                {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
+                                                                    <td className="p-5 text-center">
+                                                                        <button 
+                                                                            onClick={() => handleOpenReviewModal(item)}
+                                                                            className="inline-flex items-center gap-2 text-slate-400 hover:text-lt-orange transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm"
+                                                                        >
+                                                                            <i className="fas fa-comment-dots text-[10px]"></i> 
+                                                                            {item.reviews?.length || 0}
+                                                                        </button>
+                                                                    </td>
+                                                                )}
+                                                                <td className="p-5 text-right">
+                                                                    <div className="flex justify-end gap-2">
+                                                                        {activeTab === 'blog-posts' && item.status === 'pending' && (
+                                                                            <button onClick={() => handleApprove(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Approve Story">
+                                                                                Approve
+                                                                            </button>
+                                                                        )}
+                                                                        {activeTab === 'reports' ? (
+                                                                            <button onClick={() => handleDelete(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Resolve Report">
+                                                                                Resolve
+                                                                            </button>
+                                                                        ) : (
+                                                                            <>
+                                                                                <button onClick={() => handleOpenModal(item)} className="p-2 text-slate-400 hover:text-lt-blue hover:bg-slate-100 rounded-lg transition-colors" title="Edit Item">
+                                                                                    <i className="fas fa-pen text-xs"></i>
+                                                                                </button>
+                                                                                <button onClick={() => handleDelete(item._id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete Item">
+                                                                                    <i className="fas fa-trash-alt text-xs"></i>
+                                                                                </button>
+                                                                            </>
+                                                                        )}
                                                                     </div>
                                                                 </td>
-                                                            )}
-
-                                                            {activeTab === 'blog-posts' && (
-                                                                <td className="p-5">
-                                                                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-lg border ${
-                                                                        item.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' :
-                                                                        item.status === 'approved' ? 'bg-green-50 text-green-600 border-green-200' :
-                                                                        'bg-red-50 text-red-600 border-red-200'
-                                                                    }`}>
-                                                                        {item.status || 'approved'}
-                                                                    </span>
-                                                                </td>
-                                                            )}
-                                                            {activeTab === 'blog-posts' && (
-                                                                <td className="p-5">
-                                                                    <div className="text-xs font-bold text-slate-700">{item.author}</div>
-                                                                    {item.email && <div className="text-[10px] text-slate-400">{item.email}</div>}
-                                                                </td>
-                                                            )}
-                                                            {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
-                                                                <td className="p-5 text-center">
-                                                                    <button 
-                                                                        onClick={() => handleOpenReviewModal(item)}
-                                                                        className="inline-flex items-center gap-2 text-slate-400 hover:text-lt-orange transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm"
-                                                                    >
-                                                                        <i className="fas fa-comment-dots text-[10px]"></i> 
-                                                                        {item.reviews?.length || 0}
-                                                                    </button>
-                                                                </td>
-                                                            )}
-                                                            <td className="p-5 text-right">
-                                                                <div className="flex justify-end gap-2">
-                                                                    {activeTab === 'blog-posts' && item.status === 'pending' && (
-                                                                        <button onClick={() => handleApprove(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Approve Story">
-                                                                            Approve
-                                                                        </button>
-                                                                    )}
-                                                                    {activeTab === 'reports' ? (
-                                                                        <button onClick={() => handleDelete(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Resolve Report">
-                                                                            Resolve
-                                                                        </button>
-                                                                    ) : (
-                                                                        <>
-                                                                            <button onClick={() => handleOpenModal(item)} className="p-2 text-slate-400 hover:text-lt-blue hover:bg-slate-100 rounded-lg transition-colors" title="Edit Item">
-                                                                                <i className="fas fa-pen text-xs"></i>
-                                                                            </button>
-                                                                            <button onClick={() => handleDelete(item._id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete Item">
-                                                                                <i className="fas fa-trash-alt text-xs"></i>
-                                                                            </button>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </div>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </AnimatedElement>
                         </div>
                     ) : (

@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 import Report from '../models/Report.js';
 import checkAdmin from '../middleware/auth.js';
+import adminLogService from '../services/adminLogService.js';
 
 // @desc    Create a report
 // @route   POST /api/reports
@@ -38,6 +39,18 @@ router.get('/', checkAdmin, async (req, res) => {
 // @route   DELETE /api/reports/:id
 router.delete('/:id', checkAdmin, async (req, res) => {
   try {
+    const report = await Report.findById(req.params.id);
+    if (report) {
+      // Log the action
+      await adminLogService.logAdminAction({
+        action: 'resolve_report',
+        targetType: 'report',
+        targetId: report._id.toString(),
+        targetName: report.targetName,
+        details: `Resolved report for ${report.targetName} (Reason: ${report.reason})`
+      });
+    }
+    
     await Report.findByIdAndDelete(req.params.id);
     res.json({ message: 'Report resolved/deleted' });
   } catch (error) {

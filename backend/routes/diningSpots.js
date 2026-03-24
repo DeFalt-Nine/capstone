@@ -5,6 +5,7 @@ import Subscriber from '../models/Subscriber.js';
 import mongoose from 'mongoose';
 import checkAdmin from '../middleware/auth.js';
 import { deleteImage } from '../services/storageService.js';
+import adminLogService from '../services/adminLogService.js';
 
 // @desc    Fetch all dining spots
 // @route   GET /api/dining-spots
@@ -29,6 +30,16 @@ router.get('/', async (req, res) => {
 router.post('/', checkAdmin, async (req, res) => {
   try {
     const newSpot = await DiningSpot.create(req.body);
+    
+    // Log the action
+    await adminLogService.logAdminAction({
+      action: 'create',
+      targetType: 'dining-spot',
+      targetId: newSpot._id.toString(),
+      targetName: newSpot.name,
+      details: `Created new dining spot: ${newSpot.name}`
+    });
+
     res.status(201).json(newSpot);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -39,6 +50,16 @@ router.post('/', checkAdmin, async (req, res) => {
 router.put('/:id', checkAdmin, async (req, res) => {
   try {
     const updatedSpot = await DiningSpot.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    
+    // Log the action
+    await adminLogService.logAdminAction({
+      action: 'update',
+      targetType: 'dining-spot',
+      targetId: updatedSpot._id.toString(),
+      targetName: updatedSpot.name,
+      details: `Updated dining spot: ${updatedSpot.name}`
+    });
+
     res.json(updatedSpot);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -75,6 +96,16 @@ router.delete('/:id', checkAdmin, async (req, res) => {
     }
 
     await DiningSpot.findByIdAndDelete(req.params.id);
+
+    // Log the action
+    await adminLogService.logAdminAction({
+      action: 'delete',
+      targetType: 'dining-spot',
+      targetId: req.params.id,
+      targetName: spot.name,
+      details: `Deleted dining spot: ${spot.name}`
+    });
+
     res.json({ message: 'Spot removed and images deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -89,9 +120,20 @@ router.delete('/:id/reviews/:reviewId', checkAdmin, async (req, res) => {
     if (!spot) return res.status(404).json({ message: 'Spot not found' });
 
     // Filter out the review to be deleted
+    const reviewToDelete = spot.reviews.find(r => r._id.toString() === req.params.reviewId);
     spot.reviews = spot.reviews.filter(r => r._id.toString() !== req.params.reviewId);
     
     await spot.save();
+
+    // Log the action
+    await adminLogService.logAdminAction({
+      action: 'delete_review',
+      targetType: 'dining-spot',
+      targetId: spot._id.toString(),
+      targetName: spot.name,
+      details: `Deleted review by ${reviewToDelete?.name || 'unknown'} from ${spot.name}`
+    });
+
     res.json(spot);
   } catch (error) {
     res.status(500).json({ message: error.message });

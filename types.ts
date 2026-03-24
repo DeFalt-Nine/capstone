@@ -136,6 +136,16 @@ export interface PlannerItem {
   type: 'tourist' | 'dining';
 }
 
+export interface AdminLog {
+  _id: string;
+  action: string;
+  targetType: string;
+  targetId?: string;
+  targetName?: string;
+  details?: string;
+  timestamp: string;
+}
+
 export interface JeepneyRoute {
   _id?: string;
   name: string;

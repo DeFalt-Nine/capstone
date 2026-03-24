@@ -3,6 +3,7 @@ import type { TouristSpot } from '../types';
 import { submitReview, trackEvent } from '../services/apiService';
 import StarRating from './StarRating';
 import ReportModal from './ReportModal';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface TouristSpotModalProps {
   spot: TouristSpot;
@@ -30,6 +31,7 @@ const StarRatingInput: React.FC<{ rating: number; setRating: (rating: number) =>
 
 
 const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onClose, onReviewSubmitted }) => {
+  useAnalytics(spot._id);
   const [activeTab, setActiveTab] = useState('details');
 
   // Review form state
