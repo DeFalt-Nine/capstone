@@ -95,6 +95,21 @@ const AdminPage: React.FC = () => {
         };
     }, [isAuthenticated]);
 
+    useEffect(() => {
+        if (activeTab === 'analytics' && isAuthenticated) {
+            const fetchDebug = async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/v1/stats/debug`);
+                    const data = await response.json();
+                    console.log('[Debug Analytics] Latest Events:', data);
+                } catch (e) {
+                    console.error('Debug fetch failed', e);
+                }
+            };
+            fetchDebug();
+        }
+    }, [activeTab, isAuthenticated]);
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoginError(null);
@@ -251,7 +266,7 @@ const AdminPage: React.FC = () => {
     const renderAnalyticsDashboard = () => {
         if (!analyticsSummary) return null;
 
-        const { summary, topTouristSpots, topBlogPosts, avgDwellTime, recentActivity } = analyticsSummary;
+        const { summary, topTouristSpots, topDiningSpots, topBlogPosts, avgDwellTime, recentActivity } = analyticsSummary;
 
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
@@ -269,6 +284,21 @@ const AdminPage: React.FC = () => {
                         </div>
                         <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                             <div className="h-full bg-lt-blue" style={{ width: '70%' }}></div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 bg-lt-moss/10 text-lt-moss rounded-xl flex items-center justify-center">
+                                <i className="fas fa-utensils text-xl"></i>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dining Spot Views</p>
+                                <h3 className="text-2xl font-bold text-slate-900">{summary.totalDiningSpotViews || 0}</h3>
+                            </div>
+                        </div>
+                        <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-lt-moss" style={{ width: '50%' }}></div>
                         </div>
                     </div>
 
@@ -313,7 +343,9 @@ const AdminPage: React.FC = () => {
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Interactions</p>
-                                <h3 className="text-2xl font-bold text-slate-900">{summary.totalTouristSpotViews + summary.totalBlogPostViews}</h3>
+                                <h3 className="text-2xl font-bold text-slate-900">
+                                    {(summary.totalTouristSpotViews || 0) + (summary.totalDiningSpotViews || 0) + (summary.totalBlogPostViews || 0)}
+                                </h3>
                             </div>
                         </div>
                         <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -351,6 +383,30 @@ const AdminPage: React.FC = () => {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-50">
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Dining Spots</h4>
+                                <div className="space-y-4">
+                                    {topDiningSpots && topDiningSpots.length > 0 ? topDiningSpots.map((spot: any, index: number) => (
+                                        <div key={spot._id} className="flex items-center gap-4">
+                                            <div className="text-xs font-bold text-slate-300 w-4">{index + 1}</div>
+                                            <img src={spot.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-slate-800 truncate">{spot.name}</p>
+                                                <p className="text-[10px] text-slate-400">{spot.views} views</p>
+                                            </div>
+                                            <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-lt-moss" 
+                                                    style={{ width: `${topDiningSpots[0]?.views > 0 ? (spot.views / topDiningSpots[0].views) * 100 : 0}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <p className="text-xs text-slate-400 italic">No dining spot data yet</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -423,20 +479,25 @@ const AdminPage: React.FC = () => {
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${
                                             event.eventType === 'view' ? 'bg-blue-50 text-blue-600' :
                                             event.eventType === 'dwell' ? 'bg-green-50 text-green-600' :
+                                            event.eventType === 'click' ? 'bg-orange-50 text-orange-600' :
                                             'bg-slate-100 text-slate-600'
                                         }`}>
                                             <i className={`fas ${
                                                 event.eventType === 'view' ? 'fa-eye' :
                                                 event.eventType === 'dwell' ? 'fa-clock' :
-                                                'fa-mouse-pointer'
+                                                event.eventType === 'click' ? 'fa-mouse-pointer' :
+                                                'fa-fingerprint'
                                             }`}></i>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-xs font-bold text-slate-800 truncate">
-                                                {event.eventType === 'view' ? 'Page View' : 'Dwell Time'} on {event.page}
+                                                {event.eventType === 'view' ? 'Page View' : 
+                                                 event.eventType === 'dwell' ? 'Dwell Time' : 
+                                                 event.eventType === 'click' ? 'Interaction' : 
+                                                 'Event'} on {event.page}
                                             </p>
                                             <p className="text-[10px] text-slate-400">
-                                                {new Date(event.timestamp).toLocaleTimeString()} • {event.duration ? `${event.duration}s` : 'Interaction'}
+                                                {new Date(event.timestamp).toLocaleTimeString()} • {event.duration ? `${event.duration}s` : (event.targetId ? `ID: ${event.targetId.substring(0, 10)}...` : 'Interaction')}
                                             </p>
                                         </div>
                                     </div>

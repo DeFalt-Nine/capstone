@@ -30,7 +30,7 @@ const BlogPage: React.FC = () => {
   }, []);
 
   const handlePostClick = (post: BlogPost) => {
-      trackEvent('click', `blog_post_${post.title.substring(0, 20)}`, '/blog', { title: post.title });
+      trackEvent('view', post._id || `blog_post_${post.title.substring(0, 20)}`, '/blog', { title: post.title });
       setSelectedPost(post);
   };
 

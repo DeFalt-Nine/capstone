@@ -193,7 +193,7 @@ export const uploadImage = async (file: File) => {
 
 export const logChatInteraction = async (userMessage: string, botResponse: string, isIntent: boolean = false) => {
     try {
-        await fetch(`${API_BASE}/api/analytics/chat`, {
+        await fetch(`${API_BASE}/api/v1/stats/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userMessage, botResponse, isIntent }),
@@ -210,7 +210,7 @@ export const subscribeToNewsletter = async (email: string) => {
 };
 
 export const fetchAnalyticsSummary = async () => {
-    return safeFetch(`${API_BASE}/api/analytics/summary`, {
+    return safeFetch(`${API_BASE}/api/v1/stats/summary`, {
         headers: getHeaders()
     });
 };
@@ -231,9 +231,9 @@ export const trackEvent = async (
         const payload = JSON.stringify({ eventType, targetId, page, metadata });
         if (navigator.sendBeacon) {
             const blob = new Blob([payload], { type: 'application/json' });
-            navigator.sendBeacon(`${API_BASE}/api/analytics/event`, blob);
+            navigator.sendBeacon(`${API_BASE}/api/v1/stats/log`, blob);
         } else {
-            await fetch(`${API_BASE}/api/analytics/event`, {
+            await fetch(`${API_BASE}/api/v1/stats/log`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: payload

@@ -2,19 +2,21 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import analyticsService from '../services/analyticsService';
 
-export const useAnalytics = (targetId?: string) => {
+export const useAnalytics = (targetId?: string, pageOverride?: string) => {
     const location = useLocation();
     const startTimeRef = useRef<number>(Date.now());
     const heartbeatIntervalRef = useRef<any>(null);
 
     useEffect(() => {
         // Log initial view
-        const page = location.pathname;
+        const page = pageOverride || location.pathname;
+        console.log(`[Analytics] Logging view for ${targetId} on ${page}`);
         analyticsService.logEvent({
             eventType: 'view',
             targetId,
             page
-        });
+        }).then(() => console.log(`[Analytics] Successfully sent view event for ${targetId}`))
+          .catch(err => console.error(`[Analytics] Failed to send view event:`, err));
 
         // Start heartbeat for dwell time
         startTimeRef.current = Date.now();
@@ -44,5 +46,5 @@ export const useAnalytics = (targetId?: string) => {
                 });
             }
         };
-    }, [location.pathname, targetId]);
+    }, [location.pathname, targetId, pageOverride]);
 };

@@ -72,7 +72,7 @@ const TouristSpotsPage: React.FC = () => {
   };
 
   const handleItemClick = (item: TouristSpot) => {
-      trackEvent('click', `spot_${item.name}`, viewMode === 'tourist' ? '/tourist-spots' : '/dining-spots', { name: item.name, category: item.category });
+      trackEvent('view', item._id || `spot_${item.name}`, viewMode === 'tourist' ? '/tourist-spots' : '/dining-spots', { name: item.name, category: item.category });
       setSelectedSpot(item);
   };
 

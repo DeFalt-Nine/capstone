@@ -10,7 +10,8 @@ interface BlogPostModalProps {
 }
 
 const BlogPostModal: React.FC<BlogPostModalProps> = ({ post, onClose }) => {
-  useAnalytics(post._id);
+  console.log(`[BlogPostModal] Mounting for post: ${post.title} (ID: ${post._id})`);
+  useAnalytics(post._id, '/blog');
   const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {

@@ -31,7 +31,7 @@ const StarRatingInput: React.FC<{ rating: number; setRating: (rating: number) =>
 
 
 const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onClose, onReviewSubmitted }) => {
-  useAnalytics(spot._id);
+  useAnalytics(spot._id, spotType === 'tourist' ? '/tourist-spots' : '/dining-spots');
   const [activeTab, setActiveTab] = useState('details');
 
   // Review form state

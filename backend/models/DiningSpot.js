@@ -33,6 +33,7 @@ const DiningSpotSchema = new mongoose.Schema({
   ],
   mapEmbedUrl: { type: String, required: false },
   reviews: [reviewSchema],
+  views: { type: Number, default: 0 },
 });
 
 export default mongoose.models.DiningSpot || mongoose.model('DiningSpot', DiningSpotSchema, 'diningspots');

@@ -76,7 +76,7 @@ app.use('/api/upload', uploadRoutes);
 
 // 4. Routes requiring Database
 app.use('/api/chatbot', ensureDbConnection, chatbotRoutes);
-app.use('/api/analytics', ensureDbConnection, analyticsRoutes);
+app.use('/api/v1/stats', ensureDbConnection, analyticsRoutes);
 app.use('/api/tourist-spots', ensureDbConnection, touristSpotsRoutes);
 app.use('/api/dining-spots', ensureDbConnection, diningSpotsRoutes);
 app.use('/api/blog-posts', ensureDbConnection, blogPostsRoutes);

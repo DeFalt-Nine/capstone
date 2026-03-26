@@ -3,11 +3,13 @@ const router = express.Router();
 import ChatLog from '../models/ChatLog.js';
 import AnalyticsEvent from '../models/AnalyticsEvent.js';
 import TouristSpot from '../models/TouristSpot.js';
+import DiningSpot from '../models/DiningSpot.js';
 import BlogPost from '../models/BlogPost.js';
 import mongoose from 'mongoose';
+import checkAdmin from '../middleware/auth.js';
 
 // @desc    Log a chat interaction (used for frontend intents)
-// @route   POST /api/analytics/chat
+// @route   POST /api/v1/stats/chat
 // @access  Public
 router.post('/chat', async (req, res) => {
   try {
@@ -31,11 +33,12 @@ router.post('/chat', async (req, res) => {
 });
 
 // @desc    Log a generic interaction event (click, view, filter)
-// @route   POST /api/analytics/event
+// @route   POST /api/v1/stats/log
 // @access  Public
-router.post('/event', async (req, res) => {
+router.post('/log', async (req, res) => {
     try {
         const { eventType, targetId, page, metadata } = req.body;
+        console.log(`[Analytics] Incoming event: ${eventType}, target: ${targetId}, page: ${page}`);
 
         if (!eventType || !page) {
             return res.status(400).json({ message: 'Event type and page are required' });
@@ -54,14 +57,29 @@ router.post('/event', async (req, res) => {
 
         // If it's a 'view' event, increment the view count in the respective model
         if (eventType === 'view' && targetId) {
-            try {
-                if (page.includes('/tourist-spots')) {
-                    await TouristSpot.findByIdAndUpdate(targetId, { $inc: { views: 1 } });
-                } else if (page.includes('/blog')) {
-                    await BlogPost.findByIdAndUpdate(targetId, { $inc: { views: 1 } });
+            console.log(`[Analytics] View event received for ${targetId} on page ${page}`);
+            
+            // Validate if targetId is a valid MongoDB ObjectId
+            if (!mongoose.Types.ObjectId.isValid(targetId)) {
+                console.warn(`[Analytics] Invalid targetId format: ${targetId}. Skipping view increment.`);
+            } else {
+                try {
+                    let result = null;
+                    if (page.includes('/tourist-spots')) {
+                        result = await TouristSpot.findByIdAndUpdate(targetId, { $inc: { views: 1 } }, { new: true });
+                        console.log(`[Analytics] TouristSpot update for ${targetId}: ${result ? 'Success (Views: ' + result.views + ')' : 'Not Found'}`);
+                    } else if (page.includes('/dining-spots')) {
+                        result = await DiningSpot.findByIdAndUpdate(targetId, { $inc: { views: 1 } }, { new: true });
+                        console.log(`[Analytics] DiningSpot update for ${targetId}: ${result ? 'Success (Views: ' + result.views + ')' : 'Not Found'}`);
+                    } else if (page.includes('/blog')) {
+                        result = await BlogPost.findByIdAndUpdate(targetId, { $inc: { views: 1 } }, { new: true });
+                        console.log(`[Analytics] BlogPost update for ${targetId}: ${result ? 'Success (Views: ' + result.views + ')' : 'Not Found'}`);
+                    } else {
+                        console.log(`[Analytics] Page ${page} did not match any category for view increment.`);
+                    }
+                } catch (err) {
+                    console.error("[Analytics] Error incrementing view count:", err);
                 }
-            } catch (err) {
-                console.error("Error incrementing view count:", err);
             }
         }
 
@@ -73,13 +91,28 @@ router.post('/event', async (req, res) => {
     }
 });
 
-// @desc    Get aggregated analytics summary
-// @route   GET /api/analytics/summary
-// @access  Admin (should be protected, but for now we'll keep it simple as the admin page handles auth)
-router.get('/summary', async (req, res) => {
+// @desc    Debug route to dump analytics events
+// @route   GET /api/v1/stats/debug
+// @access  Admin
+router.get('/debug', checkAdmin, async (req, res) => {
     try {
-        // 1. Total views per category (Tourist Spots vs Blog Posts)
+        const events = await AnalyticsEvent.find().sort({ timestamp: -1 }).limit(20);
+        res.json(events);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching debug data' });
+    }
+});
+
+// @desc    Get aggregated analytics summary
+// @route   GET /api/v1/stats/summary
+// @access  Admin
+router.get('/summary', checkAdmin, async (req, res) => {
+    try {
+        // 1. Total views per category (Tourist Spots vs Dining vs Blog Posts)
         const touristSpotViews = await TouristSpot.aggregate([
+            { $group: { _id: null, total: { $sum: "$views" } } }
+        ]);
+        const diningSpotViews = await DiningSpot.aggregate([
             { $group: { _id: null, total: { $sum: "$views" } } }
         ]);
         const blogPostViews = await BlogPost.aggregate([
@@ -88,6 +121,12 @@ router.get('/summary', async (req, res) => {
 
         // 2. Top 5 Most Viewed Tourist Spots
         const topTouristSpots = await TouristSpot.find()
+            .sort({ views: -1 })
+            .limit(5)
+            .select('name views image');
+
+        // 2b. Top 5 Most Viewed Dining Spots
+        const topDiningSpots = await DiningSpot.find()
             .sort({ views: -1 })
             .limit(5)
             .select('name views image');
@@ -119,9 +158,11 @@ router.get('/summary', async (req, res) => {
         res.json({
             summary: {
                 totalTouristSpotViews: touristSpotViews[0]?.total || 0,
+                totalDiningSpotViews: diningSpotViews[0]?.total || 0,
                 totalBlogPostViews: blogPostViews[0]?.total || 0,
             },
             topTouristSpots,
+            topDiningSpots,
             topBlogPosts,
             avgDwellTime,
             recentActivity

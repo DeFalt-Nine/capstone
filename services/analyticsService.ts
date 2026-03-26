@@ -11,7 +11,7 @@ export interface AnalyticsEventData {
 const analyticsService = {
     logEvent: async (event: AnalyticsEventData) => {
         try {
-            await fetch(`${API_BASE}/api/analytics/event`, {
+            await fetch(`${API_BASE}/api/v1/stats/log`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(event)
