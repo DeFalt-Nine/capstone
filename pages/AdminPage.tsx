@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
     fetchTouristSpots, fetchDiningSpots, fetchBlogPosts, fetchLocalEvents, fetchReports,
     deleteItem, createItem, updateItem, uploadImage, deleteReview, deleteReport, verifyAdminToken,
-    fetchAnalyticsSummary, fetchAdminLogs, logoutAdmin
+    fetchAnalyticsSummary, fetchAnalyticsDebug, fetchAdminLogs, logoutAdmin
 } from '../services/apiService';
 import { NAV_LINKS } from '../constants';
 import AnimatedElement from '../components/AnimatedElement';
@@ -40,6 +41,9 @@ const AdminPage: React.FC = () => {
     
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [currentReviewItem, setCurrentReviewItem] = useState<any | null>(null);
+
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [detailItem, setDetailItem] = useState<any | null>(null);
 
     const [imageInputType, setImageInputType] = useState<'url' | 'file'>('url');
     const [isUploading, setIsUploading] = useState(false);
@@ -99,8 +103,7 @@ const AdminPage: React.FC = () => {
         if (activeTab === 'analytics' && isAuthenticated) {
             const fetchDebug = async () => {
                 try {
-                    const response = await fetch(`${API_BASE}/api/v1/stats/debug`);
-                    const data = await response.json();
+                    const data = await fetchAnalyticsDebug();
                     console.log('[Debug Analytics] Latest Events:', data);
                 } catch (e) {
                     console.error('Debug fetch failed', e);
@@ -136,6 +139,7 @@ const AdminPage: React.FC = () => {
         setAccessCode('');
         setData([]);
         setIsLogoutConfirmOpen(false);
+        // Stay on admin page login state
     };
 
     const loadData = async (tab: string) => {
@@ -206,6 +210,11 @@ const AdminPage: React.FC = () => {
     const handleOpenReviewModal = (item: any) => {
         setCurrentReviewItem(item);
         setIsReviewModalOpen(true);
+    };
+
+    const handleOpenDetailModal = (item: any) => {
+        setDetailItem(item);
+        setIsDetailModalOpen(true);
     };
 
     const handleDeleteReview = async (reviewId: string) => {
@@ -600,6 +609,119 @@ const AdminPage: React.FC = () => {
         </div>
     );
 
+    const renderDetailModal = () => {
+        if (!detailItem) return null;
+
+        const fields = Object.entries(detailItem).filter(([key]) => !['_id', '__v', 'updatedAt', 'reviews', 'image'].includes(key));
+
+        const renderValue = (key: string, value: any) => {
+            if (Array.isArray(value)) {
+                return (
+                    <div className="flex flex-wrap gap-2">
+                        {value.map((item, i) => (
+                            <span key={i} className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold border border-slate-200">
+                                {String(item)}
+                            </span>
+                        ))}
+                    </div>
+                );
+            }
+            if (typeof value === 'object' && value !== null) {
+                return <pre className="text-[10px] bg-slate-900 text-slate-300 p-3 rounded-xl overflow-x-auto">{JSON.stringify(value, null, 2)}</pre>;
+            }
+            if (key.toLowerCase().includes('date') || key === 'createdAt') {
+                return <span className="text-slate-700 font-medium">{new Date(value).toLocaleString()}</span>;
+            }
+            if (key === 'status') {
+                const colors: any = { approved: 'bg-green-100 text-green-600', pending: 'bg-amber-100 text-amber-600', rejected: 'bg-red-100 text-red-600' };
+                return <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${colors[value] || 'bg-slate-100 text-slate-600'}`}>{value}</span>;
+            }
+            return <span className="text-slate-700 leading-relaxed">{String(value)}</span>;
+        };
+
+        return (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsDetailModalOpen(false)}>
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up border border-slate-200" onClick={e => e.stopPropagation()}>
+                    <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-2xl bg-lt-blue/10 text-lt-blue flex items-center justify-center shadow-inner">
+                                <i className="fas fa-file-alt text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 text-lg">Entry Details</h3>
+                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">ID: {detailItem._id}</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsDetailModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-slate-200 transition-all text-slate-400 hover:text-slate-600"><i className="fas fa-times"></i></button>
+                    </div>
+                    
+                    <div className="p-8 overflow-y-auto custom-scrollbar bg-white">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {detailItem.image && (
+                                <div className="md:col-span-2">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Featured Image</label>
+                                    <div className="w-full h-72 rounded-3xl overflow-hidden border-4 border-slate-50 shadow-xl group relative">
+                                        <img src={detailItem.image} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                                            <a href={detailItem.image} target="_blank" rel="noreferrer" className="text-white text-xs font-bold flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl">
+                                                <i className="fas fa-external-link-alt"></i> View Full Size
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {fields.map(([key, value]: [string, any]) => (
+                                <div key={key} className={`${key === 'description' || key === 'content' || key === 'comment' ? 'md:col-span-2' : ''} group`}>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-lt-blue transition-colors">{key.replace(/([A-Z])/g, ' $1').trim()}</label>
+                                    <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 text-sm transition-all hover:bg-white hover:shadow-md hover:border-lt-blue/20">
+                                        {renderValue(key, value)}
+                                    </div>
+                                </div>
+                            ))}
+
+                            {detailItem.gallery && detailItem.gallery.length > 0 && (
+                                <div className="md:col-span-2">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Gallery Images</label>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {detailItem.gallery.map((img: string, i: number) => (
+                                            <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:ring-2 hover:ring-lt-blue transition-all">
+                                                <img src={img} alt="" className="w-full h-full object-cover" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                        <div className="text-[10px] text-slate-400 font-medium italic">
+                            Last updated: {new Date(detailItem.updatedAt || Date.now()).toLocaleString()}
+                        </div>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => {
+                                    setIsDetailModalOpen(false);
+                                    handleOpenModal(detailItem);
+                                }}
+                                className="px-6 py-3 bg-lt-blue text-white rounded-2xl text-xs font-bold hover:bg-lt-moss transition-all shadow-lg shadow-lt-blue/20 flex items-center gap-2 active:scale-95"
+                            >
+                                <i className="fas fa-pen"></i> Edit Entry
+                            </button>
+                            <button 
+                                onClick={() => setIsDetailModalOpen(false)}
+                                className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl text-xs font-bold hover:bg-slate-50 transition-all active:scale-95"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     if (isVerifying) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -652,6 +774,13 @@ const AdminPage: React.FC = () => {
                             {loginLoading ? 'Verifying...' : 'Login'}
                         </button>
                     </form>
+
+                    <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+                        <Link to="/" className="text-xs font-bold text-slate-400 hover:text-lt-blue transition-colors flex items-center justify-center gap-2">
+                            <i className="fas fa-arrow-left"></i>
+                            Back to Homepage
+                        </Link>
+                    </div>
                 </div>
             </div>
         );
@@ -761,25 +890,7 @@ const AdminPage: React.FC = () => {
                             )}
                         </div>
                         
-                        {/* Preview Tabs */}
-                        <nav className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl">
-                            {NAV_LINKS.map((link) => (
-                                <button
-                                    key={link.name}
-                                    onClick={() => {
-                                        setPreviewUrl(link.path);
-                                        setViewMode('preview');
-                                    }}
-                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                                        viewMode === 'preview' && previewUrl === link.path
-                                        ? 'bg-white text-lt-blue shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-800'
-                                    }`}
-                                >
-                                    {link.name}
-                                </button>
-                            ))}
-                        </nav>
+                        {/* Preview Tabs - Moved to Preview Toolbar */}
                     </div>
                     
                     <div className="flex items-center gap-4 w-full md:w-auto justify-end">
@@ -949,6 +1060,13 @@ const AdminPage: React.FC = () => {
                                                                 )}
                                                                 <td className="p-5 text-right">
                                                                     <div className="flex justify-end gap-2">
+                                                                        <button 
+                                                                            onClick={() => handleOpenDetailModal(item)} 
+                                                                            className="p-2 text-slate-400 hover:text-lt-blue hover:bg-slate-100 rounded-lg transition-colors" 
+                                                                            title="View Full Details"
+                                                                        >
+                                                                            <i className="fas fa-expand-alt text-xs"></i>
+                                                                        </button>
                                                                         {activeTab === 'blog-posts' && item.status === 'pending' && (
                                                                             <button onClick={() => handleApprove(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Approve Story">
                                                                                 Approve
@@ -981,17 +1099,72 @@ const AdminPage: React.FC = () => {
                             </AnimatedElement>
                         </div>
                     ) : (
-                        <div className="w-full h-full bg-slate-200 animate-in fade-in duration-500">
-                            <iframe 
-                                src={`${window.location.origin}${window.location.pathname}#${previewUrl}`}
-                                className="w-full h-full border-none shadow-inner"
-                                title="Site Preview"
-                            ></iframe>
-                            <div className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-slate-200 flex items-center gap-3 z-10">
-                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Live Preview Mode</span>
-                                <div className="h-4 w-px bg-slate-200"></div>
-                                <p className="text-[10px] text-slate-400 font-mono">{previewUrl}</p>
+                        <div className="w-full h-full bg-slate-200 animate-in fade-in duration-500 flex flex-col">
+                            {/* Preview Toolbar */}
+                            <div className="bg-slate-900 text-white px-6 py-4 flex flex-col gap-4 shadow-2xl z-10 border-b border-slate-800">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 rounded-full border border-green-500/20">
+                                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Live Preview Active</span>
+                                        </div>
+                                        <div className="h-4 w-px bg-slate-700"></div>
+                                        <div className="flex items-center gap-2 text-slate-400">
+                                            <i className="fas fa-desktop text-xs"></i>
+                                            <span className="text-[11px] font-bold">Desktop View</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button 
+                                            onClick={() => setPreviewUrl('/')}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors text-slate-400 hover:text-white"
+                                            title="Reset to Home"
+                                        >
+                                            <i className="fas fa-home text-xs"></i>
+                                        </button>
+                                        <button 
+                                            onClick={() => setViewMode('management')}
+                                            className="px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-[10px] font-bold transition-all flex items-center gap-2 border border-red-500/20"
+                                        >
+                                            <i className="fas fa-times"></i>
+                                            Exit Preview
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1 flex items-center gap-3 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 shadow-inner group">
+                                        <i className="fas fa-lock text-[10px] text-green-500/50"></i>
+                                        <span className="text-[10px] font-mono text-slate-500 select-none">https://visitlatrinidad.gov.ph</span>
+                                        <span className="text-[11px] font-mono text-lt-blue font-bold">{previewUrl}</span>
+                                    </div>
+                                    
+                                    <nav className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
+                                        {NAV_LINKS.map((link) => (
+                                            <button
+                                                key={link.name}
+                                                onClick={() => setPreviewUrl(link.path)}
+                                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                                                    previewUrl === link.path
+                                                    ? 'bg-lt-blue text-white shadow-lg shadow-lt-blue/20'
+                                                    : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                                                }`}
+                                            >
+                                                {link.name}
+                                            </button>
+                                        ))}
+                                    </nav>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 relative bg-slate-800 p-4 md:p-8">
+                                <div className="w-full h-full rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)] border border-slate-700 bg-white relative">
+                                    <iframe 
+                                        src={`${window.location.origin}${window.location.pathname}#${previewUrl}`}
+                                        className="w-full h-full border-none"
+                                        title="Site Preview"
+                                    ></iframe>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1191,6 +1364,9 @@ const AdminPage: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* Detail Modal */}
+            {isDetailModalOpen && renderDetailModal()}
 
             {/* Logout Confirmation Modal */}
             {isLogoutConfirmOpen && (
