@@ -1,15 +1,75 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { STATS, HISTORY_MILESTONES } from '../constants';
 import AnimatedElement from '../components/AnimatedElement';
+import { fetchSiteSettings } from '../services/apiService';
+
+const DEFAULT_HERO_IMAGE = "https://images.unsplash.com/photo-1594270433722-5b18f50b4a48?q=80&w=1920&auto=format&fit=crop";
 
 const AboutPage: React.FC = () => {
+  const [heroImage, setHeroImage] = useState(DEFAULT_HERO_IMAGE);
+  const [heroTitle, setHeroTitle] = useState("About La Trinidad");
+  const [heroSubtitle, setHeroSubtitle] = useState("The Strawberry Capital of the Philippines, where nature's bounty meets rich highland heritage.");
+  const [storyTitle, setStoryTitle] = useState("Our Story");
+  const [storyContent, setStoryContent] = useState("La Trinidad has a rich history dating back to the pre-colonial era. The municipality was named after Doña Trinidad de Leon, wife of the former Spanish Governor-General Narciso Claveria.\n\nToday, it serves as the vibrant capital of Benguet. It stands as a testament to the resilience and industriousness of its people, blending the traditions of the Ibaloi and Kankanaey with modern agricultural advancements.");
+  const [journey, setJourney] = useState<any[]>([]);
+  const [govSettings, setGovSettings] = useState<any>(null);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+        try {
+            const settings = await fetchSiteSettings();
+            console.log('[AboutPage] Loaded settings:', settings);
+
+            if (settings && settings.about) {
+                const about = settings.about;
+
+                if (about.heroImage)   setHeroImage(about.heroImage);
+                if (about.heroTitle)   setHeroTitle(about.heroTitle);
+                if (about.heroSubtitle) setHeroSubtitle(about.heroSubtitle);
+                if (about.storyTitle)  setStoryTitle(about.storyTitle);
+                if (about.storyContent) setStoryContent(about.storyContent);
+
+                // Journey Through Time — accept both `content` and `description` fields
+                if (Array.isArray(about.journeyThroughTime) && about.journeyThroughTime.length > 0) {
+                    const normalized = about.journeyThroughTime.map((item: any) => ({
+                        ...item,
+                        // Normalize: prefer `content`, fall back to `description`
+                        content: item.content || item.description || '',
+                    }));
+                    setJourney(normalized);
+                }
+
+                // Local Government — accept both flat object and nested `.localGovernment`
+                const gov = about.localGovernment || about.government || null;
+                if (gov) {
+                    // Normalize officials: accept `image` or `photo` field
+                    const officials = (gov.officials || gov.members || []).map((o: any) => ({
+                        name: o.name || '',
+                        position: o.position || o.role || '',
+                        image: o.image || o.photo || '',
+                    }));
+                    setGovSettings({ ...gov, officials });
+                }
+            }
+        } catch (error) {
+            console.error('[AboutPage] Failed to load site settings:', error);
+        } finally {
+            setSettingsLoaded(true);
+        }
+    };
+    loadSettings();
+  }, []);
+
+  // Use fetched journey if available, otherwise fall back to static constants
+  const timelineItems = journey.length > 0 ? journey : HISTORY_MILESTONES;
+
   return (
     <section id="about" className="bg-slate-50 overflow-hidden">
         {/* Hero Section */}
         <div className="relative h-[60vh] flex items-center justify-center overflow-hidden">
             <img 
-                src="https://images.unsplash.com/photo-1594270433722-5b18f50b4a48?q=80&w=1920&auto=format&fit=crop" 
+                src={heroImage} 
                 alt="La Trinidad Landscape" 
                 className="absolute inset-0 w-full h-full object-cover animate-ken-burns"
             />
@@ -17,9 +77,9 @@ const AboutPage: React.FC = () => {
             <div className="relative z-10 text-center px-4">
                 <AnimatedElement>
                     <span className="block text-lt-yellow font-bold tracking-widest uppercase mb-2 drop-shadow-sm">Discover</span>
-                    <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-6 drop-shadow-lg">About La Trinidad</h1>
+                    <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-6 drop-shadow-lg">{heroTitle}</h1>
                     <p className="text-lg md:text-xl text-slate-100 max-w-2xl mx-auto font-light drop-shadow-md">
-                        The Strawberry Capital of the Philippines, where nature's bounty meets rich highland heritage.
+                        {heroSubtitle}
                     </p>
                 </AnimatedElement>
             </div>
@@ -54,21 +114,20 @@ const AboutPage: React.FC = () => {
             <div className="max-w-4xl mx-auto mb-24 text-center">
                 <AnimatedElement delay={200}>
                     <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-8 relative inline-block">
-                        Our Story
+                        {storyTitle}
                         <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-20 h-1 bg-lt-orange rounded-full translate-y-3"></span>
                     </h2>
                     <div className="prose prose-lg text-slate-600 mx-auto">
-                        <p className="leading-relaxed mb-6">
-                            La Trinidad has a rich history dating back to the pre-colonial era. The municipality was named after Doña Trinidad de Leon, wife of the former Spanish Governor-General Narciso Claveria.
-                        </p>
-                        <p className="leading-relaxed">
-                            Today, it serves as the vibrant capital of Benguet. It stands as a testament to the resilience and industriousness of its people, blending the traditions of the Ibaloi and Kankanaey with modern agricultural advancements.
-                        </p>
+                        {storyContent.split('\n\n').map((para, i) => (
+                            <p key={i} className="leading-relaxed mb-6">
+                                {para}
+                            </p>
+                        ))}
                     </div>
                 </AnimatedElement>
             </div>
 
-            {/* History Timeline Section */}
+            {/* ── Journey Through Time ────────────────────────────── */}
             <div className="mb-24 relative">
                 <AnimatedElement>
                     <div className="text-center mb-16">
@@ -82,7 +141,7 @@ const AboutPage: React.FC = () => {
                     {/* Vertical Center Line */}
                     <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-lt-moss/30 rounded-full hidden md:block"></div>
                     
-                    {HISTORY_MILESTONES.map((event, index) => (
+                    {timelineItems.map((event: any, index: number) => (
                         <AnimatedElement 
                             key={index} 
                             delay={index * 150} 
@@ -101,18 +160,30 @@ const AboutPage: React.FC = () => {
                                         <div className="flex items-center gap-3 mb-3">
                                             <span className="text-3xl font-bold text-lt-moss/20 absolute right-4 top-4">{event.year}</span>
                                             <div className="w-10 h-10 bg-lt-orange/10 text-lt-orange rounded-full flex items-center justify-center border border-lt-orange/20">
-                                                <i className={event.icon}></i>
+                                                <i className={event.icon || 'fas fa-history'}></i>
                                             </div>
                                             <h3 className="font-bold text-lg text-slate-800">{event.title}</h3>
                                         </div>
                                         
-                                        <p className="text-slate-600 text-sm leading-relaxed mb-4">{event.description}</p>
+                                        {/* ── FIX: read `content` first, then `description` ── */}
+                                        <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                                            {event.content || event.description || ''}
+                                        </p>
                                         
-                                        <div className="h-32 w-full rounded-lg overflow-hidden relative">
-                                            <img src={event.image} alt={event.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500" />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                                            <span className="absolute bottom-2 left-3 text-white text-xs font-bold bg-black/30 px-2 py-1 rounded backdrop-blur-sm">{event.year}</span>
-                                        </div>
+                                        {/* ── FIX: only render image block when an image exists ── */}
+                                        {event.image && event.image.trim() !== '' && (
+                                            <div className="h-48 w-full rounded-lg overflow-hidden relative">
+                                                <img 
+                                                    src={event.image} 
+                                                    alt={event.title} 
+                                                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500" 
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                                                <span className="absolute bottom-2 left-3 text-white text-xs font-bold bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
+                                                    {event.year}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -121,7 +192,6 @@ const AboutPage: React.FC = () => {
                                     <div className="w-8 h-8 rounded-full bg-lt-moss border-4 border-white shadow-md z-10 flex items-center justify-center">
                                         <div className="w-2 h-2 bg-white rounded-full"></div>
                                     </div>
-                                    {/* Mobile Line (only visible on small screens connecting nodes vertically) */}
                                     <div className="absolute h-full w-1 bg-lt-moss/30 -z-10 md:hidden top-0"></div>
                                 </div>
 
@@ -182,7 +252,7 @@ const AboutPage: React.FC = () => {
                 </div>
             </AnimatedElement>
 
-            {/* Government Section */}
+            {/* ── Government Section ──────────────────────────────── */}
             <AnimatedElement delay={400}>
                 <div className="relative rounded-3xl overflow-hidden bg-lt-blue text-white shadow-2xl shadow-lt-blue/30">
                     <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
@@ -192,43 +262,76 @@ const AboutPage: React.FC = () => {
                                 <i className="fas fa-landmark text-2xl"></i>
                                 <span className="uppercase tracking-widest font-bold text-sm">The Local Government</span>
                             </div>
-                            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">Capital of Benguet</h2>
-                            <p className="text-white/90 text-lg leading-relaxed mb-6">
-                                As the capital municipality of Benguet province, La Trinidad serves as the political, educational, and commercial hub of the Cordillera Administrative Region.
-                            </p>
-                            <p className="text-white/90 text-lg leading-relaxed mb-8">
-                                The Municipal Government, led by the Mayor and the Sangguniang Bayan, works tirelessly to balance rapid urbanization with the preservation of its rich Ibaloi culture and fragile mountain ecosystem.
-                            </p>
-                            
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lt-yellow border border-white/20">
-                                        <i className="fas fa-flag"></i>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-white">Public Service</h4>
-                                        <p className="text-sm text-white/70">Committed to transparency, efficiency, and good governance.</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lt-yellow border border-white/20">
-                                        <i className="fas fa-leaf"></i>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-white">Sustainable Vision</h4>
-                                        <p className="text-sm text-white/70">Pioneering organic agriculture and eco-tourism initiatives.</p>
-                                    </div>
-                                </div>
+                            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">
+                                {govSettings?.title || "Capital of Benguet"}
+                            </h2>
+                            <div className="prose prose-invert prose-lg text-white/90 leading-relaxed mb-8">
+                                {(govSettings?.content || "As the capital municipality of Benguet province, La Trinidad serves as the political, educational, and commercial hub of the Cordillera Administrative Region.\n\nThe Municipal Government, led by the Mayor and the Sangguniang Bayan, works tirelessly to balance rapid urbanization with the preservation of its rich Ibaloi culture and fragile mountain ecosystem.")
+                                    .split('\n\n')
+                                    .map((para: string, i: number) => (
+                                        <p key={i} className="mb-4">{para}</p>
+                                    ))
+                                }
                             </div>
+                            
+                            {/* ── FIX: only render officials grid when array is non-empty ── */}
+                            {govSettings?.officials && govSettings.officials.length > 0 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
+                                    {govSettings.officials.map((official: any, idx: number) => (
+                                        <div key={idx} className="text-center group">
+                                            <div className="w-16 h-16 mx-auto rounded-full overflow-hidden border-2 border-white/20 mb-2 group-hover:border-lt-yellow transition-colors bg-white/10">
+                                                {official.image && official.image.trim() !== '' ? (
+                                                    <img 
+                                                        src={official.image} 
+                                                        alt={official.name} 
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            // If image fails to load, show initials fallback
+                                                            (e.target as HTMLImageElement).style.display = 'none';
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-white/50 text-lg font-bold">
+                                                        {official.name?.charAt(0) || '?'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-xs font-bold text-white truncate px-1">{official.name}</p>
+                                            <p className="text-[10px] text-white/60 truncate px-1">{official.position}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                // Fallback when no officials have been set in admin
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lt-yellow border border-white/20">
+                                            <i className="fas fa-flag"></i>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white">Public Service</h4>
+                                            <p className="text-sm text-white/70">Committed to transparency, efficiency, and good governance.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lt-yellow border border-white/20">
+                                            <i className="fas fa-leaf"></i>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white">Sustainable Vision</h4>
+                                            <p className="text-sm text-white/70">Pioneering organic agriculture and eco-tourism initiatives.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         
                         {/* Right Column: Visual with Official Logo */}
                         <div className="relative min-h-[300px] md:min-h-full group order-1 md:order-2 bg-gradient-to-br from-slate-700 to-lt-blue flex items-center justify-center p-10">
                             <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/woven.png')]"></div>
                             
-                            {/* Official LGU Logo */}
                             <img 
-                                src="https://ltdrrmo.ph/wp-content/uploads/2021/05/lt-lg-logo.png" 
+                                src={govSettings?.image || "https://ltdrrmo.ph/wp-content/uploads/2021/05/lt-lg-logo.png"} 
                                 alt="La Trinidad Municipal Logo" 
                                 className="w-64 h-64 object-contain drop-shadow-2xl relative z-10 filter hover:brightness-110 transition-all duration-300 transform group-hover:scale-105"
                             />

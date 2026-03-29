@@ -3,7 +3,16 @@ import { Link } from 'react-router-dom';
 import { 
     fetchTouristSpots, fetchDiningSpots, fetchBlogPosts, fetchLocalEvents, fetchReports,
     deleteItem, createItem, updateItem, uploadImage, deleteReview, deleteReport, verifyAdminToken,
-    fetchAnalyticsSummary, fetchAnalyticsDebug, fetchAdminLogs, logoutAdmin
+    fetchAnalyticsSummary,
+    fetchAnalyticsDebug,
+    fetchAdminLogs,
+    logoutAdmin,
+    fetchSiteSettings,
+    updateSiteSettings,
+    markReviewAsSeen,
+    markReviewAsResolved,
+    markReportAsSeen,
+    markBlogPostAsSeen
 } from '../services/apiService';
 import { NAV_LINKS } from '../constants';
 import AnimatedElement from '../components/AnimatedElement';
@@ -13,7 +22,8 @@ const TABS = [
     { id: 'dining-spots', label: 'Dining', icon: 'fa-utensils' },
     { id: 'blog-posts', label: 'Blog Moderation', icon: 'fa-newspaper' },
     { id: 'events', label: 'Events', icon: 'fa-calendar-alt' },
-    { id: 'reports', label: 'Reports', icon: 'fa-flag' },
+    { id: 'reports', label: 'Reports', icon: 'fa-flag', badge: 'reports' },
+    { id: 'site-settings', label: 'Home/About', icon: 'fa-cog' },
     { id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' },
     { id: 'activity-log', label: 'Activity Log', icon: 'fa-history' }
 ];
@@ -28,21 +38,29 @@ const AdminPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState('tourist-spots');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [viewMode, setViewMode] = useState<'management' | 'preview'>('management');
+    
+    const [notifications, setNotifications] = useState({
+        touristReviews: 0,
+        diningReviews: 0,
+        reports: 0,
+        blogPosts: 0
+    });
     const [previewUrl, setPreviewUrl] = useState('/');
     
     const [data, setData] = useState<any[]>([]);
     const [analyticsSummary, setAnalyticsSummary] = useState<any>(null);
     const [adminLogs, setAdminLogs] = useState<any[]>([]);
+    const [siteSettingsForm, setSiteSettingsForm] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    // isModalOpen is no longer used — all editing is done via the full-screen detail view
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
     const [editItem, setEditItem] = useState<any | null>(null);
     const [formData, setFormData] = useState<any>({});
     
-    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-    const [currentReviewItem, setCurrentReviewItem] = useState<any | null>(null);
-
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [isDetailView, setIsDetailView] = useState(false);
+    const [detailSubView, setDetailSubView] = useState<'info' | 'reviews' | 'edit'>('info');
     const [detailItem, setDetailItem] = useState<any | null>(null);
 
     const [imageInputType, setImageInputType] = useState<'url' | 'file'>('url');
@@ -70,8 +88,40 @@ const AdminPage: React.FC = () => {
     useEffect(() => {
         if (isAuthenticated) {
             loadData(activeTab);
+            fetchNotifications();
         }
     }, [activeTab, isAuthenticated]);
+
+    const fetchNotifications = async () => {
+        try {
+            const [spots, dining, reports, blogPosts] = await Promise.all([
+                fetchTouristSpots(),
+                fetchDiningSpots(),
+                fetchReports(),
+                fetchBlogPosts('admin')
+            ]);
+
+            const touristReviews = spots.reduce((acc: any, spot: any) => {
+                return acc + (spot.reviews?.filter((r: any) => !r.isSeen).length || 0);
+            }, 0);
+
+            const diningReviews = dining.reduce((acc: any, spot: any) => {
+                return acc + (spot.reviews?.filter((r: any) => !r.isSeen).length || 0);
+            }, 0);
+
+            const newReports = reports.filter((r: any) => !r.isSeen).length;
+            const newBlogPosts = blogPosts.filter((p: any) => !p.isSeen).length;
+
+            setNotifications({
+                touristReviews,
+                diningReviews,
+                reports: newReports,
+                blogPosts: newBlogPosts
+            });
+        } catch (error) {
+            console.error('Failed to fetch notifications:', error);
+        }
+    };
 
     // Inactivity Auto-Logout (10 minutes)
     useEffect(() => {
@@ -84,14 +134,14 @@ const AdminPage: React.FC = () => {
             timeout = setTimeout(() => {
                 handleLogout();
                 alert("You have been logged out due to 10 minutes of inactivity.");
-            }, 10 * 60 * 1000); // 10 minutes
+            }, 10 * 60 * 1000);
         };
 
         const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
         const handleActivity = () => resetTimer();
 
         events.forEach(event => document.addEventListener(event, handleActivity));
-        resetTimer(); // Initialize timer
+        resetTimer();
 
         return () => {
             if (timeout) clearTimeout(timeout);
@@ -139,7 +189,6 @@ const AdminPage: React.FC = () => {
         setAccessCode('');
         setData([]);
         setIsLogoutConfirmOpen(false);
-        // Stay on admin page login state
     };
 
     const loadData = async (tab: string) => {
@@ -154,7 +203,7 @@ const AdminPage: React.FC = () => {
             else if (tab === 'analytics') {
                 result = await fetchAnalyticsSummary();
                 setAnalyticsSummary(result);
-                setData([]); // Clear data for analytics tab
+                setData([]);
                 setIsLoading(false);
                 return;
             } else if (tab === 'activity-log') {
@@ -163,12 +212,35 @@ const AdminPage: React.FC = () => {
                 setData([]);
                 setIsLoading(false);
                 return;
+            } else if (tab === 'site-settings') {
+                setLoading(true);
+                setError(null);
+                try {
+                    console.log('[Admin] Fetching site settings...');
+                    result = await fetchSiteSettings();
+                    console.log('[Admin] Site Settings Result:', result);
+                    if (!result) {
+                        throw new Error("Site settings returned empty from server.");
+                    }
+                    setSiteSettingsForm(result);
+                    setData([]);
+                } catch (err: any) {
+                    console.error('[Admin] Failed to fetch site settings:', err);
+                    setError(err.message || 'Failed to load site settings.');
+                } finally {
+                    setLoading(false);
+                    setIsLoading(false);
+                }
+                return;
             }
             setData(result || []);
         } catch (error: any) {
+            console.error('[Admin] loadData Error:', error);
             if (error.message.includes('403')) {
                 handleLogout();
                 alert("Your session has expired. Please login again.");
+            } else {
+                alert(`Error loading data: ${error.message}`);
             }
         } finally {
             setIsLoading(false);
@@ -184,6 +256,8 @@ const AdminPage: React.FC = () => {
                 await deleteItem(activeTab, id);
             }
             setData((prev: any[]) => prev.filter((item: any) => item._id !== id));
+            // Return to list view after deletion
+            setIsDetailView(false);
         } catch (error: any) {
             alert(error.message || 'Operation failed.');
         }
@@ -199,37 +273,99 @@ const AdminPage: React.FC = () => {
         }
     };
 
-    const handleOpenModal = (item?: any) => {
+    // ─── Unified entry point: everything opens the full-screen detail panel ───
+    const openDetailPanel = (item: any | null, subView: 'info' | 'reviews' | 'edit') => {
         setEditItem(item || null);
-        setFormData(item || {});
-        setImageInputType('url'); 
+        setFormData(item ? { ...item } : {});
+        setImageInputType('url');
         setFormError(null);
-        setIsModalOpen(true);
-    };
-
-    const handleOpenReviewModal = (item: any) => {
-        setCurrentReviewItem(item);
-        setIsReviewModalOpen(true);
-    };
-
-    const handleOpenDetailModal = (item: any) => {
         setDetailItem(item);
-        setIsDetailModalOpen(true);
+        setDetailSubView(subView);
+        setIsDetailView(true);
+
+        // Auto-mark as seen if it's a report or blog post
+        if (item && !item.isSeen) {
+            if (activeTab === 'reports') {
+                handleMarkReportSeen(item._id);
+            } else if (activeTab === 'blog-posts') {
+                handleMarkBlogPostSeen(item._id);
+            }
+        }
     };
+
+    const handleOpenModal      = (item?: any)  => openDetailPanel(item || null, item ? 'info' : 'edit');
+    const handleOpenReviewModal = (item: any)  => openDetailPanel(item, 'reviews');
+    const handleOpenDetailModal = (item: any)  => openDetailPanel(item, 'info');
 
     const handleDeleteReview = async (reviewId: string) => {
-        if (!currentReviewItem) return;
+        if (!detailItem) return;
         if (!window.confirm("Delete this review? This is permanent.")) return;
 
         try {
             const type = activeTab === 'tourist-spots' ? 'tourist' : 'dining';
-            await deleteReview(type, currentReviewItem._id, reviewId);
-            const updatedReviews = currentReviewItem.reviews.filter((r: any) => r._id !== reviewId);
-            const updatedItem = { ...currentReviewItem, reviews: updatedReviews };
-            setCurrentReviewItem(updatedItem);
-            setData((prev: any[]) => prev.map((item: any) => item._id === currentReviewItem._id ? updatedItem : item));
+            await deleteReview(type, detailItem._id, reviewId);
+            const updatedReviews = detailItem.reviews.filter((r: any) => r._id !== reviewId);
+            const updatedItem = { ...detailItem, reviews: updatedReviews };
+            setDetailItem(updatedItem);
+            setData((prev: any[]) => prev.map((item: any) => item._id === detailItem._id ? updatedItem : item));
         } catch (error: any) {
             alert(error.message || "Failed to delete review.");
+        }
+    };
+
+    const handleMarkReviewSeen = async (reviewId: string) => {
+        if (!detailItem) return;
+        try {
+            const type = activeTab === 'tourist-spots' ? 'tourist' : 'dining';
+            await markReviewAsSeen(type, detailItem._id, reviewId);
+            const updatedReviews = detailItem.reviews.map((r: any) => r._id === reviewId ? { ...r, isSeen: true } : r);
+            const updatedItem = { ...detailItem, reviews: updatedReviews };
+            setDetailItem(updatedItem);
+            setData((prev: any[]) => prev.map((item: any) => item._id === detailItem._id ? updatedItem : item));
+            fetchNotifications();
+        } catch (error) {
+            console.error('Error marking review as seen:', error);
+        }
+    };
+
+    const handleMarkReviewResolved = async (reviewId: string) => {
+        if (!detailItem) return;
+        try {
+            const type = activeTab === 'tourist-spots' ? 'tourist' : 'dining';
+            await markReviewAsResolved(type, detailItem._id, reviewId);
+            const updatedReviews = detailItem.reviews.map((r: any) => r._id === reviewId ? { ...r, isSeen: true, isResolved: true } : r);
+            const updatedItem = { ...detailItem, reviews: updatedReviews };
+            setDetailItem(updatedItem);
+            setData((prev: any[]) => prev.map((item: any) => item._id === detailItem._id ? updatedItem : item));
+            fetchNotifications();
+        } catch (error) {
+            console.error('Error marking review as resolved:', error);
+        }
+    };
+
+    const handleMarkReportSeen = async (reportId: string) => {
+        try {
+            await markReportAsSeen(reportId);
+            setData((prev: any[]) => prev.map((d: any) => d._id === reportId ? { ...d, isSeen: true } : d));
+            if (detailItem && detailItem._id === reportId) {
+                setDetailItem({ ...detailItem, isSeen: true });
+            }
+            fetchNotifications();
+        } catch (error) {
+            console.error('Error marking report as seen:', error);
+        }
+    };
+
+    const handleMarkBlogPostSeen = async (postId: string) => {
+        try {
+            await markBlogPostAsSeen(postId);
+            setData((prev: any[]) => prev.map((d: any) => d._id === postId ? { ...d, isSeen: true } : d));
+            if (detailItem && detailItem._id === postId) {
+                setDetailItem({ ...detailItem, isSeen: true });
+            }
+            fetchNotifications();
+        } catch (error) {
+            console.error('Error marking blog post as seen:', error);
         }
     };
 
@@ -243,6 +379,24 @@ const AdminPage: React.FC = () => {
                 setFormData({ ...formData, image: result.url });
             } catch (error: any) {
                 setFormError(error.message || "Upload failed.");
+            } finally {
+                setIsUploading(false);
+                e.target.value = ''; 
+            }
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, callback: (url: string) => void) => {
+        if (e.target.files && e.target.files[0]) {
+            setIsUploading(true);
+            setFormError(null);
+            try {
+                const file = e.target.files[0];
+                const result = await uploadImage(file);
+                callback(result.url);
+            } catch (error: any) {
+                setFormError(error.message || "Upload failed.");
+                alert(error.message || "Upload failed.");
             } finally {
                 setIsUploading(false);
                 e.target.value = ''; 
@@ -265,11 +419,569 @@ const AdminPage: React.FC = () => {
                 const created = await createItem(activeTab, payload);
                 setData((prev: any[]) => [created, ...prev]);
             }
-            setIsModalOpen(false);
+            setIsDetailView(false);
             setFormData({});
         } catch (error: any) {
             setFormError(error.message || 'Operation failed.');
         }
+    };
+
+    const renderSiteSettings = () => {
+        console.log('[Admin] renderSiteSettings siteSettingsForm:', siteSettingsForm);
+        
+        if (loading && !siteSettingsForm) {
+            return (
+                <div className="p-32 text-center text-slate-400">
+                    <i className="fas fa-circle-notch fa-spin text-4xl mb-4 text-lt-blue"></i>
+                    <p className="text-sm font-medium">Loading site settings...</p>
+                </div>
+            );
+        }
+
+        if (error) {
+            return (
+                <div className="p-32 text-center text-slate-400">
+                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i className="fas fa-exclamation-triangle text-3xl text-red-400 opacity-60"></i>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">Failed to load settings</h3>
+                    <p className="text-sm text-slate-500 mb-6">{error}</p>
+                    <button 
+                        onClick={() => loadData('site-settings')}
+                        className="bg-lt-blue text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-lt-moss transition-all"
+                    >
+                        Retry Loading
+                    </button>
+                </div>
+            );
+        }
+
+        if (!siteSettingsForm || !siteSettingsForm.home || !siteSettingsForm.about) {
+            return (
+                <div className="p-32 text-center text-slate-400">
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i className="fas fa-exclamation-triangle text-3xl opacity-20"></i>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">Settings not found</h3>
+                    <p className="text-sm text-slate-500 mb-6">We couldn't retrieve the site settings. Please try refreshing.</p>
+                    <button 
+                        onClick={() => loadData('site-settings')}
+                        className="bg-lt-blue text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-lt-moss transition-all"
+                    >
+                        Retry Loading
+                    </button>
+                </div>
+            );
+        }
+
+        const handleSaveSettings = async () => {
+            setIsLoading(true);
+            try {
+                const updated = await updateSiteSettings(siteSettingsForm);
+                setSiteSettingsForm(updated);
+                alert('Site settings updated successfully!');
+            } catch (error: any) {
+                alert(error.message || 'Failed to update settings.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        const updateHomeField = (field: string, value: any) => {
+            setSiteSettingsForm({
+                ...siteSettingsForm,
+                home: { ...siteSettingsForm.home, [field]: value }
+            });
+        };
+
+        const updateAboutField = (field: string, value: any) => {
+            setSiteSettingsForm({
+                ...siteSettingsForm,
+                about: { ...siteSettingsForm.about, [field]: value }
+            });
+        };
+
+        const updateJourneyItem = (index: number, field: string, value: string) => {
+            const newJourney = [...(siteSettingsForm.about.journeyThroughTime || [])];
+            newJourney[index] = { ...newJourney[index], [field]: value };
+            updateAboutField('journeyThroughTime', newJourney);
+        };
+
+        const addJourneyItem = () => {
+            const newJourney = [...(siteSettingsForm.about.journeyThroughTime || []), { year: '', title: '', content: '', image: '' }];
+            updateAboutField('journeyThroughTime', newJourney);
+        };
+
+        const removeJourneyItem = (index: number) => {
+            const newJourney = siteSettingsForm.about.journeyThroughTime.filter((_: any, i: number) => i !== index);
+            updateAboutField('journeyThroughTime', newJourney);
+        };
+
+        const updateOfficial = (index: number, field: string, value: string) => {
+            const newOfficials = [...(siteSettingsForm.about.localGovernment?.officials || [])];
+            newOfficials[index] = { ...newOfficials[index], [field]: value };
+            setSiteSettingsForm({
+                ...siteSettingsForm,
+                about: {
+                    ...siteSettingsForm.about,
+                    localGovernment: {
+                        ...siteSettingsForm.about.localGovernment,
+                        officials: newOfficials
+                    }
+                }
+            });
+        };
+
+        const addOfficial = () => {
+            const newOfficials = [...(siteSettingsForm.about.localGovernment?.officials || []), { name: '', position: '', image: '' }];
+            setSiteSettingsForm({
+                ...siteSettingsForm,
+                about: {
+                    ...siteSettingsForm.about,
+                    localGovernment: {
+                        ...siteSettingsForm.about.localGovernment,
+                        officials: newOfficials
+                    }
+                }
+            });
+        };
+
+        const removeOfficial = (index: number) => {
+            const newOfficials = siteSettingsForm.about.localGovernment.officials.filter((_: any, i: number) => i !== index);
+            setSiteSettingsForm({
+                ...siteSettingsForm,
+                about: {
+                    ...siteSettingsForm.about,
+                    localGovernment: {
+                        ...siteSettingsForm.about.localGovernment,
+                        officials: newOfficials
+                    }
+                }
+            });
+        };
+
+        const updateHomeHeroImage = (index: number, field: string, value: string) => {
+            const newImages = [...siteSettingsForm.home.heroImages];
+            newImages[index] = { ...newImages[index], [field]: value };
+            updateHomeField('heroImages', newImages);
+        };
+
+        return (
+            <div className="max-w-5xl mx-auto">
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-800">Home & About Content</h2>
+                        <p className="text-slate-500 text-sm">Edit titles, text, and images for Home and About pages.</p>
+                    </div>
+                    <button 
+                        onClick={handleSaveSettings}
+                        disabled={isLoading}
+                        className="bg-lt-blue hover:bg-lt-moss text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-lt-blue/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                        {isLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
+                        Save All Changes
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Home Page Settings */}
+                    <div className="space-y-6">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                                <div className="w-10 h-10 rounded-full bg-lt-yellow/10 text-lt-yellow flex items-center justify-center">
+                                    <i className="fas fa-home"></i>
+                                </div>
+                                <h3 className="font-bold text-slate-800">Home Page Content</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Hero Welcome Text</label>
+                                    <input 
+                                        type="text" 
+                                        value={siteSettingsForm.home.heroWelcomeText}
+                                        onChange={(e) => updateHomeField('heroWelcomeText', e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lt-yellow/20 focus:border-lt-yellow outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Hero Title</label>
+                                    <input 
+                                        type="text" 
+                                        value={siteSettingsForm.home.heroTitle}
+                                        onChange={(e) => updateHomeField('heroTitle', e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lt-yellow/20 focus:border-lt-yellow outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Hero Subtitle</label>
+                                    <textarea 
+                                        rows={3}
+                                        value={siteSettingsForm.home.heroSubtitle}
+                                        onChange={(e) => updateHomeField('heroSubtitle', e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lt-yellow/20 focus:border-lt-yellow outline-none transition-all resize-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                                <div className="w-10 h-10 rounded-full bg-lt-orange/10 text-lt-orange flex items-center justify-center">
+                                    <i className="fas fa-images"></i>
+                                </div>
+                                <h3 className="font-bold text-slate-800">Home Hero Slideshow</h3>
+                            </div>
+
+                            <div className="space-y-6">
+                                {Array.isArray(siteSettingsForm.home.heroImages) && siteSettingsForm.home.heroImages.map((img: any, idx: number) => (
+                                    <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-100 relative group">
+                                        <span className="absolute -top-2 -left-2 w-6 h-6 bg-slate-800 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md">
+                                            {idx + 1}
+                                        </span>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <div className="sm:col-span-1">
+                                                <div className="aspect-video rounded-lg overflow-hidden border border-slate-200 bg-white">
+                                                    <img src={img.url} alt={img.alt} className="w-full h-full object-cover" />
+                                                </div>
+                                            </div>
+                                            <div className="sm:col-span-2 space-y-3">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Image URL"
+                                                    value={img.url}
+                                                    onChange={(e) => updateHomeHeroImage(idx, 'url', e.target.value)}
+                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-lt-orange outline-none"
+                                                />
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Alt Text"
+                                                    value={img.alt}
+                                                    onChange={(e) => updateHomeHeroImage(idx, 'alt', e.target.value)}
+                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-lt-orange outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* About Page Settings */}
+                    <div className="space-y-6">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                                <div className="w-10 h-10 rounded-full bg-lt-blue/10 text-lt-blue flex items-center justify-center">
+                                    <i className="fas fa-info-circle"></i>
+                                </div>
+                                <h3 className="font-bold text-slate-800">About Page Content</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Hero Title</label>
+                                    <input 
+                                        type="text" 
+                                        value={siteSettingsForm.about.heroTitle}
+                                        onChange={(e) => updateAboutField('heroTitle', e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lt-blue/20 focus:border-lt-blue outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Hero Subtitle</label>
+                                    <textarea 
+                                        rows={2}
+                                        value={siteSettingsForm.about.heroSubtitle}
+                                        onChange={(e) => updateAboutField('heroSubtitle', e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lt-blue/20 focus:border-lt-blue outline-none transition-all resize-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Hero Image URL</label>
+                                    <div className="flex gap-3">
+                                        <div className="w-16 h-12 rounded-lg overflow-hidden border border-slate-200 flex-shrink-0 bg-slate-100">
+                                            <img src={siteSettingsForm.about.heroImage} alt="" className="w-full h-full object-cover" />
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            value={siteSettingsForm.about.heroImage}
+                                            onChange={(e) => updateAboutField('heroImage', e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lt-blue/20 focus:border-lt-blue outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                                <div className="w-10 h-10 rounded-full bg-lt-moss/10 text-lt-moss flex items-center justify-center">
+                                    <i className="fas fa-book-open"></i>
+                                </div>
+                                <h3 className="font-bold text-slate-800">Our Story Section</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Story Title</label>
+                                    <input 
+                                        type="text" 
+                                        value={siteSettingsForm.about.storyTitle}
+                                        onChange={(e) => updateAboutField('storyTitle', e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lt-moss/20 focus:border-lt-moss outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Story Content</label>
+                                    <textarea 
+                                        rows={8}
+                                        value={siteSettingsForm.about.storyContent}
+                                        onChange={(e) => updateAboutField('storyContent', e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lt-moss/20 focus:border-lt-moss outline-none transition-all resize-none leading-relaxed"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-2 italic">Tip: Use double newlines to separate paragraphs.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Journey Through Time */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-lt-blue/10 text-lt-blue flex items-center justify-center">
+                                    <i className="fas fa-history"></i>
+                                </div>
+                                <h3 className="font-bold text-slate-800">Journey Through Time (Timeline)</h3>
+                            </div>
+                            <button 
+                                onClick={addJourneyItem}
+                                className="text-xs font-bold text-lt-blue hover:text-lt-moss flex items-center gap-1"
+                            >
+                                <i className="fas fa-plus-circle"></i> Add Year
+                            </button>
+                        </div>
+
+                        <div className="space-y-6">
+                            {(siteSettingsForm.about.journeyThroughTime || []).map((item: any, idx: number) => (
+                                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 relative">
+                                    <button 
+                                        onClick={() => removeJourneyItem(idx)}
+                                        className="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition-colors"
+                                    >
+                                        <i className="fas fa-trash-alt"></i>
+                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                        <div className="md:col-span-1 space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Year</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={item.year}
+                                                    onChange={(e) => updateJourneyItem(idx, 'year', e.target.value)}
+                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-lt-blue"
+                                                    placeholder="e.g. 1900"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Image</label>
+                                                <div className="aspect-square rounded-lg overflow-hidden border border-slate-200 bg-white mb-2">
+                                                    {item.image ? (
+                                                        <img src={item.image} className="w-full h-full object-cover" alt="" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                                            <i className="fas fa-image text-2xl"></i>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <input 
+                                                    type="file" 
+                                                    id={`journey-img-${idx}`}
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={(e) => handleFileUpload(e, (url) => updateJourneyItem(idx, 'image', url))}
+                                                />
+                                                <label 
+                                                    htmlFor={`journey-img-${idx}`}
+                                                    className="block w-full text-center py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors"
+                                                >
+                                                    {isUploading ? <i className="fas fa-spinner fa-spin"></i> : 'Upload Image'}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="md:col-span-3 space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Title</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={item.title}
+                                                    onChange={(e) => updateJourneyItem(idx, 'title', e.target.value)}
+                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-lt-blue"
+                                                    placeholder="Event Title"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Content</label>
+                                                <textarea 
+                                                    rows={4}
+                                                    value={item.content}
+                                                    onChange={(e) => updateJourneyItem(idx, 'content', e.target.value)}
+                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-lt-blue resize-none"
+                                                    placeholder="Describe this historical event..."
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Local Government */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-8">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                            <div className="w-10 h-10 rounded-full bg-lt-yellow/10 text-lt-yellow flex items-center justify-center">
+                                <i className="fas fa-landmark"></i>
+                            </div>
+                            <h3 className="font-bold text-slate-800">Local Government Section</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="md:col-span-1 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Section Title</label>
+                                    <input 
+                                        type="text" 
+                                        value={siteSettingsForm.about.localGovernment?.title || ''}
+                                        onChange={(e) => setSiteSettingsForm({
+                                            ...siteSettingsForm,
+                                            about: {
+                                                ...siteSettingsForm.about,
+                                                localGovernment: { ...siteSettingsForm.about.localGovernment, title: e.target.value }
+                                            }
+                                        })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-lt-yellow"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Main Image</label>
+                                    <div className="aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-100 mb-3">
+                                        {siteSettingsForm.about.localGovernment?.image ? (
+                                            <img src={siteSettingsForm.about.localGovernment.image} className="w-full h-full object-cover" alt="" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                                <i className="fas fa-image text-3xl"></i>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <input 
+                                        type="file" 
+                                        id="gov-main-img"
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={(e) => handleFileUpload(e, (url) => setSiteSettingsForm({
+                                            ...siteSettingsForm,
+                                            about: {
+                                                ...siteSettingsForm.about,
+                                                localGovernment: { ...siteSettingsForm.about.localGovernment, image: url }
+                                            }
+                                        }))}
+                                    />
+                                    <label 
+                                        htmlFor="gov-main-img"
+                                        className="block w-full text-center py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors"
+                                    >
+                                        {isUploading ? <i className="fas fa-spinner fa-spin"></i> : 'Change Main Image'}
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="md:col-span-2 space-y-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Government Content</label>
+                                    <textarea 
+                                        rows={6}
+                                        value={siteSettingsForm.about.localGovernment?.content || ''}
+                                        onChange={(e) => setSiteSettingsForm({
+                                            ...siteSettingsForm,
+                                            about: {
+                                                ...siteSettingsForm.about,
+                                                localGovernment: { ...siteSettingsForm.about.localGovernment, content: e.target.value }
+                                            }
+                                        })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-lt-yellow resize-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Government Officials</label>
+                                        <button 
+                                            onClick={addOfficial}
+                                            className="text-[10px] font-bold text-lt-yellow hover:text-lt-orange flex items-center gap-1"
+                                        >
+                                            <i className="fas fa-plus-circle"></i> Add Official
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {(siteSettingsForm.about.localGovernment?.officials || []).map((official: any, idx: number) => (
+                                            <div key={idx} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm relative group">
+                                                <button 
+                                                    onClick={() => removeOfficial(idx)}
+                                                    className="absolute top-2 right-2 text-slate-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <i className="fas fa-times-circle"></i>
+                                                </button>
+                                                <div className="flex gap-4">
+                                                    <div className="w-16 h-16 rounded-full overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
+                                                        {official.image ? (
+                                                            <img src={official.image} className="w-full h-full object-cover" alt="" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-slate-200">
+                                                                <i className="fas fa-user"></i>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 space-y-2">
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Name"
+                                                            value={official.name}
+                                                            onChange={(e) => updateOfficial(idx, 'name', e.target.value)}
+                                                            className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-xs outline-none focus:border-lt-yellow"
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Position"
+                                                            value={official.position}
+                                                            onChange={(e) => updateOfficial(idx, 'position', e.target.value)}
+                                                            className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-xs outline-none focus:border-lt-yellow"
+                                                        />
+                                                        <input 
+                                                            type="file" 
+                                                            id={`official-img-${idx}`}
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={(e) => handleFileUpload(e, (url) => updateOfficial(idx, 'image', url))}
+                                                        />
+                                                        <label 
+                                                            htmlFor={`official-img-${idx}`}
+                                                            className="block text-[9px] font-bold text-lt-yellow cursor-pointer hover:underline"
+                                                        >
+                                                            {isUploading ? 'Uploading...' : 'Upload Photo'}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     const renderAnalyticsDashboard = () => {
@@ -279,7 +991,6 @@ const AdminPage: React.FC = () => {
 
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
-                {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                         <div className="flex items-center gap-4 mb-4">
@@ -364,7 +1075,6 @@ const AdminPage: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Top Content */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                             <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -385,10 +1095,7 @@ const AdminPage: React.FC = () => {
                                                 <p className="text-[10px] text-slate-400">{spot.views} views</p>
                                             </div>
                                             <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="h-full bg-lt-blue" 
-                                                    style={{ width: `${(spot.views / topTouristSpots[0].views) * 100}%` }}
-                                                ></div>
+                                                <div className="h-full bg-lt-blue" style={{ width: `${(spot.views / topTouristSpots[0].views) * 100}%` }}></div>
                                             </div>
                                         </div>
                                     ))}
@@ -407,10 +1114,7 @@ const AdminPage: React.FC = () => {
                                                 <p className="text-[10px] text-slate-400">{spot.views} views</p>
                                             </div>
                                             <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="h-full bg-lt-moss" 
-                                                    style={{ width: `${topDiningSpots[0]?.views > 0 ? (spot.views / topDiningSpots[0].views) * 100 : 0}%` }}
-                                                ></div>
+                                                <div className="h-full bg-lt-moss" style={{ width: `${topDiningSpots[0]?.views > 0 ? (spot.views / topDiningSpots[0].views) * 100 : 0}%` }}></div>
                                             </div>
                                         </div>
                                     )) : (
@@ -431,10 +1135,7 @@ const AdminPage: React.FC = () => {
                                                 <p className="text-[10px] text-slate-400">{post.views} views</p>
                                             </div>
                                             <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="h-full bg-lt-orange" 
-                                                    style={{ width: `${(post.views / topBlogPosts[0].views) * 100}%` }}
-                                                ></div>
+                                                <div className="h-full bg-lt-orange" style={{ width: `${(post.views / topBlogPosts[0].views) * 100}%` }}></div>
                                             </div>
                                         </div>
                                     ))}
@@ -443,7 +1144,6 @@ const AdminPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Dwell Time & Activity */}
                     <div className="space-y-8">
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                             <div className="p-6 border-b border-slate-100">
@@ -459,10 +1159,7 @@ const AdminPage: React.FC = () => {
                                             <div className="flex-1">
                                                 <p className="text-xs font-bold text-slate-700 truncate">{item._id}</p>
                                                 <div className="w-full h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                                                    <div 
-                                                        className="h-full bg-lt-blue" 
-                                                        style={{ width: `${Math.min((item.avgDuration / 120) * 100, 100)}%` }}
-                                                    ></div>
+                                                    <div className="h-full bg-lt-blue" style={{ width: `${Math.min((item.avgDuration / 120) * 100, 100)}%` }}></div>
                                                 </div>
                                             </div>
                                             <div className="ml-4 text-right">
@@ -609,10 +1306,77 @@ const AdminPage: React.FC = () => {
         </div>
     );
 
-    const renderDetailModal = () => {
-        if (!detailItem) return null;
+    const renderGalleryInput = (label: string): React.ReactElement => {
+        const gallery = formData.gallery || [];
+        
+        const addGalleryItem = (url: string) => {
+            if (!url) return;
+            setFormData({ ...formData, gallery: [...gallery, url] });
+        };
 
-        const fields = Object.entries(detailItem).filter(([key]) => !['_id', '__v', 'updatedAt', 'reviews', 'image'].includes(key));
+        const removeGalleryItem = (index: number) => {
+            const newGallery = [...gallery];
+            newGallery.splice(index, 1);
+            setFormData({ ...formData, gallery: newGallery });
+        };
+
+        return (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{label} ({gallery.length})</p>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {gallery.map((img: string, i: number) => (
+                        <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 group">
+                            <img src={img} alt="" className="w-full h-full object-cover" />
+                            <button 
+                                type="button"
+                                onClick={() => removeGalleryItem(i)}
+                                className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <i className="fas fa-times text-[10px]"></i>
+                            </button>
+                        </div>
+                    ))}
+                    <div className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-4 text-center hover:border-lt-blue hover:bg-lt-blue/5 transition-all cursor-pointer group relative">
+                        <i className="fas fa-plus text-slate-300 group-hover:text-lt-blue mb-2"></i>
+                        <span className="text-[10px] font-bold text-slate-400 group-hover:text-lt-blue">Add Image</span>
+                        <input 
+                            type="text"
+                            placeholder="Paste URL..."
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addGalleryItem((e.target as HTMLInputElement).value);
+                                    (e.target as HTMLInputElement).value = '';
+                                }
+                            }}
+                            onBlur={(e) => {
+                                if (e.target.value) {
+                                    addGalleryItem(e.target.value);
+                                    e.target.value = '';
+                                }
+                            }}
+                        />
+                    </div>
+                </div>
+                <p className="text-[10px] text-slate-400 italic">Paste an image URL and press Enter or click away to add to gallery.</p>
+            </div>
+        );
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Full-screen detail / edit panel — replaces the entire main content area.
+    // No modal, no overlay.  The sidebar collapses automatically via CSS when
+    // isDetailView is true (see `aside` className below).
+    // ─────────────────────────────────────────────────────────────────────────
+    const renderDetailView = () => {
+        if (!detailItem && detailSubView !== 'edit') return null;
+        
+        const isNew = !detailItem && detailSubView === 'edit';
+        const item = detailItem || {};
+        
+        const fields = Object.entries(item).filter(([key]) => !['_id', '__v', 'updatedAt', 'reviews', 'image', 'gallery'].includes(key));
 
         const renderValue = (key: string, value: any) => {
             if (Array.isArray(value)) {
@@ -640,83 +1404,383 @@ const AdminPage: React.FC = () => {
         };
 
         return (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsDetailModalOpen(false)}>
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up border border-slate-200" onClick={e => e.stopPropagation()}>
-                    <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-lt-blue/10 text-lt-blue flex items-center justify-center shadow-inner">
-                                <i className="fas fa-file-alt text-lg"></i>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 text-lg">Entry Details</h3>
-                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">ID: {detailItem._id}</p>
-                            </div>
+            <div className="h-full flex flex-col bg-slate-50 animate-in slide-in-from-right duration-300">
+                {/* ── Sticky header ─────────────────────────────────────── */}
+                <div className="sticky top-0 z-30 bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-5">
+                        {/* Back button with breadcrumb */}
+                        <button 
+                            onClick={() => setIsDetailView(false)}
+                            className="flex items-center gap-2 text-slate-500 hover:text-lt-blue transition-colors group"
+                        >
+                            <span className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 group-hover:bg-lt-blue/10 transition-colors">
+                                <i className="fas fa-arrow-left text-sm"></i>
+                            </span>
+                            <span className="text-xs font-bold hidden sm:block">
+                                {TABS.find(t => t.id === activeTab)?.label}
+                            </span>
+                        </button>
+
+                        <i className="fas fa-chevron-right text-slate-300 text-xs hidden sm:block"></i>
+
+                        <div>
+                            <h3 className="font-bold text-slate-900 text-lg leading-none">
+                                {isNew ? `New ${TABS.find(t => t.id === activeTab)?.label.replace(/s$/, '')}` : (item.name || item.title || item.key)}
+                            </h3>
+                            {!isNew && (
+                                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                    ID: {item._id} &nbsp;·&nbsp; Updated: {new Date(item.updatedAt || Date.now()).toLocaleString()}
+                                </p>
+                            )}
                         </div>
-                        <button onClick={() => setIsDetailModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-slate-200 transition-all text-slate-400 hover:text-slate-600"><i className="fas fa-times"></i></button>
                     </div>
                     
-                    <div className="p-8 overflow-y-auto custom-scrollbar bg-white">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {detailItem.image && (
-                                <div className="md:col-span-2">
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Featured Image</label>
-                                    <div className="w-full h-72 rounded-3xl overflow-hidden border-4 border-slate-50 shadow-xl group relative">
-                                        <img src={detailItem.image} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
-                                            <a href={detailItem.image} target="_blank" rel="noreferrer" className="text-white text-xs font-bold flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl">
-                                                <i className="fas fa-external-link-alt"></i> View Full Size
-                                            </a>
+                    <div className="flex items-center gap-3">
+                        {/* Sub-view tabs */}
+                        <nav className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                            {!isNew && (
+                                <>
+                                    <button 
+                                        onClick={() => setDetailSubView('info')}
+                                        className={`px-4 py-1.5 text-xs rounded-lg font-bold transition-all ${detailSubView === 'info' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
+                                    >
+                                        Details
+                                    </button>
+                                    {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
+                                        <button 
+                                            onClick={() => setDetailSubView('reviews')}
+                                            className={`px-4 py-1.5 text-xs rounded-lg font-bold transition-all ${detailSubView === 'reviews' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
+                                        >
+                                            Reviews ({item.reviews?.length || 0})
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                            <button 
+                                onClick={() => setDetailSubView('edit')}
+                                className={`px-4 py-1.5 text-xs rounded-lg font-bold transition-all ${detailSubView === 'edit' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
+                            >
+                                {isNew ? 'Create' : 'Edit'}
+                            </button>
+                        </nav>
+                        
+                        {!isNew && (
+                            <button 
+                                onClick={() => handleDelete(item._id)}
+                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all"
+                                title="Delete Record"
+                            >
+                                <i className="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Scrollable content ────────────────────────────────── */}
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                    {detailSubView === 'info' && (
+                        <div className="max-w-5xl mx-auto">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                                <div className="lg:col-span-2 space-y-8">
+                                    {fields.map(([key, value]: [string, any]) => (
+                                        <div key={key} className="group bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-lt-blue transition-colors">
+                                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                                            </label>
+                                            <div className="text-slate-700 text-sm leading-relaxed">
+                                                {renderValue(key, value)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                <div className="space-y-6">
+                                    {item.image && (
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                            <div className="p-4 border-b border-slate-100">
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Featured Image</label>
+                                            </div>
+                                            <div className="aspect-video">
+                                                <img src={item.image} alt="" className="w-full h-full object-cover" />
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {item.gallery && item.gallery.length > 0 && (
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                            <div className="p-4 border-b border-slate-100">
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gallery ({item.gallery.length})</label>
+                                            </div>
+                                            <div className="p-4 grid grid-cols-2 gap-3">
+                                                {item.gallery.map((img: string, i: number) => (
+                                                    <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-200 hover:ring-2 hover:ring-lt-blue transition-all cursor-pointer">
+                                                        <img src={img} alt="" className="w-full h-full object-cover" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Quick actions sidebar card */}
+                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Quick Actions</p>
+                                        <button
+                                            onClick={() => setDetailSubView('edit')}
+                                            className="w-full flex items-center gap-3 px-4 py-3 bg-lt-blue/5 text-lt-blue hover:bg-lt-blue hover:text-white rounded-xl text-xs font-bold transition-all"
+                                        >
+                                            <i className="fas fa-pen w-4 text-center"></i>
+                                            Edit this record
+                                        </button>
+                                        {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
+                                            <button
+                                                onClick={() => setDetailSubView('reviews')}
+                                                className="w-full flex items-center gap-3 px-4 py-3 bg-lt-orange/5 text-lt-orange hover:bg-lt-orange hover:text-white rounded-xl text-xs font-bold transition-all"
+                                            >
+                                                <i className="fas fa-comment-dots w-4 text-center"></i>
+                                                View reviews ({item.reviews?.length || 0})
+                                            </button>
+                                        )}
+                                        {activeTab === 'blog-posts' && item.status === 'pending' && (
+                                            <button
+                                                onClick={() => handleApprove(item._id)}
+                                                className="w-full flex items-center gap-3 px-4 py-3 bg-green-50 text-green-600 hover:bg-green-500 hover:text-white rounded-xl text-xs font-bold transition-all"
+                                            >
+                                                <i className="fas fa-check w-4 text-center"></i>
+                                                Approve post
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => handleDelete(item._id)}
+                                            className="w-full flex items-center gap-3 px-4 py-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-xs font-bold transition-all"
+                                        >
+                                            <i className="fas fa-trash-alt w-4 text-center"></i>
+                                            Delete record
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {detailSubView === 'reviews' && (
+                        <div className="max-w-4xl mx-auto">
+                            <div className="flex items-center justify-between mb-8">
+                                <h4 className="font-bold text-slate-800 text-lg">User Reviews</h4>
+                                <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">{item.reviews?.length || 0} Total</span>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                {(!item.reviews || item.reviews.length === 0) ? (
+                                    <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200">
+                                        <i className="fas fa-comment-slash text-3xl text-slate-300 mb-4"></i>
+                                        <p className="text-slate-500 text-sm">No reviews yet for this spot.</p>
+                                    </div>
+                                ) : (
+                                    item.reviews.map((review: any) => (
+                                        <div key={review._id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-lt-blue transition-all group">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 font-bold relative">
+                                                        {review.user?.charAt(0) || 'U'}
+                                                        {!review.isSeen && (
+                                                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-slate-800 text-sm">{review.user}</p>
+                                                            {review.isResolved && (
+                                                                <span className="px-2 py-0.5 bg-green-100 text-green-600 text-[8px] font-bold rounded-full uppercase">Resolved</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <div className="flex text-lt-orange text-[10px]">
+                                                                {[...Array(5)].map((_, i) => (
+                                                                    <i key={i} className={`fas fa-star ${i < review.rating ? '' : 'opacity-20'}`}></i>
+                                                                ))}
+                                                            </div>
+                                                            <span className="text-[10px] text-slate-400 font-medium">{new Date(review.createdAt).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                                    {!review.isSeen && (
+                                                        <button 
+                                                            onClick={() => handleMarkReviewSeen(review._id)}
+                                                            className="px-3 py-1 bg-slate-100 text-slate-600 hover:bg-lt-blue hover:text-white rounded-lg text-[10px] font-bold transition-all"
+                                                            title="Mark as Seen"
+                                                        >
+                                                            Mark Seen
+                                                        </button>
+                                                    )}
+                                                    {!review.isResolved && (
+                                                        <button 
+                                                            onClick={() => handleMarkReviewResolved(review._id)}
+                                                            className="px-3 py-1 bg-slate-100 text-slate-600 hover:bg-green-500 hover:text-white rounded-lg text-[10px] font-bold transition-all"
+                                                            title="Mark as Resolved"
+                                                        >
+                                                            Resolve
+                                                        </button>
+                                                    )}
+                                                    <button 
+                                                        onClick={() => handleDeleteReview(review._id)}
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                                                    >
+                                                        <i className="fas fa-trash-alt text-xs"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p className="text-slate-600 text-sm leading-relaxed italic">"{review.comment}"</p>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {detailSubView === 'edit' && (
+                        <div className="max-w-3xl mx-auto">
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Basic Information</p>
+
+                                    {activeTab !== 'events' && activeTab !== 'blog-posts' && renderInput('name', 'Name')}
+                                    {(activeTab === 'blog-posts' || activeTab === 'events') && renderInput('title', 'Title')}
+                                    
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1">Display Image</label>
+                                        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 mb-2">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setImageInputType('url')}
+                                                className={`flex-1 py-1.5 text-xs rounded-lg font-bold transition-all ${imageInputType === 'url' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
+                                            >
+                                                <i className="fas fa-link mr-1"></i> URL
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setImageInputType('file')}
+                                                className={`flex-1 py-1.5 text-xs rounded-lg font-bold transition-all ${imageInputType === 'file' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
+                                            >
+                                                <i className="fas fa-cloud-upload-alt mr-1"></i> Upload
+                                            </button>
+                                        </div>
+
+                                        {imageInputType === 'url' ? (
+                                            <input 
+                                                type="text" 
+                                                value={formData.image || ''} 
+                                                onChange={e => setFormData({...formData, image: e.target.value})}
+                                                className="w-full p-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-lt-blue outline-none"
+                                                placeholder="Paste image link here..."
+                                            />
+                                        ) : (
+                                            <div className="relative">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    onChange={handleFileChange}
+                                                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:bg-lt-blue/10 file:text-lt-blue hover:file:bg-lt-blue/20 cursor-pointer border border-dashed border-slate-300 p-2 rounded-xl"
+                                                    disabled={isUploading}
+                                                />
+                                                {isUploading && <div className="absolute right-4 top-1/2 transform -translate-y-1/2"><i className="fas fa-spinner fa-spin text-lt-orange"></i></div>}
+                                            </div>
+                                        )}
+                                        
+                                        {formData.image && (
+                                            <div className="mt-3 relative w-full h-48 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-inner group">
+                                                <img src={formData.image} alt="Preview" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {renderInput('description', 'Short Summary', 'textarea')}
+                                    {activeTab !== 'blog-posts' && renderInput('location', 'Location')}
+                                </div>
+
+                                {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
+                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Spot Details</p>
+                                        {activeTab === 'tourist-spots' && renderInput('history', 'Background Story', 'textarea')}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {renderInput('category', 'Category Label')}
+                                            {renderInput('openingHours', 'Business Hours')}
+                                        </div>
+                                        {renderInput('bestTimeToVisit', 'Best Visit Time')}
+                                    </div>
+                                )}
+
+                                {activeTab === 'tourist-spots' && renderGalleryInput('Gallery Images')}
+
+                                {activeTab === 'events' && (
+                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Event Details</p>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            {renderInput('date', 'Schedule')}
+                                            {renderInput('badge', 'Event Type')}
+                                        </div>
+                                        <div className="mt-6">
+                                            {renderGalleryInput('Event Gallery')}
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {fields.map(([key, value]: [string, any]) => (
-                                <div key={key} className={`${key === 'description' || key === 'content' || key === 'comment' ? 'md:col-span-2' : ''} group`}>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-lt-blue transition-colors">{key.replace(/([A-Z])/g, ' $1').trim()}</label>
-                                    <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 text-sm transition-all hover:bg-white hover:shadow-md hover:border-lt-blue/20">
-                                        {renderValue(key, value)}
-                                    </div>
-                                </div>
-                            ))}
-
-                            {detailItem.gallery && detailItem.gallery.length > 0 && (
-                                <div className="md:col-span-2">
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Gallery Images</label>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {detailItem.gallery.map((img: string, i: number) => (
-                                            <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:ring-2 hover:ring-lt-blue transition-all">
-                                                <img src={img} alt="" className="w-full h-full object-cover" />
+                                {activeTab === 'blog-posts' && (
+                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Article Details</p>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            {renderInput('author', 'Writer Name')}
+                                            {renderInput('readTime', 'Est. Read Time')}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            {renderInput('badge', 'Article Tag')}
+                                            {renderInput('date', 'Post Date')}
+                                        </div>
+                                        {renderInput('content', 'Article Body (Markdown/HTML)', 'textarea')}
+                                        {renderGalleryInput('Article Gallery')}
+                                        
+                                        {!isNew && (
+                                            <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl">
+                                                <label className="block text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Author Contact (Private)</label>
+                                                <p className="text-sm font-bold text-slate-700 mb-4">{formData.email || 'No email provided'}</p>
+                                                <label className="block text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Admin Feedback</label>
+                                                <textarea 
+                                                    value={formData.adminFeedback || ''}
+                                                    onChange={e => setFormData({...formData, adminFeedback: e.target.value})}
+                                                    className="w-full p-3 border border-blue-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                                    placeholder="Internal notes or reasons for status change..."
+                                                    rows={3}
+                                                ></textarea>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                                )}
 
-                    <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                        <div className="text-[10px] text-slate-400 font-medium italic">
-                            Last updated: {new Date(detailItem.updatedAt || Date.now()).toLocaleString()}
+                                {formError && (
+                                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-500 text-sm font-bold">
+                                        <i className="fas fa-exclamation-circle mr-2"></i> {formError}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-4 pt-2 pb-8">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => !isNew ? setDetailSubView('info') : setIsDetailView(false)}
+                                        className="flex-1 px-6 py-4 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-100 transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        disabled={isUploading} 
+                                        className="flex-[2] bg-lt-blue text-white font-bold py-4 rounded-xl hover:bg-lt-moss transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                        {isNew ? 'Create Record' : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <div className="flex gap-3">
-                            <button 
-                                onClick={() => {
-                                    setIsDetailModalOpen(false);
-                                    handleOpenModal(detailItem);
-                                }}
-                                className="px-6 py-3 bg-lt-blue text-white rounded-2xl text-xs font-bold hover:bg-lt-moss transition-all shadow-lg shadow-lt-blue/20 flex items-center gap-2 active:scale-95"
-                            >
-                                <i className="fas fa-pen"></i> Edit Entry
-                            </button>
-                            <button 
-                                onClick={() => setIsDetailModalOpen(false)}
-                                className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl text-xs font-bold hover:bg-slate-50 transition-all active:scale-95"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         );
@@ -795,8 +1859,8 @@ const AdminPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex relative overflow-hidden">
-            {/* Sidebar Toggle Button (when closed) */}
-            {!isSidebarOpen && (
+            {/* Sidebar toggle when collapsed */}
+            {!isSidebarOpen && !isDetailView && (
                 <button 
                     onClick={() => setIsSidebarOpen(true)}
                     className="fixed left-0 top-1/2 -translate-y-1/2 z-50 bg-lt-blue text-white p-2 rounded-r-xl shadow-lg hover:bg-lt-moss transition-all"
@@ -805,10 +1869,10 @@ const AdminPage: React.FC = () => {
                 </button>
             )}
 
-            {/* Sidebar */}
+            {/* ── Sidebar: hidden when detail view is open ─────────────── */}
             <aside 
-                className={`bg-white border-r border-slate-200 flex flex-col h-screen z-40 transition-all duration-300 ease-in-out ${
-                    isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full'
+                className={`bg-white border-r border-slate-200 flex flex-col h-screen z-40 transition-all duration-300 ease-in-out shrink-0 ${
+                    isSidebarOpen && !isDetailView ? 'w-72' : 'w-0 overflow-hidden'
                 }`}
             >
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between min-w-[288px]">
@@ -847,6 +1911,7 @@ const AdminPage: React.FC = () => {
                             onClick={() => {
                                 setActiveTab(tab.id);
                                 setViewMode('management');
+                                setIsDetailView(false);
                             }}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all group ${
                                 activeTab === tab.id && viewMode === 'management'
@@ -856,6 +1921,26 @@ const AdminPage: React.FC = () => {
                         >
                             <i className={`fas ${tab.icon} w-5 text-center ${activeTab === tab.id && viewMode === 'management' ? 'text-white' : 'text-slate-400 group-hover:text-lt-blue'}`}></i>
                             {tab.label}
+                            {tab.id === 'tourist-spots' && notifications.touristReviews > 0 && (
+                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold min-w-[18px] text-center">
+                                    {notifications.touristReviews}
+                                </span>
+                            )}
+                            {tab.id === 'dining-spots' && notifications.diningReviews > 0 && (
+                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold min-w-[18px] text-center">
+                                    {notifications.diningReviews}
+                                </span>
+                            )}
+                            {tab.id === 'reports' && notifications.reports > 0 && (
+                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold min-w-[18px] text-center">
+                                    {notifications.reports}
+                                </span>
+                            )}
+                            {tab.id === 'blog-posts' && notifications.blogPosts > 0 && (
+                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold min-w-[18px] text-center">
+                                    {notifications.blogPosts}
+                                </span>
+                            )}
                             {activeTab === tab.id && viewMode === 'management' && (
                                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white"></div>
                             )}
@@ -874,75 +1959,82 @@ const AdminPage: React.FC = () => {
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col h-screen overflow-hidden">
-                {/* Top Header */}
-                <header className="bg-white border-b border-slate-200 px-8 py-4 flex flex-col md:flex-row justify-between items-center sticky top-0 z-20 gap-4">
-                    <div className="flex items-center gap-6 w-full md:w-auto">
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-xl font-bold text-slate-800">
-                                {viewMode === 'management' ? TABS.find(t => t.id === activeTab)?.label : 'Site Preview'}
-                            </h2>
-                            {viewMode === 'management' && activeTab !== 'analytics' && (
-                                <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
-                                    {data.length} Records
-                                </span>
-                            )}
+            {/* ── Main content ──────────────────────────────────────────── */}
+            <main className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+                {/* Top header — hidden when detail view is open (it has its own sticky header) */}
+                {!isDetailView && (
+                    <header className="bg-white border-b border-slate-200 px-8 py-4 flex flex-col md:flex-row justify-between items-center sticky top-0 z-20 gap-4">
+                        <div className="flex items-center gap-6 w-full md:w-auto">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-xl font-bold text-slate-800">
+                                    {viewMode === 'management' ? TABS.find(t => t.id === activeTab)?.label : 'Site Preview'}
+                                </h2>
+                                {viewMode === 'management' && activeTab !== 'analytics' && (
+                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
+                                        {data.length} Records
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         
-                        {/* Preview Tabs - Moved to Preview Toolbar */}
-                    </div>
-                    
-                    <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-                        {viewMode === 'management' && activeTab !== 'reports' && activeTab !== 'analytics' && activeTab !== 'activity-log' && (
+                        <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+                            {viewMode === 'management' && activeTab !== 'reports' && activeTab !== 'analytics' && activeTab !== 'activity-log' && (
+                                <button 
+                                    onClick={() => handleOpenModal()} 
+                                    className="bg-lt-blue hover:bg-lt-moss text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md shadow-lt-blue/10 transition-all flex items-center gap-2 active:scale-95"
+                                >
+                                    <i className="fas fa-plus"></i> Add New
+                                </button>
+                            )}
+                            {activeTab === 'analytics' && (
+                                <button 
+                                    onClick={() => loadData('analytics')} 
+                                    className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95"
+                                >
+                                    <i className="fas fa-sync-alt"></i> Refresh
+                                </button>
+                            )}
                             <button 
-                                onClick={() => handleOpenModal()} 
-                                className="bg-lt-blue hover:bg-lt-moss text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md shadow-lt-blue/10 transition-all flex items-center gap-2 active:scale-95"
+                                onClick={() => {
+                                    if (viewMode === 'preview') setViewMode('management');
+                                    else setViewMode('preview');
+                                }}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 border ${
+                                    viewMode === 'preview' 
+                                    ? 'bg-lt-orange text-white border-lt-orange shadow-md shadow-lt-orange/20' 
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                }`}
                             >
-                                <i className="fas fa-plus"></i> Add New
+                                <i className={`fas ${viewMode === 'preview' ? 'fa-edit' : 'fa-eye'}`}></i>
+                                {viewMode === 'preview' ? 'Exit Preview' : 'Live Preview'}
                             </button>
-                        )}
-                        {activeTab === 'analytics' && (
-                            <button 
-                                onClick={() => loadData('analytics')} 
-                                className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95"
-                            >
-                                <i className="fas fa-sync-alt"></i> Refresh
-                            </button>
-                        )}
-                        <button 
-                            onClick={() => {
-                                if (viewMode === 'preview') setViewMode('management');
-                                else setViewMode('preview');
-                            }}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 border ${
-                                viewMode === 'preview' 
-                                ? 'bg-lt-orange text-white border-lt-orange shadow-md shadow-lt-orange/20' 
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                            }`}
-                        >
-                            <i className={`fas ${viewMode === 'preview' ? 'fa-edit' : 'fa-eye'}`}></i>
-                            {viewMode === 'preview' ? 'Exit Preview' : 'Live Preview'}
-                        </button>
-                        <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block"></div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-lt-orange/10 text-lt-orange flex items-center justify-center text-xs font-bold">
-                                AD
+                            <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block"></div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-lt-orange/10 text-lt-orange flex items-center justify-center text-xs font-bold">
+                                    AD
+                                </div>
+                                <span className="text-xs font-bold text-slate-600 hidden sm:block">Administrator</span>
                             </div>
-                            <span className="text-xs font-bold text-slate-600 hidden sm:block">Administrator</span>
                         </div>
-                    </div>
-                </header>
+                    </header>
+                )}
 
-                {/* Content Area */}
+                {/* ── Content area ─────────────────────────────────────── */}
                 <div className="flex-1 overflow-hidden relative">
-                    {viewMode === 'management' ? (
-                        <div className="h-full overflow-y-auto p-8 custom-scrollbar">
+                    {/* Detail view: fills the entire content area, no sidebar, no modal */}
+                    {isDetailView ? (
+                        <div className="h-full overflow-hidden">
+                            {renderDetailView()}
+                        </div>
+                    ) : viewMode === 'management' ? (
+                        <div className="h-full overflow-y-auto custom-scrollbar p-8">
                             <AnimatedElement>
                                 {activeTab === 'analytics' ? (
                                     renderAnalyticsDashboard()
                                 ) : activeTab === 'activity-log' ? (
                                     renderActivityLog()
+                                ) : activeTab === 'site-settings' ? (
+                                    renderSiteSettings()
                                 ) : (
                                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                                         {isLoading ? (
@@ -990,9 +2082,13 @@ const AdminPage: React.FC = () => {
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100">
                                                         {sortedData.map((item: any) => (
-                                                            <tr key={item._id} className="hover:bg-slate-50/30 transition-colors group">
+                                                            <tr 
+                                                                key={item._id} 
+                                                                className="hover:bg-slate-50/60 transition-colors group cursor-pointer"
+                                                                onClick={() => handleOpenDetailModal(item)}
+                                                            >
                                                                 {activeTab !== 'reports' && (
-                                                                    <td className="p-5">
+                                                                    <td className="p-5" onClick={e => e.stopPropagation()}>
                                                                         <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
                                                                             <img src={item.image} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                                                         </div>
@@ -1002,8 +2098,20 @@ const AdminPage: React.FC = () => {
                                                                 {activeTab === 'reports' ? (
                                                                     <>
                                                                         <td className="p-5">
-                                                                            <div className="font-bold text-slate-800 text-sm">{item.targetName}</div>
-                                                                            <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{item.targetType}</div>
+                                                                            <div className="flex items-start gap-3">
+                                                                                {!item.isSeen && (
+                                                                                    <div className="mt-1.5">
+                                                                                        <span className="relative flex h-2 w-2">
+                                                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                                                                        </span>
+                                                                                    </div>
+                                                                                )}
+                                                                                <div>
+                                                                                    <div className="font-bold text-slate-800 text-sm">{item.targetName}</div>
+                                                                                    <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{item.targetType}</div>
+                                                                                </div>
+                                                                            </div>
                                                                         </td>
                                                                         <td className="p-5">
                                                                             <span className="text-[10px] text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-lg font-bold uppercase tracking-wider">
@@ -1014,10 +2122,22 @@ const AdminPage: React.FC = () => {
                                                                     </>
                                                                 ) : (
                                                                     <td className="p-5">
-                                                                        <div className="font-bold text-slate-800 text-sm group-hover:text-lt-blue transition-colors">{item.name || item.title}</div>
-                                                                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-1">
-                                                                            <i className="fas fa-map-marker-alt text-[8px]"></i>
-                                                                            {item.location || item.date || 'No meta provided'}
+                                                                        <div className="flex items-start gap-3">
+                                                                            {activeTab === 'blog-posts' && !item.isSeen && (
+                                                                                <div className="mt-1.5">
+                                                                                    <span className="relative flex h-2 w-2">
+                                                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
+                                                                            <div>
+                                                                                <div className="font-bold text-slate-800 text-sm group-hover:text-lt-blue transition-colors">{item.name || item.title}</div>
+                                                                                <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-1">
+                                                                                    <i className="fas fa-map-marker-alt text-[8px]"></i>
+                                                                                    {item.location || item.date || 'No meta provided'}
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
                                                                     </td>
                                                                 )}
@@ -1048,7 +2168,7 @@ const AdminPage: React.FC = () => {
                                                                     </td>
                                                                 )}
                                                                 {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
-                                                                    <td className="p-5 text-center">
+                                                                    <td className="p-5 text-center" onClick={e => e.stopPropagation()}>
                                                                         <button 
                                                                             onClick={() => handleOpenReviewModal(item)}
                                                                             className="inline-flex items-center gap-2 text-slate-400 hover:text-lt-orange transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm"
@@ -1058,22 +2178,15 @@ const AdminPage: React.FC = () => {
                                                                         </button>
                                                                     </td>
                                                                 )}
-                                                                <td className="p-5 text-right">
+                                                                <td className="p-5 text-right" onClick={e => e.stopPropagation()}>
                                                                     <div className="flex justify-end gap-2">
-                                                                        <button 
-                                                                            onClick={() => handleOpenDetailModal(item)} 
-                                                                            className="p-2 text-slate-400 hover:text-lt-blue hover:bg-slate-100 rounded-lg transition-colors" 
-                                                                            title="View Full Details"
-                                                                        >
-                                                                            <i className="fas fa-expand-alt text-xs"></i>
-                                                                        </button>
                                                                         {activeTab === 'blog-posts' && item.status === 'pending' && (
-                                                                            <button onClick={() => handleApprove(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Approve Story">
+                                                                            <button onClick={() => handleApprove(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all">
                                                                                 Approve
                                                                             </button>
                                                                         )}
                                                                         {activeTab === 'reports' ? (
-                                                                            <button onClick={() => handleDelete(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all" title="Resolve Report">
+                                                                            <button onClick={() => handleDelete(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all">
                                                                                 Resolve
                                                                             </button>
                                                                         ) : (
@@ -1099,8 +2212,8 @@ const AdminPage: React.FC = () => {
                             </AnimatedElement>
                         </div>
                     ) : (
+                        /* ── Live Preview ───────────────────────────────── */
                         <div className="w-full h-full bg-slate-200 animate-in fade-in duration-500 flex flex-col">
-                            {/* Preview Toolbar */}
                             <div className="bg-slate-900 text-white px-6 py-4 flex flex-col gap-4 shadow-2xl z-10 border-b border-slate-800">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
@@ -1171,204 +2284,7 @@ const AdminPage: React.FC = () => {
                 </div>
             </main>
 
-            {/* Edit/Create Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsModalOpen(false)}>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-slide-up border border-slate-200" onClick={e => e.stopPropagation()}>
-                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-800">{editItem ? 'Update Entry' : 'Create New Entry'}</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors"><i className="fas fa-times"></i></button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto custom-scrollbar bg-white">
-                            {activeTab !== 'events' && activeTab !== 'blog-posts' && renderInput('name', 'Name')}
-                            {(activeTab === 'blog-posts' || activeTab === 'events') && renderInput('title', 'Title')}
-                            
-                            {/* Image UI Section */}
-                            <div className="mb-4">
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Display Image</label>
-                                <div className="flex bg-slate-100 p-1 rounded-xl gap-1 mb-2">
-                                    <button 
-                                        type="button"
-                                        onClick={() => setImageInputType('url')}
-                                        className={`flex-1 py-1.5 text-xs rounded-lg font-bold transition-all ${imageInputType === 'url' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
-                                    >
-                                        <i className="fas fa-link mr-1"></i> URL
-                                    </button>
-                                    <button 
-                                        type="button"
-                                        onClick={() => setImageInputType('file')}
-                                        className={`flex-1 py-1.5 text-xs rounded-lg font-bold transition-all ${imageInputType === 'file' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
-                                    >
-                                        <i className="fas fa-cloud-upload-alt mr-1"></i> Upload
-                                    </button>
-                                </div>
-
-                                {imageInputType === 'url' ? (
-                                    <input 
-                                        type="text" 
-                                        value={formData.image || ''} 
-                                        onChange={e => setFormData({...formData, image: e.target.value})}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-lt-blue outline-none"
-                                        placeholder="Paste image link here..."
-                                    />
-                                ) : (
-                                    <div className="relative">
-                                        <input 
-                                            type="file" 
-                                            accept="image/*"
-                                            onChange={handleFileChange}
-                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-lt-blue/10 file:text-lt-blue hover:file:bg-lt-blue/20 cursor-pointer border border-dashed border-slate-300 p-2 rounded-lg"
-                                            disabled={isUploading}
-                                        />
-                                        {isUploading && <div className="absolute right-4 top-1/2 transform -translate-y-1/2"><i className="fas fa-spinner fa-spin text-lt-orange"></i></div>}
-                                    </div>
-                                )}
-                                
-                                {formData.image && (
-                                    <div className="mt-3 relative w-full h-40 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-inner group">
-                                        <img src={formData.image} alt="Preview" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                                            <p className="text-[9px] text-white font-mono truncate w-full">{formData.image}</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {renderInput('description', 'Short Summary', 'textarea')}
-                            {activeTab !== 'blog-posts' && renderInput('location', 'Location')}
-                            
-                            {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
-                                <div className="grid grid-cols-1 gap-1">
-                                    {activeTab === 'tourist-spots' && renderInput('history', 'Background Story', 'textarea')}
-                                    {renderInput('category', 'Category Label')}
-                                    {renderInput('openingHours', 'Business Hours')}
-                                    {renderInput('bestTimeToVisit', 'Best Visit Time')}
-                                </div>
-                            )}
-
-                            {activeTab === 'events' && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    {renderInput('date', 'Schedule')}
-                                    {renderInput('badge', 'Event Type')}
-                                </div>
-                            )}
-
-                            {activeTab === 'blog-posts' && (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {renderInput('author', 'Writer Name')}
-                                        {renderInput('readTime', 'Est. Read Time')}
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {renderInput('badge', 'Article Tag')}
-                                        {renderInput('date', 'Post Date')}
-                                    </div>
-                                    {renderInput('content', 'Article Body (Markdown/HTML)', 'textarea')}
-                                    
-                                    {editItem && (
-                                        <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                                            <label className="block text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Author Contact (Private)</label>
-                                            <p className="text-xs font-bold text-slate-700">{formData.email || 'No email provided'}</p>
-                                            <textarea 
-                                                value={formData.adminFeedback || ''}
-                                                onChange={e => setFormData({...formData, adminFeedback: e.target.value})}
-                                                className="w-full p-2 mt-2 border border-blue-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                                placeholder="Internal notes or reasons for status change..."
-                                            ></textarea>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {formError && (
-                                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-500 text-xs font-bold animate-shake">
-                                    <i className="fas fa-exclamation-circle mr-2"></i> {formError}
-                                </div>
-                            )}
-
-                            <div className="sticky bottom-0 bg-white pt-6 pb-2">
-                                <button type="submit" disabled={isUploading} className="w-full bg-lt-blue text-white font-bold py-4 rounded-xl hover:bg-lt-moss transition-all shadow-lg active:scale-[0.98] disabled:opacity-50">
-                                    {editItem ? 'Save Record' : 'Create Record'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Review Management Modal */}
-            {isReviewModalOpen && currentReviewItem && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsReviewModalOpen(false)}>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-slide-up border border-slate-200" onClick={e => e.stopPropagation()}>
-                        <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                            <div>
-                                <h3 className="font-bold text-slate-800">User Reviews</h3>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{currentReviewItem.name}</p>
-                            </div>
-                            <button onClick={() => setIsReviewModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors"><i className="fas fa-times"></i></button>
-                        </div>
-                        <div className="flex-grow overflow-y-auto p-4 custom-scrollbar bg-slate-100/50">
-                            {(!currentReviewItem.reviews || currentReviewItem.reviews.length === 0) ? (
-                                <div className="text-center py-20 text-slate-400">
-                                    <i className="far fa-comments text-4xl mb-4 opacity-10"></i>
-                                    <p className="text-sm font-medium">No reviews submitted yet.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {[...currentReviewItem.reviews].reverse().map((review: any) => (
-                                        <div key={review._id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
-                                            <div className="absolute left-0 top-0 w-1 h-full bg-lt-orange opacity-40"></div>
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200 font-bold">
-                                                        {review.name.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-800 text-sm leading-none">{review.name}</h4>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className="text-[10px] text-lt-orange font-bold">{review.rating} ★</span>
-                                                            <span className="text-[10px] text-slate-400 font-medium">{new Date(review.createdAt).toLocaleDateString()}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <button 
-                                                    onClick={() => handleDeleteReview(review._id)} 
-                                                    className="text-slate-300 hover:text-red-500 p-2 transition-colors rounded-lg hover:bg-red-50"
-                                                    title="Spam Moderation"
-                                                >
-                                                    <i className="fas fa-trash-alt text-xs"></i>
-                                                </button>
-                                            </div>
-                                            <div className="bg-slate-50 p-3 rounded-xl mb-3">
-                                                <p className="text-xs text-slate-600 leading-relaxed italic">"{review.comment || 'No comment text provided'}"</p>
-                                            </div>
-                                            
-                                            {review.images && review.images.length > 0 && (
-                                                <div className="flex gap-2 mb-3">
-                                                    {review.images.map((img: string, i: number) => (
-                                                        <a key={i} href={img} target="_blank" rel="noreferrer" className="block w-14 h-14 rounded-lg overflow-hidden border border-slate-200 hover:ring-2 hover:ring-lt-orange transition-all shadow-sm">
-                                                            <img src={img} alt="" className="w-full h-full object-cover" />
-                                                        </a>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            <div className="flex items-center gap-2 text-[9px] text-slate-400 font-mono">
-                                                <i className="fas fa-envelope"></i> {review.email}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Detail Modal */}
-            {isDetailModalOpen && renderDetailModal()}
-
-            {/* Logout Confirmation Modal */}
+            {/* ── Logout confirmation modal ─────────────────────────────── */}
             {isLogoutConfirmOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => setIsLogoutConfirmOpen(false)}>
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-slide-up border border-slate-200" onClick={e => e.stopPropagation()}>

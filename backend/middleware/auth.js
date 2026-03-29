@@ -1,5 +1,5 @@
 
-const checkAdmin = (req, res, next) => {
+export const verifyAdmin = (req, res, next) => {
   const token = req.headers['x-admin-access-token'];
   // Default to 'admin123' if not set in .env for immediate testing
   const secret = process.env.ADMIN_ACCESS_CODE || 'admin123';
@@ -10,5 +10,3 @@ const checkAdmin = (req, res, next) => {
   }
   next();
 };
-
-export default checkAdmin;

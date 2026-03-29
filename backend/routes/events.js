@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import LocalEvent from '../models/LocalEvent.js';
-import checkAdmin from '../middleware/auth.js';
+import { verifyAdmin } from '../middleware/auth.js';
 import { deleteImage } from '../services/storageService.js';
 import adminLogService from '../services/adminLogService.js';
 
@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
 });
 
 // @desc    Create
-router.post('/', checkAdmin, async (req, res) => {
+router.post('/', verifyAdmin, async (req, res) => {
   try {
     const newEvent = await LocalEvent.create(req.body);
     
@@ -36,7 +36,7 @@ router.post('/', checkAdmin, async (req, res) => {
 });
 
 // @desc    Update
-router.put('/:id', checkAdmin, async (req, res) => {
+router.put('/:id', verifyAdmin, async (req, res) => {
   try {
     const updatedEvent = await LocalEvent.findByIdAndUpdate(req.params.id, req.body, { new: true });
     
@@ -56,7 +56,7 @@ router.put('/:id', checkAdmin, async (req, res) => {
 });
 
 // @desc    Delete
-router.delete('/:id', checkAdmin, async (req, res) => {
+router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
     const event = await LocalEvent.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Event not found' });

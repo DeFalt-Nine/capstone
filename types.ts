@@ -18,6 +18,8 @@ export interface Review {
   comment?: string;
   images?: string[]; 
   createdAt?: string;
+  isSeen?: boolean;
+  isResolved?: boolean;
 }
 
 export interface TouristSpot {
@@ -86,6 +88,7 @@ export interface BlogPost {
   socialLink?: string;
   videoLink?: string;
   adminFeedback?: string;
+  isSeen?: boolean;
 }
 
 export interface HistoryEvent {
@@ -126,6 +129,7 @@ export interface Report {
   description: string;
   status: 'pending' | 'resolved';
   createdAt?: string;
+  isSeen?: boolean;
 }
 
 export interface PlannerItem {
@@ -172,4 +176,40 @@ export interface JeepneyRoute {
   }[];
   operatingHours: string;
   frequency: string;
+}
+
+export interface SiteSettings {
+    _id?: string;
+    home: {
+        heroWelcomeText: string;
+        heroTitle: string;
+        heroSubtitle: string;
+        heroImages: {
+            url: string;
+            alt: string;
+        }[];
+    };
+    about: {
+        heroTitle: string;
+        heroSubtitle: string;
+        heroImage: string;
+        storyTitle: string;
+        storyContent: string;
+        journeyThroughTime: {
+            year: string;
+            title: string;
+            content: string;
+            image: string;
+        }[];
+        localGovernment: {
+            title: string;
+            content: string;
+            image: string;
+            officials: {
+                name: string;
+                position: string;
+                image: string;
+            }[];
+        };
+    };
 }

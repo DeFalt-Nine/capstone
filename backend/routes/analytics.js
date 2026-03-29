@@ -6,7 +6,7 @@ import TouristSpot from '../models/TouristSpot.js';
 import DiningSpot from '../models/DiningSpot.js';
 import BlogPost from '../models/BlogPost.js';
 import mongoose from 'mongoose';
-import checkAdmin from '../middleware/auth.js';
+import { verifyAdmin } from '../middleware/auth.js';
 
 // @desc    Log a chat interaction (used for frontend intents)
 // @route   POST /api/v1/stats/chat
@@ -94,7 +94,7 @@ router.post('/log', async (req, res) => {
 // @desc    Debug route to dump analytics events
 // @route   GET /api/v1/stats/debug
 // @access  Admin
-router.get('/debug', checkAdmin, async (req, res) => {
+router.get('/debug', verifyAdmin, async (req, res) => {
     try {
         const events = await AnalyticsEvent.find().sort({ timestamp: -1 }).limit(20);
         res.json(events);
@@ -106,7 +106,7 @@ router.get('/debug', checkAdmin, async (req, res) => {
 // @desc    Get aggregated analytics summary
 // @route   GET /api/v1/stats/summary
 // @access  Admin
-router.get('/summary', checkAdmin, async (req, res) => {
+router.get('/summary', verifyAdmin, async (req, res) => {
     try {
         // 1. Total views per category (Tourist Spots vs Dining vs Blog Posts)
         const touristSpotViews = await TouristSpot.aggregate([

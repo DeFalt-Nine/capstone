@@ -6,8 +6,9 @@ import AnimatedElement from '../components/AnimatedElement';
 import IntroAnimation from '../components/IntroAnimation';
 import ParallaxElement from '../components/ParallaxElement';
 import Mascot from '../components/Mascot';
+import { fetchSiteSettings } from '../services/apiService';
 
-const HERO_IMAGES = [
+const DEFAULT_HERO_IMAGES = [
     {
         url: 'https://images.unsplash.com/photo-1536481046830-9b11bb07e8b8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxQaGlsaXBwaW5lcyUyMG1vdW50YWluJTIwbGFuZHNjYXBlfGVufDF8fHx8MTc2MTgyNjY5N3ww&ixlib=rb-4.1.0&q=80&w=1920',
         alt: 'Sea of Clouds'
@@ -24,8 +25,32 @@ const HERO_IMAGES = [
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
+    const [heroImages, setHeroImages] = useState(DEFAULT_HERO_IMAGES);
+    const [heroWelcomeText, setHeroWelcomeText] = useState("Welcome to the Valley of Colors");
+    const [heroTitle, setHeroTitle] = useState("Explore La Trinidad");
+    const [heroSubtitle, setHeroSubtitle] = useState("Experience the Philippines' Strawberry Capital. A highland haven of culture, nature, and fresh flavors.");
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const heroTextRef = useRef<HTMLDivElement>(null);
+
+    // Fetch Site Settings
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const settings = await fetchSiteSettings();
+                if (settings && settings.home) {
+                    setHeroWelcomeText(settings.home.heroWelcomeText);
+                    setHeroTitle(settings.home.heroTitle);
+                    setHeroSubtitle(settings.home.heroSubtitle);
+                    if (settings.home.heroImages && settings.home.heroImages.length > 0) {
+                        setHeroImages(settings.home.heroImages);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load site settings', error);
+            }
+        };
+        loadSettings();
+    }, []);
 
     // Hero Text Stagger
     useEffect(() => {
@@ -53,13 +78,13 @@ const HomePage: React.FC = () => {
 
     // Image rotation logic
     useEffect(() => {
-        const { length } = HERO_IMAGES;
+        const { length } = heroImages;
         const interval = setInterval(() => {
             setCurrentImageIndex((prev) => (prev + 1) % length);
         }, 6000); // Change image every 6 seconds
 
         return () => clearInterval(interval);
-    }, []);
+    }, [heroImages]);
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
@@ -70,7 +95,7 @@ const HomePage: React.FC = () => {
             <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-slate-900">
                 
                 {/* Dynamic Background Slideshow */}
-                {HERO_IMAGES.map(({ url, alt }, index) => (
+                {heroImages.map(({ url, alt }, index) => (
                     <div
                         key={index}
                         className={`absolute inset-0 transition-opacity duration-[1500ms] ease-in-out ${
@@ -90,18 +115,26 @@ const HomePage: React.FC = () => {
                 <div className="relative z-10 text-center px-4 max-w-4xl mx-auto" ref={heroTextRef}>
                     <div>
                         <h2 className="text-lt-yellow font-bold tracking-[0.3em] uppercase text-sm md:text-base mb-4 drop-shadow-md">
-                            Welcome to the Valley of Colors
+                            {heroWelcomeText}
                         </h2>
                         <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-white mb-6 leading-tight drop-shadow-lg">
-                            Explore <br/>
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-lt-orange to-lt-yellow">
-                                La Trinidad
-                            </span>
+                            {heroTitle.split(' ').map((word, i) => (
+                                <React.Fragment key={i}>
+                                    {word === 'La' || word === 'Trinidad' ? (
+                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-lt-orange to-lt-yellow">
+                                            {word}{' '}
+                                        </span>
+                                    ) : (
+                                        <>{word}{' '}</>
+                                    )}
+                                    {i === 0 && <br/>}
+                                </React.Fragment>
+                            ))}
                         </h1>
                     </div>
                     
                     <p className="text-lg md:text-xl text-slate-200 mb-10 max-w-2xl mx-auto font-light drop-shadow-sm">
-                        Experience the Philippines' Strawberry Capital. A highland haven of culture, nature, and fresh flavors.
+                        {heroSubtitle}
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">

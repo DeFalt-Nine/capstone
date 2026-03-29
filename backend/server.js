@@ -26,6 +26,7 @@ import eventsRoutes from './routes/events.js';
 import subscribersRoutes from './routes/subscribers.js';
 import reportRoutes from './routes/reports.js';
 import adminLogRoutes from './routes/adminLogs.js';
+import siteSettingsRoutes from './routes/siteSettings.js';
 
 const app = express();
 
@@ -45,6 +46,7 @@ if (!process.env.VERCEL) {
 
 // Robust DB middleware
 const ensureDbConnection = async (req, res, next) => {
+  console.log(`[Backend] API Request: ${req.method} ${req.path}`);
   try {
     if (!process.env.MONGO_URI) {
         return res.status(500).json({ 
@@ -74,16 +76,27 @@ app.use('/api/health', healthRoutes);
 // 3. File Uploads
 app.use('/api/upload', uploadRoutes); 
 
-// 4. Routes requiring Database
-app.use('/api/chatbot', ensureDbConnection, chatbotRoutes);
-app.use('/api/v1/stats', ensureDbConnection, analyticsRoutes);
-app.use('/api/tourist-spots', ensureDbConnection, touristSpotsRoutes);
-app.use('/api/dining-spots', ensureDbConnection, diningSpotsRoutes);
-app.use('/api/blog-posts', ensureDbConnection, blogPostsRoutes);
-app.use('/api/events', ensureDbConnection, eventsRoutes);
-app.use('/api/subscribers', ensureDbConnection, subscribersRoutes);
-app.use('/api/reports', ensureDbConnection, reportRoutes); 
-app.use('/api/admin-logs', ensureDbConnection, adminLogRoutes); 
+// 4. Global Database Middleware for all other API routes
+app.use('/api', ensureDbConnection);
+
+// 5. API Routes
+app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/v1/stats', analyticsRoutes);
+app.use('/api/tourist-spots', touristSpotsRoutes);
+app.use('/api/dining-spots', diningSpotsRoutes);
+app.use('/api/blog-posts', blogPostsRoutes);
+app.use('/api/events', eventsRoutes);
+app.use('/api/subscribers', subscribersRoutes);
+app.use('/api/reports', reportRoutes); 
+app.use('/api/admin-logs', adminLogRoutes); 
+app.use('/api/site-settings', siteSettingsRoutes); 
+
+// 6. Catch-all for undefined API routes (must return JSON, not HTML)
+app.all('/api/*', (req, res) => {
+    res.status(404).json({ 
+        message: `API Route not found: ${req.method} ${req.originalUrl}` 
+    });
+});
 
 console.log('Routes mounted successfully.');
 
@@ -104,7 +117,8 @@ async function setupDevServer() {
 
         // Manual fallback for index.html in development
         app.use(async (req, res, next) => {
-            if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+            const isApiRequest = req.path.startsWith('/api') || req.originalUrl.startsWith('/api');
+            if (req.method !== 'GET' || isApiRequest) return next();
             
             const url = req.originalUrl;
             try {
@@ -142,8 +156,8 @@ app.use((err, req, res, next) => {
     }
 });
 
-// Initialize Dev Server if needed
-setupDevServer();
+// Initialize Dev Server
+await setupDevServer();
 
 // Skip app.listen on Vercel
 if (process.env.NODE_ENV === 'production' && process.env.VERCEL) {

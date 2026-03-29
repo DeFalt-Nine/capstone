@@ -8,6 +8,7 @@ const ReportSchema = new mongoose.Schema({
   reason: { type: String, required: true }, // e.g., 'Wrong Info', 'Closed', 'Inappropriate'
   description: { type: String, required: false },
   status: { type: String, default: 'pending', enum: ['pending', 'resolved'] },
+  isSeen: { type: Boolean, default: false },
 }, { timestamps: true });
 
 export default mongoose.models.Report || mongoose.model('Report', ReportSchema, 'reports');

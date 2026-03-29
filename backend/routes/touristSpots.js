@@ -3,7 +3,7 @@ const router = express.Router();
 import TouristSpot from '../models/TouristSpot.js';
 import Subscriber from '../models/Subscriber.js';
 import mongoose from 'mongoose';
-import checkAdmin from '../middleware/auth.js';
+import { verifyAdmin } from '../middleware/auth.js';
 import { deleteImage } from '../services/storageService.js';
 import adminLogService from '../services/adminLogService.js';
 
@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
 
 // @desc    Create a tourist spot
 // @route   POST /api/tourist-spots
-router.post('/', checkAdmin, async (req, res) => {
+router.post('/', verifyAdmin, async (req, res) => {
   try {
     const newSpot = await TouristSpot.create(req.body);
     
@@ -52,7 +52,7 @@ router.post('/', checkAdmin, async (req, res) => {
 
 // @desc    Update a tourist spot
 // @route   PUT /api/tourist-spots/:id
-router.put('/:id', checkAdmin, async (req, res) => {
+router.put('/:id', verifyAdmin, async (req, res) => {
   try {
     const updatedSpot = await TouristSpot.findByIdAndUpdate(req.params.id, req.body, { new: true });
     
@@ -73,7 +73,7 @@ router.put('/:id', checkAdmin, async (req, res) => {
 
 // @desc    Delete a tourist spot
 // @route   DELETE /api/tourist-spots/:id
-router.delete('/:id', checkAdmin, async (req, res) => {
+router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
     const spot = await TouristSpot.findById(req.params.id);
     if (!spot) return res.status(404).json({ message: 'Spot not found' });
@@ -120,7 +120,7 @@ router.delete('/:id', checkAdmin, async (req, res) => {
 
 // @desc    Delete a review (Moderation)
 // @route   DELETE /api/tourist-spots/:id/reviews/:reviewId
-router.delete('/:id/reviews/:reviewId', checkAdmin, async (req, res) => {
+router.delete('/:id/reviews/:reviewId', verifyAdmin, async (req, res) => {
   try {
     const spot = await TouristSpot.findById(req.params.id);
     if (!spot) return res.status(404).json({ message: 'Spot not found' });
@@ -181,6 +181,43 @@ router.post('/:id/reviews', async (req, res) => {
     res.status(201).json(updatedSpot[0]);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @desc    Mark review as seen
+// @route   PUT /api/tourist-spots/:id/reviews/:reviewId/seen
+router.put('/:id/reviews/:reviewId/seen', verifyAdmin, async (req, res) => {
+  try {
+    const spot = await TouristSpot.findById(req.params.id);
+    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+
+    const review = spot.reviews.id(req.params.reviewId);
+    if (!review) return res.status(404).json({ message: 'Review not found' });
+
+    review.isSeen = true;
+    await spot.save();
+    res.json(spot);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @desc    Mark review as resolved
+// @route   PUT /api/tourist-spots/:id/reviews/:reviewId/resolved
+router.put('/:id/reviews/:reviewId/resolved', verifyAdmin, async (req, res) => {
+  try {
+    const spot = await TouristSpot.findById(req.params.id);
+    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+
+    const review = spot.reviews.id(req.params.reviewId);
+    if (!review) return res.status(404).json({ message: 'Review not found' });
+
+    review.isResolved = true;
+    review.isSeen = true; // Also mark as seen if resolved
+    await spot.save();
+    res.json(spot);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 

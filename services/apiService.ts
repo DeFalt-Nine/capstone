@@ -2,7 +2,7 @@
 import type { TouristSpot, BlogPost, LocalEvent, Report, AdminLog } from '../types';
 
 // Use relative path by default to leverage Vite proxy in development
-const API_BASE = ((import.meta as any).env && (import.meta as any).env.VITE_API_URL) || '';
+export const API_BASE = ((import.meta as any).env && (import.meta as any).env.VITE_API_URL) || '';
 
 const getHeaders = () => {
     const token = localStorage.getItem('adminToken') || '';
@@ -215,8 +215,56 @@ export const fetchAnalyticsSummary = async () => {
     });
 };
 
+export const fetchAnalyticsDebug = async () => {
+    return safeFetch(`${API_BASE}/api/v1/stats/debug`, {
+        headers: getHeaders()
+    });
+};
+
 export const fetchAdminLogs = async (): Promise<AdminLog[]> => {
     return safeFetch(`${API_BASE}/api/admin-logs`, {
+        headers: getHeaders()
+    });
+};
+
+export const fetchSiteSettings = async () => {
+    return safeFetch(`${API_BASE}/api/site-settings`);
+};
+
+export const updateSiteSettings = async (data: any) => {
+    return safeFetch(`${API_BASE}/api/site-settings`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    });
+};
+
+export const markReviewAsSeen = async (type: 'tourist' | 'dining', spotId: string, reviewId: string) => {
+    const endpoint = type === 'tourist' ? 'tourist-spots' : 'dining-spots';
+    return safeFetch(`${API_BASE}/api/${endpoint}/${spotId}/reviews/${reviewId}/seen`, {
+        method: 'PUT',
+        headers: getHeaders()
+    });
+};
+
+export const markReviewAsResolved = async (type: 'tourist' | 'dining', spotId: string, reviewId: string) => {
+    const endpoint = type === 'tourist' ? 'tourist-spots' : 'dining-spots';
+    return safeFetch(`${API_BASE}/api/${endpoint}/${spotId}/reviews/${reviewId}/resolved`, {
+        method: 'PUT',
+        headers: getHeaders()
+    });
+};
+
+export const markReportAsSeen = async (id: string) => {
+    return safeFetch(`${API_BASE}/api/reports/${id}/seen`, {
+        method: 'PUT',
+        headers: getHeaders()
+    });
+};
+
+export const markBlogPostAsSeen = async (id: string) => {
+    return safeFetch(`${API_BASE}/api/blog-posts/${id}/seen`, {
+        method: 'PUT',
         headers: getHeaders()
     });
 };

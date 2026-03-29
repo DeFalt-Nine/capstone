@@ -7,6 +7,8 @@ const reviewSchema = new mongoose.Schema({
   rating: { type: Number, required: true, min: 1, max: 5 },
   comment: { type: String, required: false },
   images: [{ type: String }], // New field for review photos
+  isSeen: { type: Boolean, default: false },
+  isResolved: { type: Boolean, default: false },
 }, {
   timestamps: true, // Adds createdAt and updatedAt to reviews
 });

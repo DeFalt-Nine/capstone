@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import BlogPost from '../models/BlogPost.js';
-import checkAdmin from '../middleware/auth.js';
+import { verifyAdmin } from '../middleware/auth.js';
 import { deleteImage } from '../services/storageService.js';
 import adminLogService from '../services/adminLogService.js';
 
@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
 });
 
 // @desc    Create (Admin direct post)
-router.post('/', checkAdmin, async (req, res) => {
+router.post('/', verifyAdmin, async (req, res) => {
   try {
     const newPost = await BlogPost.create({
         ...req.body,
@@ -86,7 +86,7 @@ router.post('/submit', async (req, res) => {
 });
 
 // @desc    Update (Admin - Status Change, Edit)
-router.put('/:id', checkAdmin, async (req, res) => {
+router.put('/:id', verifyAdmin, async (req, res) => {
   try {
     const oldPost = await BlogPost.findById(req.params.id);
     const updatedPost = await BlogPost.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -115,7 +115,7 @@ router.put('/:id', checkAdmin, async (req, res) => {
 });
 
 // @desc    Delete (Admin)
-router.delete('/:id', checkAdmin, async (req, res) => {
+router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
     const post = await BlogPost.findById(req.params.id);
     if (!post) return res.status(404).json({ message: 'Post not found' });
@@ -139,6 +139,17 @@ router.delete('/:id', checkAdmin, async (req, res) => {
     res.json({ message: 'Post removed and image deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// @desc    Mark blog post as seen
+// @route   PUT /api/blog-posts/:id/seen
+router.put('/:id/seen', verifyAdmin, async (req, res) => {
+  try {
+    const post = await BlogPost.findByIdAndUpdate(req.params.id, { isSeen: true }, { new: true });
+    res.json(post);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 

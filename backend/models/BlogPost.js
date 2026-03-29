@@ -21,7 +21,9 @@ const BlogPostSchema = new mongoose.Schema({
   email: { type: String, required: false }, // Private contact for the author
   socialLink: { type: String, required: false }, // Public link to their profile
   videoLink: { type: String, required: false }, // Optional YouTube/TikTok link
+  gallery: [String], // Added gallery field
   adminFeedback: { type: String, required: false }, // Notes from admin
+  isSeen: { type: Boolean, default: false },
   views: { type: Number, default: 0 }
 }, { timestamps: true });
 

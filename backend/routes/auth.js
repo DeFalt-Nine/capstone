@@ -1,12 +1,12 @@
 
 import express from 'express';
 const router = express.Router();
-import checkAdmin from '../middleware/auth.js';
+import { verifyAdmin } from '../middleware/auth.js';
 import adminLogService from '../services/adminLogService.js';
 
 // @desc    Verify admin access code
 // @route   POST /api/auth/verify
-router.post('/verify', checkAdmin, async (req, res) => {
+router.post('/verify', verifyAdmin, async (req, res) => {
   console.log('[Auth] Token verified successfully.');
   
   // Log the login
@@ -20,7 +20,7 @@ router.post('/verify', checkAdmin, async (req, res) => {
 
 // @desc    Log admin logout
 // @route   POST /api/auth/logout
-router.post('/logout', checkAdmin, async (req, res) => {
+router.post('/logout', verifyAdmin, async (req, res) => {
   try {
     await adminLogService.logAdminAction({
       action: 'logout',

@@ -8,6 +8,7 @@ const LocalEventSchema = new mongoose.Schema({
   description: { type: String, required: true },
   location: { type: String, required: true },
   badge: { type: String, required: false },
+  gallery: [String], // Added gallery field
 });
 
 export default mongoose.models.LocalEvent || mongoose.model('LocalEvent', LocalEventSchema, 'localevents');
