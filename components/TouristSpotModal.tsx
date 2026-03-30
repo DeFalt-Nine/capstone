@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import type { TouristSpot } from '../types';
-import { uploadImage, submitReview, trackEvent } from '../services/apiService';
+import type { TouristSpot, Review } from '../types';
+import { uploadImage, submitReview, trackEvent, updateReview, deleteUserReview } from '../services/apiService';
 import StarRating from './StarRating';
 import ReportModal from './ReportModal';
+import ConfirmationModal from './ConfirmationModal';
+import AlertModal from './AlertModal';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TouristSpotModalProps {
   spot: TouristSpot;
@@ -31,12 +34,13 @@ const StarRatingInput: React.FC<{ rating: number; setRating: (rating: number) =>
 
 
 const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onClose, onReviewSubmitted }) => {
+  const { user, signInWithGoogle, signOut, getDisplayName, updateProfile, nickname, isNameMasked } = useAuth();
   useAnalytics(spot._id, spotType === 'tourist' ? '/tourist-spots' : '/dining-spots');
   const [activeTab, setActiveTab] = useState('details');
 
   // Review form state
-  const [reviewName, setReviewName] = useState('');
-  const [reviewEmail, setReviewEmail] = useState('');
+  const [reviewNickname, setReviewNickname] = useState(nickname || '');
+  const [reviewMaskName, setReviewMaskName] = useState(isNameMasked);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewImages, setReviewImages] = useState<string[]>([]);
@@ -45,6 +49,10 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
   const [isUploadingImages, setUploadingImages] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  
+  // Edit review state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   
   // Audio Guide State
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -58,8 +66,10 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
   
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Report Modal
+  // Modals
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; variant: 'success' | 'error' | 'warning' | 'info' } | null>(null);
 
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
@@ -76,6 +86,11 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
     setIsUsingGPS(false);
     setReviewImages([]);
 
+    if (user) {
+      setReviewNickname(nickname || '');
+      setReviewMaskName(isNameMasked);
+    }
+
     const handleClickOutside = (event: MouseEvent) => {
         if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
             // Placeholder for future logic
@@ -89,7 +104,7 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
       document.body.style.overflow = 'auto';
       window.speechSynthesis.cancel();
     };
-  }, [onClose, spot, isReportOpen]);
+  }, [onClose, spot, isReportOpen, user, nickname, isNameMasked]);
 
   const toggleAudioGuide = () => {
       if (isSpeaking) {
@@ -140,31 +155,94 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setReviewError(null);
-    if (reviewRating === 0 || !reviewName.trim()) {
-        setReviewError('Please provide a name and rating.');
+    if (reviewRating === 0) {
+        setReviewError('Please provide a rating.');
         return;
     }
     
-    // Basic email validation
-    if (reviewEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reviewEmail)) {
-        setReviewError('Please provide a valid email address.');
-        return;
-    }
-
     setIsSubmitting(true);
     try {
-      const updatedSpot = await submitReview(spot._id!, {
-        name: reviewName, email: reviewEmail, rating: reviewRating, comment: reviewComment, images: reviewImages
-      }, spotType);
-      onReviewSubmitted(updatedSpot);
+      // Update profile if nickname or masking changed
+      if (user && (reviewNickname !== (nickname || '') || reviewMaskName !== isNameMasked)) {
+        await updateProfile({
+          nickname: reviewNickname.trim() || undefined,
+          isNameMasked: reviewMaskName
+        });
+      }
+
+      if (isEditing && editingReviewId) {
+        const updatedSpot = await updateReview(spotType, spot._id!, editingReviewId, {
+          rating: reviewRating,
+          comment: reviewComment,
+          images: reviewImages,
+          email: user?.email || ''
+        });
+        onReviewSubmitted(updatedSpot);
+        setIsEditing(false);
+        setEditingReviewId(null);
+      } else {
+        const updatedSpot = await submitReview(spot._id!, {
+          name: getDisplayName(), // This will use the updated profile info
+          email: user?.email || '', 
+          rating: reviewRating, 
+          comment: reviewComment, 
+          images: reviewImages,
+          userId: user?.id,
+          userAvatar: user?.user_metadata?.avatar_url
+        }, spotType);
+        onReviewSubmitted(updatedSpot);
+      }
+      
       setSubmitSuccess(true);
-      setReviewName(''); setReviewEmail(''); setReviewRating(0); setReviewComment(''); setReviewImages([]);
+      setReviewRating(0); setReviewComment(''); setReviewImages([]);
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (error: any) { 
         setReviewError(error.message || 'Failed to submit review. Please try again.'); 
     } finally { 
         setIsSubmitting(false); 
     }
+  };
+
+  const handleEditClick = (review: Review) => {
+    setReviewRating(review.rating);
+    setReviewComment(review.comment || '');
+    setReviewImages(review.images || []);
+    setEditingReviewId(review._id!);
+    setIsEditing(true);
+    setReviewError(null);
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Review?',
+      message: 'Are you sure you want to delete your review? You will have to wait 30 days before you can post a new one for this spot.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setIsSubmitting(true);
+        try {
+          await deleteUserReview(spotType, spot._id!, reviewId, user?.email || '');
+          // Refresh spot data
+          const updatedSpot = { ...spot, reviews: spot.reviews.filter(r => r._id !== reviewId) };
+          onReviewSubmitted(updatedSpot as TouristSpot);
+          setAlertModal({
+            isOpen: true,
+            title: 'Success',
+            message: 'Review deleted. You can post a new one after 30 days.',
+            variant: 'success'
+          });
+        } catch (error: any) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Error',
+            message: error.message || 'Failed to delete review.',
+            variant: 'error'
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,6 +273,16 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
   const removeReviewImage = (index: number) => {
     setReviewImages(prev => prev.filter((_, i) => i !== index));
   };
+
+  const isReviewEditable = (createdAt: string | undefined) => {
+    if (!createdAt) return true;
+    const createdDate = new Date(createdAt);
+    const now = new Date();
+    const diffDays = (now.getTime() - createdDate.getTime()) / (1000 * 3600 * 24);
+    return diffDays <= 30;
+  };
+
+  const userReview = spot.reviews?.find(r => r.email === user?.email);
 
   const getModalDimensions = () => {
       if (activeTab === 'map' && isMapExpanded) return 'w-[95vw] h-[95vh]';
@@ -300,12 +388,139 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
                 <div className="md:col-span-5 md:border-r md:border-slate-200 md:pr-8">
                   <div className="sticky top-0 bg-white z-10 pb-4">
                       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-6 shadow-sm">
-                        <h3 className="text-lg font-bold text-lt-orange mb-2">Post a Review</h3>
-                        <form onSubmit={handleReviewSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 gap-3">
-                                <input type="text" placeholder="Your Name" value={reviewName} onChange={e => setReviewName(e.target.value)} required className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-lt-orange/20" />
-                                <input type="email" placeholder="Email (Private)" value={reviewEmail} onChange={e => setReviewEmail(e.target.value)} required className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-lt-orange/20" />
+                        <h3 className="text-lg font-bold text-lt-orange mb-2">
+                          {isEditing ? 'Edit Your Review' : userReview ? 'Your Review' : 'Post a Review'}
+                        </h3>
+                        
+                        {!user ? (
+                          <div className="text-center py-6 space-y-4">
+                            <div className="w-16 h-16 bg-lt-orange/10 text-lt-orange rounded-full flex items-center justify-center mx-auto text-2xl">
+                              <i className="fas fa-user-shield"></i>
                             </div>
+                            <div>
+                              <h4 className="font-bold text-slate-800">Verification Required</h4>
+                              <p className="text-xs text-slate-500 mt-1">To prevent spam, please verify with Google to leave a review.</p>
+                            </div>
+                            <button 
+                              onClick={signInWithGoogle}
+                              className="w-full py-3 px-4 bg-white border border-slate-300 rounded-xl shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-3 font-bold text-slate-700"
+                            >
+                              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
+                              Verify with Google
+                            </button>
+                          </div>
+                        ) : userReview && !isEditing ? (
+                          <div className="space-y-4">
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                              <div className="flex items-center justify-between mb-2">
+                                <StarRating rating={userReview.rating} className="text-sm" />
+                                <span className="text-[10px] text-slate-400 font-medium">{new Date(userReview.createdAt || Date.now()).toLocaleDateString()}</span>
+                              </div>
+                              <p className="text-slate-700 text-sm italic leading-relaxed">"{userReview.comment}"</p>
+                              {userReview.images && userReview.images.length > 0 && (
+                                <div className="flex gap-2 mt-3">
+                                  {userReview.images.map((img, i) => (
+                                    <img key={i} src={img} alt="" className="w-12 h-12 rounded-lg object-cover border border-slate-200" />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              {isReviewEditable(userReview.createdAt) ? (
+                                <button 
+                                  onClick={() => handleEditClick(userReview)}
+                                  className="flex-1 py-2 bg-lt-blue text-white rounded-lg font-bold text-sm hover:bg-lt-moss transition-all"
+                                >
+                                  <i className="fas fa-edit mr-2"></i> Edit Review
+                                </button>
+                              ) : (
+                                <div className="flex-1 py-2 bg-slate-100 text-slate-400 rounded-lg font-bold text-xs text-center border border-slate-200">
+                                  <i className="fas fa-lock mr-2"></i> Permanent after 30 days
+                                </div>
+                              )}
+                              <button 
+                                onClick={() => handleDeleteReview(userReview._id!)}
+                                className="px-4 py-2 bg-white text-lt-red border border-lt-red rounded-lg font-bold text-sm hover:bg-red-50 transition-all"
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-slate-400 text-center italic">
+                              Deleting your review will require a 30-day wait before posting a new one.
+                            </p>
+                          </div>
+                        ) : (
+                          <form onSubmit={handleReviewSubmit} className="space-y-4">
+                            <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 mb-4 shadow-sm">
+                              <div className="flex items-center gap-3">
+                                <img 
+                                  src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.user_metadata?.full_name || 'User')}`} 
+                                  alt="" 
+                                  className="w-8 h-8 rounded-full border border-slate-100"
+                                />
+                                <div className="overflow-hidden">
+                                  <p className="text-xs font-bold text-slate-800 truncate">{getDisplayName()}</p>
+                                  <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {isEditing && (
+                                  <button 
+                                    type="button"
+                                    onClick={() => setIsEditing(false)}
+                                    className="text-[10px] font-bold text-slate-500 hover:underline"
+                                  >
+                                    Cancel
+                                  </button>
+                                )}
+                                <button 
+                                  type="button"
+                                  onClick={signOut}
+                                  className="text-[10px] font-bold text-lt-red hover:underline"
+                                >
+                                  Logout
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                {!isEditing && (
+                                  <>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nickname / Alias (Optional)</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Enter a nickname..." 
+                                            value={reviewNickname} 
+                                            onChange={e => setReviewNickname(e.target.value)} 
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-lt-orange/20" 
+                                            maxLength={20}
+                                        />
+                                        <p className="text-[9px] text-slate-400 mt-1 italic">This name will be displayed on your reviews.</p>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-slate-800">Mask My Name</h4>
+                                            <p className="text-[9px] text-slate-500">Partially mask your name (e.g., A**x) for privacy.</p>
+                                        </div>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setReviewMaskName(!reviewMaskName)}
+                                            className={`w-10 h-5 rounded-full transition-all relative ${reviewMaskName ? 'bg-lt-orange' : 'bg-slate-300'}`}
+                                        >
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${reviewMaskName ? 'left-6' : 'left-1'}`}></div>
+                                        </button>
+                                    </div>
+                                  </>
+                                )}
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email (Non-editable)</label>
+                                    <input type="email" value={user.email || ''} readOnly className="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-400 cursor-not-allowed outline-none" />
+                                </div>
+                            </div>
+
                             <div className="flex flex-col gap-1">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Rating</label>
                                 <StarRatingInput rating={reviewRating} setRating={setReviewRating} disabled={isSubmitting} />
@@ -340,10 +555,11 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
                             {reviewError && <p className="text-xs text-red-500 font-bold bg-red-50 p-2 rounded border border-red-100 animate-shake">{reviewError}</p>}
                             
                             <button type="submit" disabled={isSubmitting || isUploadingImages} className="w-full py-3 shadow-lg rounded-xl text-white bg-lt-red hover:bg-lt-orange font-bold transition-all transform active:scale-95 disabled:opacity-50">
-                                {isSubmitting ? 'Posting...' : 'Post Review'}
+                                {isSubmitting ? 'Processing...' : isEditing ? 'Update Review' : 'Post Review'}
                             </button>
-                            {submitSuccess && <p className="text-sm text-green-600 font-bold text-center"><i className="fas fa-check-circle mr-1"></i> Review posted successfully!</p>}
-                        </form>
+                            {submitSuccess && <p className="text-sm text-green-600 font-bold text-center"><i className="fas fa-check-circle mr-1"></i> Review {isEditing ? 'updated' : 'posted'} successfully!</p>}
+                          </form>
+                        )}
                       </div>
                   </div>
                 </div>
@@ -354,7 +570,11 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
                                         <div key={review._id} className="bg-slate-50 p-5 rounded-xl border border-slate-200">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-lt-orange text-white flex items-center justify-center font-bold">{review.name.charAt(0)}</div>
+                                                    {review.userAvatar ? (
+                                                      <img src={review.userAvatar} alt="" className="w-10 h-10 rounded-full border border-slate-200" />
+                                                    ) : (
+                                                      <div className="w-10 h-10 rounded-full bg-lt-orange text-white flex items-center justify-center font-bold">{review.name.charAt(0)}</div>
+                                                    )}
                                                     <div><h4 className="font-bold text-slate-800 text-sm">{review.name}</h4><StarRating rating={review.rating} className="text-xs" /></div>
                                                 </div>
                                                 <span className="text-[10px] text-slate-400 font-medium">{new Date(review.createdAt || Date.now()).toLocaleDateString()}</span>
@@ -402,6 +622,22 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
       </div>
     </div>
     {isReportOpen && spot._id && <ReportModal targetId={spot._id} targetName={spot.name} targetType={spotType === 'dining' ? 'DiningSpot' : 'TouristSpot'} onClose={() => setIsReportOpen(false)} />}
+    {confirmModal?.isOpen && (
+      <ConfirmationModal 
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(null)}
+      />
+    )}
+    {alertModal?.isOpen && (
+      <AlertModal 
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
+        onClose={() => setAlertModal(null)}
+      />
+    )}
     </>
   );
 };

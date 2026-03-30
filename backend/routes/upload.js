@@ -42,9 +42,13 @@ const fileFilter = (req, file, cb) => {
 // Determine which storage to use
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-const supabaseBucket = process.env.SUPABASE_BUCKET || 'images';
+const supabaseBucket = process.env.SUPABASE_BUCKET || process.env.VITE_SUPABASE_BUCKET || 'images';
 const isSupabaseConfigured = !!(supabaseUrl && supabaseKey && supabaseBucket);
 const isVercel = !!process.env.VERCEL;
+
+if (isSupabaseConfigured) {
+    console.log(`[Upload Config] Using Supabase bucket: "${supabaseBucket}"`);
+}
 
 // Prioritize Supabase, then Local
 let selectedStorage = localStorage;
@@ -99,7 +103,13 @@ router.post('/', (req, res) => {
                     upsert: false
                 });
 
-            if (error) throw error;
+            if (error) {
+                console.error('[Supabase Upload Error]', error);
+                if (error.message && error.message.includes('Bucket not found')) {
+                    throw new Error(`Supabase bucket "${supabaseBucket}" not found. Please create a public bucket named "${supabaseBucket}" in your Supabase dashboard. Note that bucket names are case-sensitive.`);
+                }
+                throw error;
+            }
 
             const { data: { publicUrl } } = supabase.storage
                 .from(supabaseBucket)

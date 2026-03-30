@@ -10,6 +10,8 @@ const reviewSchema = new mongoose.Schema({
   images: [{ type: String }], // New field for review photos
   isSeen: { type: Boolean, default: false },
   isResolved: { type: Boolean, default: false },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date },
 }, {
   timestamps: true,
 });

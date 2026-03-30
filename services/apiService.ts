@@ -86,7 +86,15 @@ export const fetchLocalEvents = async (): Promise<LocalEvent[]> => {
 
 export const submitReview = async (
   spotId: string,
-  review: { name: string; email: string; rating: number; comment?: string; images?: string[] },
+  review: { 
+    name: string; 
+    email: string; 
+    rating: number; 
+    comment?: string; 
+    images?: string[];
+    userId?: string;
+    userAvatar?: string;
+  },
   type: 'tourist' | 'dining' = 'tourist'
 ): Promise<TouristSpot> => {
   const endpoint = type === 'tourist' ? 'tourist-spots' : 'dining-spots';
@@ -107,6 +115,39 @@ export const deleteReview = async (
         method: 'DELETE',
         headers: getHeaders()
     });
+};
+
+export const updateReview = async (
+  type: 'tourist' | 'dining',
+  spotId: string,
+  reviewId: string,
+  review: { 
+    rating: number; 
+    comment?: string; 
+    images?: string[];
+    email: string;
+  }
+) => {
+  const endpoint = type === 'tourist' ? 'tourist-spots' : 'dining-spots';
+  return safeFetch(`${API_BASE}/api/${endpoint}/${spotId}/reviews/${reviewId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(review),
+  });
+};
+
+export const deleteUserReview = async (
+  type: 'tourist' | 'dining',
+  spotId: string,
+  reviewId: string,
+  email: string
+) => {
+  const endpoint = type === 'tourist' ? 'tourist-spots' : 'dining-spots';
+  return safeFetch(`${API_BASE}/api/${endpoint}/${spotId}/reviews/${reviewId}/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
 };
 
 export const submitReport = async (data: Partial<Report>) => {

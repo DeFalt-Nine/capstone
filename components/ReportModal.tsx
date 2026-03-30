@@ -25,9 +25,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ targetId, targetName, targetT
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     try {
         await submitReport({
             targetId,
@@ -38,8 +41,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ targetId, targetName, targetT
         });
         setSuccess(true);
         setTimeout(onClose, 2000);
-    } catch (error) {
-        alert('Failed to submit report. Please try again.');
+    } catch (err) {
+        setError('Failed to submit report. Please try again.');
         setIsSubmitting(false);
     }
   };
@@ -92,7 +95,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ targetId, targetName, targetT
                             ></textarea>
                         </div>
 
-                        <div className="flex justify-end gap-3">
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                            {error && <p className="text-xs text-red-600 font-bold w-full mb-2">{error}</p>}
                             <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 font-bold text-sm hover:bg-slate-100 rounded-lg">Cancel</button>
                             <button 
                                 type="submit" 

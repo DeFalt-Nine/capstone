@@ -49,16 +49,17 @@ const IntroAnimation: React.FC = () => {
     >
       {/* The expanding portal element */}
       <div className="relative animate-zoom-through flex items-center justify-center">
-        {/* Decorative Circles */}
-        <div className="absolute w-64 h-64 border-2 border-lt-yellow/40 rounded-full animate-pulse-glow"></div>
-        <div className="absolute w-48 h-48 border border-lt-orange/30 rounded-full"></div>
-        
-        {/* Main Icon that user zooms "through" */}
-        {/* Using lt-blue (which is now #736f26 Moss Green) makes the globe look earthy */}
-        <div className="bg-lt-blue text-white rounded-full w-32 h-32 flex items-center justify-center shadow-2xl relative z-10">
-            <i className="fas fa-globe-asia text-6xl"></i>
-        </div>
-      </div>
+    <div className="absolute w-80 h-80 border-2 border-lt-yellow/40 rounded-full animate-pulse-glow"></div>
+    <div className="absolute w-72 h-72 border border-lt-orange/30 rounded-full"></div>
+    
+    <div className="w-64 h-64 flex items-center justify-center relative z-10">
+        <img 
+            src="/logo.png" 
+            alt="CultureQuest Logo" 
+            className="w-full h-full object-contain drop-shadow-2xl"
+        />
+    </div>
+</div>
 
       {/* Text Overlay - Fades out before the zoom completes */}
       <div 

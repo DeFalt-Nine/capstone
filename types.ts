@@ -20,6 +20,10 @@ export interface Review {
   createdAt?: string;
   isSeen?: boolean;
   isResolved?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  userId?: string;
+  userAvatar?: string;
 }
 
 export interface TouristSpot {
@@ -89,6 +93,8 @@ export interface BlogPost {
   videoLink?: string;
   adminFeedback?: string;
   isSeen?: boolean;
+  userId?: string;
+  userAvatar?: string;
 }
 
 export interface HistoryEvent {

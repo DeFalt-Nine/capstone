@@ -14,6 +14,8 @@ import {
     markReportAsSeen,
     markBlogPostAsSeen
 } from '../services/apiService';
+import AlertModal from '../components/AlertModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { NAV_LINKS } from '../constants';
 import AnimatedElement from '../components/AnimatedElement';
 
@@ -56,6 +58,23 @@ const AdminPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     // isModalOpen is no longer used — all editing is done via the full-screen detail view
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+    const [alertModal, setAlertModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        variant?: 'info' | 'success' | 'error' | 'warning';
+        onClose?: () => void;
+    }>({ isOpen: false, title: '', message: '' });
+
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        onCancel?: () => void;
+        confirmLabel?: string;
+        variant?: 'danger' | 'warning' | 'info';
+    }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
     const [editItem, setEditItem] = useState<any | null>(null);
     const [formData, setFormData] = useState<any>({});
     
@@ -133,7 +152,12 @@ const AdminPage: React.FC = () => {
             if (timeout) clearTimeout(timeout);
             timeout = setTimeout(() => {
                 handleLogout();
-                alert("You have been logged out due to 10 minutes of inactivity.");
+                setAlertModal({
+                    isOpen: true,
+                    title: "Session Expired",
+                    message: "You have been logged out due to 10 minutes of inactivity.",
+                    variant: 'warning'
+                });
             }, 10 * 60 * 1000);
         };
 
@@ -238,60 +262,170 @@ const AdminPage: React.FC = () => {
             console.error('[Admin] loadData Error:', error);
             if (error.message.includes('403')) {
                 handleLogout();
-                alert("Your session has expired. Please login again.");
+                setAlertModal({
+                    isOpen: true,
+                    title: "Session Expired",
+                    message: "Your session has expired. Please login again.",
+                    variant: 'warning'
+                });
             } else {
-                alert(`Error loading data: ${error.message}`);
+                setAlertModal({
+                    isOpen: true,
+                    title: "Error Loading Data",
+                    message: `Error loading data: ${error.message}`,
+                    variant: 'error'
+                });
             }
         } finally {
             setIsLoading(false);
         }
     };
 
+
+    
+const formatDateRange = (start: string, end: string): string => {
+    if (!start) return '';
+    
+    const startDate = new Date(start + 'T12:00:00'); // ← use noon not midnight
+    const endDate = new Date(end + 'T12:00:00');     
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const startMonth = monthNames[startDate.getMonth()];
+    const startDay = startDate.getDate();
+    const startYear = startDate.getFullYear();
+
+    const endMonth = monthNames[endDate.getMonth()];
+    const endDay = endDate.getDate();
+    const endYear = endDate.getFullYear();
+
+    // Single day
+    if (start === end || !end) {
+        return `${startMonth} ${startDay}, ${startYear}`;
+    }
+
+    // Same month same year: "February 16 to 20, 2026"
+    if (startMonth === endMonth && startYear === endYear) {
+        return `${startMonth} ${startDay} to ${endDay}, ${endYear}`;
+    }
+
+    // Different months same year: "March 4 to April 1, 2026"
+    if (startYear === endYear) {
+        return `${startMonth} ${startDay} to ${endMonth} ${endDay}, ${endYear}`;
+    }
+
+    // Different years: "December 30, 2025 to January 2, 2026"
+    return `${startMonth} ${startDay}, ${startYear} to ${endMonth} ${endDay}, ${endYear}`;
+};
+
     const handleDelete = async (id: string) => {
-        if(!window.confirm("Are you sure? This cannot be undone.")) return;
-        try {
-            if (activeTab === 'reports') {
-                await deleteReport(id);
-            } else {
-                await deleteItem(activeTab, id);
+        setConfirmModal({
+            isOpen: true,
+            title: "Confirm Delete",
+            message: "Are you sure you want to delete this item? This cannot be undone.",
+            variant: 'danger',
+            onConfirm: async () => {
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                try {
+                    if (activeTab === 'reports') {
+                        await deleteReport(id);
+                    } else {
+                        await deleteItem(activeTab, id);
+                    }
+                    setData((prev: any[]) => prev.filter((item: any) => item._id !== id));
+                    // Return to list view after deletion
+                    setIsDetailView(false);
+                } catch (error: any) {
+                    setAlertModal({
+                        isOpen: true,
+                        title: "Operation Failed",
+                        message: error.message || 'Operation failed.',
+                        variant: 'error'
+                    });
+                }
             }
-            setData((prev: any[]) => prev.filter((item: any) => item._id !== id));
-            // Return to list view after deletion
-            setIsDetailView(false);
-        } catch (error: any) {
-            alert(error.message || 'Operation failed.');
-        }
+        });
     };
 
     const handleApprove = async (id: string) => {
-        if(!window.confirm("Approve this post for public view?")) return;
-        try {
-            const updated = await updateItem(activeTab, id, { status: 'approved' });
-            setData((prev: any[]) => prev.map((item: any) => item._id === id ? updated : item));
-        } catch (error: any) {
-            alert(error.message || 'Failed to approve.');
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: "Approve Post",
+            message: "Approve this post for public view?",
+            variant: 'info',
+            onConfirm: async () => {
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                try {
+                    const updated = await updateItem(activeTab, id, { status: 'approved' });
+                    setData((prev: any[]) => prev.map((item: any) => item._id === id ? updated : item));
+                } catch (error: any) {
+                    setAlertModal({
+                        isOpen: true,
+                        title: "Approval Failed",
+                        message: error.message || 'Failed to approve.',
+                        variant: 'error'
+                    });
+                }
+            }
+        });
     };
 
     // ─── Unified entry point: everything opens the full-screen detail panel ───
-    const openDetailPanel = (item: any | null, subView: 'info' | 'reviews' | 'edit') => {
-        setEditItem(item || null);
-        setFormData(item ? { ...item } : {});
-        setImageInputType('url');
-        setFormError(null);
-        setDetailItem(item);
-        setDetailSubView(subView);
-        setIsDetailView(true);
+   const openDetailPanel = (item: any | null, subView: 'info' | 'reviews' | 'edit') => {
+    setEditItem(item || null);
+    setFormData(item ? { ...item } : {});
+    setImageInputType('url');
+    setFormError(null);
+    setDetailItem(item);
+    setDetailSubView(subView);
+    setIsDetailView(true);
 
-        // Auto-mark as seen if it's a report or blog post
-        if (item && !item.isSeen) {
-            if (activeTab === 'reports') {
-                handleMarkReportSeen(item._id);
-            } else if (activeTab === 'blog-posts') {
-                handleMarkBlogPostSeen(item._id);
+    // ── Parse existing date back into start/end for date pickers ──
+    if (item?.date) {
+        const rangeMatch = item.date.match(/^([A-Za-z]+)\s+(\d+)\s+to\s+(\d+),?\s*(\d{4})/i);
+        const crossMatch = item.date.match(/^([A-Za-z]+\s+\d+),?\s*(\d{4})?\s+to\s+([A-Za-z]+\s+\d+),?\s*(\d{4})/i);
+
+        if (rangeMatch) {
+            const [, month, startDay, endDay, year] = rangeMatch;
+            const pad = (n: string) => n.padStart(2, '0');
+            const monthNum = new Date(`${month} 1, 2000`).getMonth() + 1;
+            setFormData((prev: any) => ({
+                ...prev,
+                startDate: `${year}-${pad(String(monthNum))}-${pad(startDay)}`,
+                endDate: `${year}-${pad(String(monthNum))}-${pad(endDay)}`
+            }));
+        } else if (crossMatch) {
+            const startDate = new Date(`${crossMatch[1]}, ${crossMatch[4] || crossMatch[2]}`);
+            const endDate = new Date(`${crossMatch[3]}, ${crossMatch[4]}`);
+            if (!isNaN(startDate.getTime())) {
+                setFormData((prev: any) => ({
+                    ...prev,
+                    startDate: startDate.toISOString().split('T')[0],
+                    endDate: !isNaN(endDate.getTime()) ? endDate.toISOString().split('T')[0] : ''
+                }));
+            }
+        } else {
+            const single = new Date(item.date);
+            if (!isNaN(single.getTime())) {
+                setFormData((prev: any) => ({
+                    ...prev,
+                    startDate: single.toISOString().split('T')[0],
+                    endDate: ''
+                }));
             }
         }
-    };
+    }
+
+    // Auto-mark as seen if it's a report or blog post
+    if (item && !item.isSeen) {
+        if (activeTab === 'reports') {
+            handleMarkReportSeen(item._id);
+        } else if (activeTab === 'blog-posts') {
+            handleMarkBlogPostSeen(item._id);
+        }
+    }
+};
 
     const handleOpenModal      = (item?: any)  => openDetailPanel(item || null, item ? 'info' : 'edit');
     const handleOpenReviewModal = (item: any)  => openDetailPanel(item, 'reviews');
@@ -299,18 +433,30 @@ const AdminPage: React.FC = () => {
 
     const handleDeleteReview = async (reviewId: string) => {
         if (!detailItem) return;
-        if (!window.confirm("Delete this review? This is permanent.")) return;
-
-        try {
-            const type = activeTab === 'tourist-spots' ? 'tourist' : 'dining';
-            await deleteReview(type, detailItem._id, reviewId);
-            const updatedReviews = detailItem.reviews.filter((r: any) => r._id !== reviewId);
-            const updatedItem = { ...detailItem, reviews: updatedReviews };
-            setDetailItem(updatedItem);
-            setData((prev: any[]) => prev.map((item: any) => item._id === detailItem._id ? updatedItem : item));
-        } catch (error: any) {
-            alert(error.message || "Failed to delete review.");
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: "Delete Review",
+            message: "Delete this review? This is permanent.",
+            variant: 'danger',
+            onConfirm: async () => {
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                try {
+                    const type = activeTab === 'tourist-spots' ? 'tourist' : 'dining';
+                    await deleteReview(type, detailItem._id, reviewId);
+                    const updatedReviews = detailItem.reviews.filter((r: any) => r._id !== reviewId);
+                    const updatedItem = { ...detailItem, reviews: updatedReviews };
+                    setDetailItem(updatedItem);
+                    setData((prev: any[]) => prev.map((item: any) => item._id === detailItem._id ? updatedItem : item));
+                } catch (error: any) {
+                    setAlertModal({
+                        isOpen: true,
+                        title: "Error",
+                        message: error.message || "Failed to delete review.",
+                        variant: 'error'
+                    });
+                }
+            }
+        });
     };
 
     const handleMarkReviewSeen = async (reviewId: string) => {
@@ -379,6 +525,12 @@ const AdminPage: React.FC = () => {
                 setFormData({ ...formData, image: result.url });
             } catch (error: any) {
                 setFormError(error.message || "Upload failed.");
+                setAlertModal({
+                    isOpen: true,
+                    title: "Upload Failed",
+                    message: error.message || "Upload failed.",
+                    variant: 'error'
+                });
             } finally {
                 setIsUploading(false);
                 e.target.value = ''; 
@@ -396,7 +548,12 @@ const AdminPage: React.FC = () => {
                 callback(result.url);
             } catch (error: any) {
                 setFormError(error.message || "Upload failed.");
-                alert(error.message || "Upload failed.");
+                setAlertModal({
+                    isOpen: true,
+                    title: "Upload Failed",
+                    message: error.message || "Upload failed.",
+                    variant: 'error'
+                });
             } finally {
                 setIsUploading(false);
                 e.target.value = ''; 
@@ -479,9 +636,19 @@ const AdminPage: React.FC = () => {
             try {
                 const updated = await updateSiteSettings(siteSettingsForm);
                 setSiteSettingsForm(updated);
-                alert('Site settings updated successfully!');
+                setAlertModal({
+                    isOpen: true,
+                    title: "Success",
+                    message: 'Site settings updated successfully!',
+                    variant: 'success'
+                });
             } catch (error: any) {
-                alert(error.message || 'Failed to update settings.');
+                setAlertModal({
+                    isOpen: true,
+                    title: "Update Failed",
+                    message: error.message || 'Failed to update settings.',
+                    variant: 'error'
+                });
             } finally {
                 setIsLoading(false);
             }
@@ -646,13 +813,28 @@ const AdminPage: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div className="sm:col-span-2 space-y-3">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Image URL"
-                                                    value={img.url}
-                                                    onChange={(e) => updateHomeHeroImage(idx, 'url', e.target.value)}
-                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-lt-orange outline-none"
-                                                />
+                                                <div className="flex gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Image URL"
+                                                        value={img.url}
+                                                        onChange={(e) => updateHomeHeroImage(idx, 'url', e.target.value)}
+                                                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-lt-orange outline-none"
+                                                    />
+                                                    <input 
+                                                        type="file" 
+                                                        id={`hero-img-${idx}`}
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={(e) => handleFileUpload(e, (url) => updateHomeHeroImage(idx, 'url', url))}
+                                                    />
+                                                    <label 
+                                                        htmlFor={`hero-img-${idx}`}
+                                                        className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center justify-center whitespace-nowrap"
+                                                    >
+                                                        {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
+                                                    </label>
+                                                </div>
                                                 <input 
                                                     type="text" 
                                                     placeholder="Alt Text"
@@ -1394,8 +1576,16 @@ const AdminPage: React.FC = () => {
                 return <pre className="text-[10px] bg-slate-900 text-slate-300 p-3 rounded-xl overflow-x-auto">{JSON.stringify(value, null, 2)}</pre>;
             }
             if (key.toLowerCase().includes('date') || key === 'createdAt') {
-                return <span className="text-slate-700 font-medium">{new Date(value).toLocaleString()}</span>;
-            }
+    const parsed = new Date(value);
+    // If it's a valid ISO date (createdAt, updatedAt) format it, otherwise show raw string
+    return (
+        <span className="text-slate-700 font-medium">
+            {!isNaN(parsed.getTime()) && key !== 'date' 
+                ? parsed.toLocaleString() 
+                : value}
+        </span>
+    );
+}
             if (key === 'status') {
                 const colors: any = { approved: 'bg-green-100 text-green-600', pending: 'bg-amber-100 text-amber-600', rejected: 'bg-red-100 text-red-600' };
                 return <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${colors[value] || 'bg-slate-100 text-slate-600'}`}>{value}</span>;
@@ -1716,7 +1906,51 @@ const AdminPage: React.FC = () => {
                                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Event Details</p>
                                         <div className="grid grid-cols-2 gap-6">
-                                            {renderInput('date', 'Schedule')}
+                                            <div className="mb-4">
+    <label className="block text-sm font-bold text-slate-700 mb-2">Schedule</label>
+    <div className="grid grid-cols-2 gap-3">
+        <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Start Date</label>
+            <input
+                type="date"
+                value={formData.startDate || ''}
+                onChange={e => {
+                    const start = e.target.value;
+                    const end = formData.endDate || start;
+                    setFormData({
+                        ...formData,
+                        startDate: start,
+                        date: formatDateRange(start, end)
+                    });
+                }}
+                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-lt-blue outline-none text-sm"
+            />
+        </div>
+        <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">End Date <span className="text-slate-300 font-normal">(optional)</span></label>
+            <input
+                type="date"
+                value={formData.endDate || ''}
+                onChange={e => {
+                    const end = e.target.value;
+                    const start = formData.startDate || end;
+                    setFormData({
+                        ...formData,
+                        endDate: end,
+                        date: formatDateRange(start, end)
+                    });
+                }}
+                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-lt-blue outline-none text-sm"
+            />
+        </div>
+    </div>
+    {formData.date && (
+        <p className="text-[11px] text-slate-500 mt-2 flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+            <i className="fas fa-calendar-check text-lt-blue"></i>
+            Saves as: <span className="font-bold text-slate-700">{formData.date}</span>
+        </p>
+    )}
+</div>
                                             {renderInput('badge', 'Event Type')}
                                         </div>
                                         <div className="mt-6">
@@ -2312,6 +2546,26 @@ const AdminPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {alertModal.isOpen && (
+                <AlertModal
+                    title={alertModal.title}
+                    message={alertModal.message}
+                    variant={alertModal.variant}
+                    onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+                />
+            )}
+
+            {confirmModal.isOpen && (
+                <ConfirmationModal
+                    title={confirmModal.title}
+                    message={confirmModal.message}
+                    confirmLabel={confirmModal.confirmLabel}
+                    variant={confirmModal.variant}
+                    onConfirm={confirmModal.onConfirm}
+                    onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                />
             )}
         </div>
     );

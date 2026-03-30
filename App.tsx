@@ -15,11 +15,15 @@ import BlogPage from './pages/BlogPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import AdminPage from './pages/AdminPage'; // Import AdminPage
 
+import { AuthProvider } from './contexts/AuthContext';
+
 const App: React.FC = () => {
   return (
-    <HashRouter>
-        <AppContent />
-    </HashRouter>
+    <AuthProvider>
+      <HashRouter>
+          <AppContent />
+      </HashRouter>
+    </AuthProvider>
   );
 };
 

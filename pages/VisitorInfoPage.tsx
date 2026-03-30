@@ -40,6 +40,203 @@ const LANDMARKS = [
     { id: 'town', name: 'LT Town Center', lat: 16.4510, lng: 120.5890, area: 'LT' }
 ];
 
+const useCountdown = (targetDateStr: string) => {
+    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, status: 'upcoming' as 'upcoming' | 'today' | 'ended' });
+
+    useEffect(() => {
+const calculate = () => {
+    const now = new Date();
+
+    // ── Same month range: "February 16 to 20, 2026" ──
+    const sameMonthMatch = targetDateStr.match(/^([A-Za-z]+)\s+(\d+)\s+to\s+(\d+),?\s*(\d{4})/i);
+    if (sameMonthMatch) {
+        const [, month, startDay, endDay, year] = sameMonthMatch;
+        const startDate = new Date(`${month} ${startDay}, ${year} 12:00:00`);
+        const endDate = new Date(`${month} ${endDay}, ${year} 12:00:00`);
+
+        if (!isNaN(endDate.getTime()) && now > endDate) {
+            setTimeLeft({ days: 0, hours: 0, mins: 0, status: 'ended' });
+            return;
+        }
+        if (!isNaN(startDate.getTime()) && now >= startDate && now <= endDate) {
+            setTimeLeft({ days: 0, hours: 0, mins: 0, status: 'today' });
+            return;
+        }
+        if (!isNaN(startDate.getTime()) && now < startDate) {
+            const diff = startDate.getTime() - now.getTime();
+            setTimeLeft({
+                days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+                mins: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+                status: 'upcoming'
+            });
+            return;
+        }
+    }
+
+    // ── Cross month range: "March 4 to April 1, 2026" ──
+    const crossMonthMatch = targetDateStr.match(/to\s+(.+)|–\s*(.+)/i);
+    if (crossMonthMatch) {
+        const endPart = (crossMonthMatch[1] || crossMonthMatch[2]).trim();
+        const yearMatch = endPart.match(/\d{4}/);
+        const year = yearMatch ? yearMatch[0] : new Date().getFullYear().toString();
+        const startMatch = targetDateStr.match(/^([A-Za-z]+ \d+)/);
+        const startDate = startMatch ? new Date(`${startMatch[1]}, ${year} 12:00:00`) : null;
+        const endDate = new Date(endPart.replace(/(\d+),?\s*(\d{4})/, '$1, $2') + ' 12:00:00');
+
+        if (!isNaN(endDate.getTime()) && now > endDate) {
+            setTimeLeft({ days: 0, hours: 0, mins: 0, status: 'ended' });
+            return;
+        }
+        if (startDate && !isNaN(startDate.getTime()) && now >= startDate && !isNaN(endDate.getTime()) && now <= endDate) {
+            setTimeLeft({ days: 0, hours: 0, mins: 0, status: 'today' });
+            return;
+        }
+        if (startDate && !isNaN(startDate.getTime()) && now < startDate) {
+            const diff = startDate.getTime() - now.getTime();
+            setTimeLeft({
+                days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+                mins: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+                status: 'upcoming'
+            });
+            return;
+        }
+    }
+
+    // ── Single date ──
+    const target = new Date(targetDateStr);
+    if (isNaN(target.getTime())) {
+        setTimeLeft({ days: 0, hours: 0, mins: 0, status: 'upcoming' });
+        return;
+    }
+    const diff = target.getTime() - now.getTime();
+    if (diff <= 0) {
+        const daysSince = Math.abs(Math.floor(diff / (1000 * 60 * 60 * 24)));
+        setTimeLeft({ days: daysSince, hours: 0, mins: 0, status: daysSince === 0 ? 'today' : 'ended' });
+        return;
+    }
+    setTimeLeft({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        mins: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        status: 'upcoming'
+    });
+}; // < - Closing Bracket
+
+        calculate();
+        const id = setInterval(calculate, 60000);
+        return () => clearInterval(id);
+    }, [targetDateStr]);
+
+    return timeLeft;
+};
+
+const CountdownBadge: React.FC<{ dateStr: string }> = ({ dateStr }) => {
+    const { days, hours, status } = useCountdown(dateStr);
+    if (status === 'ended') return (
+        <span className="text-[9px] font-black bg-slate-800/70 backdrop-blur text-slate-300 px-2 py-1 rounded-full uppercase">
+            Ended
+        </span>
+    );
+    if (status === 'today') return (
+    <span className="text-[9px] font-black bg-green-500 text-white px-2 py-1 rounded-full uppercase animate-pulse">
+        🟢 Ongoing!
+    </span>
+);
+    
+    return (
+        <span className="text-[9px] font-black bg-black/50 backdrop-blur text-white px-2 py-1 rounded-full uppercase">
+            {days}d {hours}h away
+        </span>
+    );
+};
+
+const EventModal: React.FC<{ event: LocalEvent; onClose: () => void }> = ({ event, onClose }) => {
+    const countdown = useCountdown(event.date);
+
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = ''; };
+    }, []);
+
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [onClose]);
+
+    const statusConfig = {
+        today:    { label: '🔴 Happening Today!', bg: 'bg-red-500' },
+        upcoming: { label: '🟢 Upcoming',         bg: 'bg-green-500' },
+        ended:    { label: '⚫ Event Ended',       bg: 'bg-slate-400' },
+    };
+    const status = statusConfig[countdown.status];
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Hero Image */}
+                <div className="relative h-64 shrink-0 overflow-hidden">
+                    <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center hover:bg-black/60 transition-colors">
+                        <i className="fas fa-times"></i>
+                    </button>
+                    <span className="absolute top-4 left-4 bg-lt-yellow text-slate-900 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider shadow">
+                        {event.badge}
+                    </span>
+                    <div className="absolute bottom-0 left-0 right-0 p-6">
+                        <h2 className="text-2xl font-black text-white drop-shadow-lg">{event.title}</h2>
+                        <div className="flex items-center gap-2 mt-1 text-white/80 text-xs font-medium">
+                            <i className="fas fa-map-pin text-lt-yellow"></i>
+                            <span>{event.location}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Body */}
+                <div className="overflow-y-auto flex-1 p-6 space-y-5 custom-scrollbar">
+                    {/* Countdown */}
+                    <div className={`${status.bg} text-white rounded-2xl p-4`}>
+                        {countdown.status === 'upcoming' ? (
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-black uppercase tracking-widest opacity-80">{status.label}</span>
+                                <div className="flex items-center gap-4">
+                                    {[{ value: countdown.days, label: 'Days' }, { value: countdown.hours, label: 'Hours' }, { value: countdown.mins, label: 'Mins' }].map(({ value, label }) => (
+                                        <div key={label} className="text-center">
+                                            <div className="text-2xl font-black leading-none">{String(value).padStart(2, '0')}</div>
+                                            <div className="text-[9px] font-bold uppercase opacity-70 mt-0.5">{label}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center font-black text-sm">{status.label}</div>
+                        )}
+                    </div>
+
+                    {/* Date */}
+                    <div className="flex items-center gap-3 text-sm text-slate-600 font-medium bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <i className="fas fa-calendar-alt text-lt-orange text-lg"></i>
+                        <span>{event.date}</span>
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-slate-600 leading-relaxed text-sm">{event.description}</p>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
 // Helper: Haversine distance in KM
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // Radius of earth
@@ -485,6 +682,7 @@ const TaxiEstimator: React.FC = () => {
 };
 
 const VisitorInfoPage: React.FC = () => {
+const [selectedEvent, setSelectedEvent] = useState<LocalEvent | null>(null);
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'culture' | 'events' | 'emergency'>('culture');
   const [events, setEvents] = useState<LocalEvent[]>([]);
@@ -708,30 +906,61 @@ const VisitorInfoPage: React.FC = () => {
             )}
 
             {activeTab === 'events' && (
-                <div className="animate-fade-in">
-                    <AnimatedElement><div className="bg-gradient-to-r from-lt-yellow to-lt-orange rounded-3xl p-8 text-center text-slate-900 mb-10 shadow-xl"><h2 className="text-3xl font-bold mb-2">Festivities & Celebrations</h2><p className="opacity-80 font-medium">Join the community gatherings of La Trinidad.</p></div></AnimatedElement>
-                    {isLoadingEvents ? <div className="text-center py-20"><i className="fas fa-spinner fa-spin text-4xl text-lt-orange"></i></div> : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">{events.map((event, index) => (
-                            <AnimatedElement 
-                                key={event._id || index} 
-                                delay={(index % 2) * 150} 
-                                direction={index % 2 === 0 ? 'left' : 'right'} 
-                                distance={100}
-                                scale={0.8}
-                                rotate={index % 2 === 0 ? -3 : 3}
-                            >
-                                <div 
-                                    id={`event-${event.title.replace(/\s+/g, '-').toLowerCase()}`}
-                                    className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row h-full border border-slate-100 hover:shadow-2xl transition-all group"
-                                >
-                                    <div className="w-full md:w-2/5 relative h-48 md:h-auto overflow-hidden"><img src={event.image} alt={event.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500" /><div className="absolute top-4 left-4"><span className="bg-lt-yellow/90 backdrop-blur text-slate-900 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm uppercase">{event.badge}</span></div></div>
-                                    <div className="p-6 w-full md:w-3/5 flex flex-col justify-center"><div className="text-lt-orange font-bold text-sm mb-1 uppercase tracking-wide">{event.date}</div><h3 className="text-2xl font-bold text-slate-800 mb-2 group-hover:text-lt-orange transition-colors">{event.title}</h3><p className="text-slate-600 text-sm mb-4">{event.description}</p><div className="mt-auto flex items-center text-xs text-slate-500 font-medium"><i className="fas fa-map-pin mr-2 text-lt-blue"></i> {event.location}</div></div>
+    <div className="animate-fade-in">
+        {selectedEvent && (
+            <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+        )}
+
+        <AnimatedElement>
+            <div className="bg-gradient-to-r from-lt-yellow to-lt-orange rounded-3xl p-8 text-center text-slate-900 mb-10 shadow-xl">
+                <h2 className="text-3xl font-bold mb-2">Festivities & Celebrations</h2>
+                <p className="opacity-80 font-medium">Join the community gatherings of La Trinidad.</p>
+                <p className="text-xs mt-2 opacity-60 font-medium">Click any card to see details & countdown</p>
+            </div>
+        </AnimatedElement>
+
+        {isLoadingEvents ? (
+            <div className="text-center py-20">
+                <i className="fas fa-spinner fa-spin text-4xl text-lt-orange"></i>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {events.map((event, index) => (
+                    <AnimatedElement key={event._id || index} delay={(index % 2) * 150} direction={index % 2 === 0 ? 'left' : 'right'} distance={100} scale={0.8} rotate={index % 2 === 0 ? -3 : 3}>
+                        <div
+                            id={`event-${event.title.replace(/\s+/g, '-').toLowerCase()}`}
+                            onClick={() => setSelectedEvent(event)}
+                            className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row h-full border border-slate-100 hover:shadow-2xl hover:border-lt-orange transition-all group cursor-pointer active:scale-[0.98]"
+                        >
+                            <div className="w-full md:w-2/5 relative h-48 md:h-auto overflow-hidden">
+                                <img src={event.image} alt={event.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500" />
+                                <div className="absolute top-4 left-4">
+                                    <span className="bg-lt-yellow/90 backdrop-blur text-slate-900 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm uppercase">{event.badge}</span>
                                 </div>
-                            </AnimatedElement>
-                        ))}</div>
-                    )}
-                </div>
-            )}
+                                <div className="absolute bottom-3 left-3">
+                                    <CountdownBadge dateStr={event.date} />
+                                </div>
+                            </div>
+                            <div className="p-6 w-full md:w-3/5 flex flex-col justify-center">
+                                <div className="text-lt-orange font-bold text-sm mb-1 uppercase tracking-wide">{event.date}</div>
+                                <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-lt-orange transition-colors">{event.title}</h3>
+                                <p className="text-slate-500 text-sm mb-4 line-clamp-2">{event.description}</p>
+                                <div className="mt-auto flex items-center justify-between">
+                                    <div className="flex items-center text-xs text-slate-500 font-medium">
+                                        <i className="fas fa-map-pin mr-2 text-lt-blue"></i> {event.location}
+                                    </div>
+                                    <span className="text-[10px] font-black text-lt-orange opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                        <i className="fas fa-expand-alt"></i> View Details
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </AnimatedElement>
+                ))}
+            </div>
+        )}
+    </div>
+)}
 
             {activeTab === 'emergency' && (
                 <div className="animate-fade-in">
