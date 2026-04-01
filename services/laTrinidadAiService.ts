@@ -1,15 +1,21 @@
-const API_BASE = ((import.meta as any).env && (import.meta as any).env.VITE_API_URL) || '';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export const askLaTrinidadGuide = async (
   userInput: string, 
-  onChunk: (chunk: string) => void
+  onChunk: (chunk: string) => void,
+  model?: string,
+  intentContext?: string
 ): Promise<void> => {
   const response = await fetch(`${API_BASE}/api/chatbot`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ message: userInput }),
+    body: JSON.stringify({ 
+      message: userInput,
+      model: model,
+      intentContext: intentContext
+    }),
   });
 
   if (!response.ok) {

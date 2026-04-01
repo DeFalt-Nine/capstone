@@ -15,9 +15,25 @@ const SUGGESTIONS = [
   "Where to eat? 🍴"
 ];
 
+const GROQ_MODELS = [
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 (Smart)' },
+  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 (Fast)' },
+  { id: 'qwen/qwen3-32b', name: 'Qwen 3 (Powerful)' },
+  { id: 'groq/compound-mini', name: 'Groq Compound' }
+];
+
+const ThinkingIndicator = () => (
+  <div className="flex items-center gap-1 px-1">
+    <div className="w-1 h-1 bg-lt-blue rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+    <div className="w-1 h-1 bg-lt-blue rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+    <div className="w-1 h-1 bg-lt-blue rounded-full animate-bounce"></div>
+  </div>
+);
+
 const Chatbot: React.FC = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('llama-3.1-8b-instant');
   const [messages, setMessages] = useState<ChatMessage[]>([
     { author: MessageAuthor.BOT, text: "Hello! I'm your La Trinidad guide. I can help with directions, pricing, or planning your day! 🍓" },
   ]);
@@ -54,17 +70,16 @@ const Chatbot: React.FC = () => {
     }
 
     const instantReply = analyzeIntent(textToSend);
-    if (instantReply) {
-        setTimeout(() => {
-            setMessages(prev => [...prev, { author: MessageAuthor.BOT, text: instantReply }]);
-            setIsLoading(false);
-            logChatInteraction(textToSend, instantReply, true);
-        }, 500);
-        return;
-    }
     
-    const botMessagePlaceholder: ChatMessage = { author: MessageAuthor.BOT, text: '' };
+    const botMessagePlaceholder: ChatMessage = { 
+      author: MessageAuthor.BOT, 
+      text: '',
+      intent: instantReply || undefined
+    };
     setMessages(prev => [...prev, botMessagePlaceholder]);
+    if (instantReply) {
+        logChatInteraction(textToSend, instantReply, true);
+    }
 
     try {
       await askLaTrinidadGuide(textToSend, (chunk) => {
@@ -77,7 +92,7 @@ const Chatbot: React.FC = () => {
           };
           return newMessages;
         });
-      });
+      }, selectedModel, instantReply || undefined);
     } catch (error) {
       setMessages(prev => {
         const newMessages = [...prev];
@@ -99,7 +114,20 @@ const Chatbot: React.FC = () => {
   };
 
   const formatMessage = (text: string) => {
-    const lines = text.split('\n');
+    // Strip <think> and everything after it until </think> or end of string
+    const cleanText = text.replace(/<think>[\s\S]*?(?:<\/think>|$)/g, '').trim();
+    
+    // Show thinking animation if it's still in the "thinking" phase or just started
+    if (cleanText === '' && (text.includes('<think>') || text === '')) {
+      return (
+        <div className="flex items-center gap-2 py-1">
+          <em className="text-slate-400 text-xs italic">Thinking</em>
+          <ThinkingIndicator />
+        </div>
+      );
+    }
+    
+    const lines = cleanText.split('\n');
     return lines.map((line, lineIndex) => {
       if (line.trim() === '') return <br key={lineIndex} />;
 
@@ -115,7 +143,9 @@ const Chatbot: React.FC = () => {
               return <em key={partIndex} className="italic">{part.slice(1, -1)}</em>;
             }
             if (part.startsWith('[[') && part.endsWith(']]')) {
-              const spotName = part.slice(2, -2);
+              const spotName = part.slice(2, -2).trim();
+              if (!spotName) return <span key={partIndex}>{part}</span>;
+              
               return (
                 <button 
                   key={partIndex}
@@ -148,7 +178,20 @@ const Chatbot: React.FC = () => {
         <div className="bg-gradient-to-r from-lt-orange to-lt-yellow text-slate-900 p-4 rounded-t-2xl flex justify-between items-center shadow-md">
           <div className="flex items-center gap-2">
              <div className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center border border-white/20 shadow-inner"><i className="fas fa-robot text-slate-800"></i></div>
-             <div><h3 className="font-bold text-lg leading-none">Ask Guide</h3><span className="text-[10px] font-semibold opacity-70">La Trinidad Assistant</span></div>
+             <div>
+                <h3 className="font-bold text-lg leading-none">Ask Guide</h3>
+                <div className="flex items-center gap-1 mt-1">
+                    <select 
+                        value={selectedModel} 
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                        className="bg-white/20 border-none text-[9px] font-bold rounded px-1 py-0.5 focus:ring-0 cursor-pointer hover:bg-white/40 transition-colors"
+                    >
+                        {GROQ_MODELS.map(m => (
+                            <option key={m.id} value={m.id} className="text-slate-900">{m.name}</option>
+                        ))}
+                    </select>
+                </div>
+             </div>
           </div>
           <button onClick={() => setIsOpen(false)} className="hover:rotate-90 transition-transform"><i className="fas fa-times"></i></button>
         </div>
@@ -159,6 +202,17 @@ const Chatbot: React.FC = () => {
                 {msg.author === MessageAuthor.BOT && <div className="w-8 h-8 rounded-full bg-lt-blue text-white flex items-center justify-center flex-shrink-0 border border-lt-blue/50"><i className="fas fa-mountain"></i></div>}
                 <div className={`max-w-[85%] px-4 py-2 rounded-2xl shadow-sm ${msg.author === MessageAuthor.USER ? 'bg-lt-yellow text-slate-900 rounded-br-none' : 'bg-white text-slate-800 rounded-bl-none border border-slate-200'}`}>
                   <div className="text-sm leading-relaxed">
+                    {msg.author === MessageAuthor.BOT && msg.intent && (
+                      <div className="bg-slate-50 border-l-4 border-lt-blue p-3 mb-3 rounded-r-lg text-xs shadow-sm">
+                        <div className="flex items-center gap-2 mb-1 text-lt-blue font-bold uppercase tracking-wider">
+                          <i className="fas fa-info-circle"></i>
+                          <span>Instant Guide Info</span>
+                        </div>
+                        <div className="text-slate-600 italic">
+                          {formatMessage(msg.intent)}
+                        </div>
+                      </div>
+                    )}
                     {msg.author === MessageAuthor.BOT ? formatMessage(msg.text) : msg.text}
                     {msg.image && <div className="mt-2 rounded-lg overflow-hidden border border-slate-200 shadow-md"><img src={msg.image} alt="" className="w-full h-auto object-cover" /></div>}
                   </div>

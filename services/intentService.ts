@@ -133,8 +133,8 @@ const INTENTS: Intent[] = [
   {
     id: 'meta-commute',
     priority: 35,
-    keywords: ['how to get', 'commute', 'jeep', 'terminal', 'station', 'directions'],
-    response: `🚌 **General Commute:**\n${TERMINAL_INFO}\n\nStandard jeep fare: **₱13.00**. ${TAXI_RULE}`
+    keywords: ['how to get', 'commute', 'jeep', 'terminal', 'station', 'directions', 'transport'],
+    response: `🚌 **General Commute:**\n${TERMINAL_INFO}\n\nStandard jeep fare: **₱13.00**. \n\n⚠️ **Note:** Tricycles and motorcycle taxis (Angkas/Joyride) are **NOT** available in Baguio or La Trinidad. ${TAXI_RULE}`
   },
   {
     id: 'greeting',
