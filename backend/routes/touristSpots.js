@@ -176,14 +176,16 @@ router.post('/:id/reviews', async (req, res) => {
     // Check for existing reviews by this email
     const existingReview = spot.reviews.find(r => r.email === email && !r.isDeleted);
     if (existingReview) {
-      return res.status(400).json({ message: 'You have already left a review for this spot. You can edit it within 30 days or delete it to post a new one later.' });
+      return res.status(400).json({ message: 'You have already left a review for this spot. You can edit it within 7 days or delete it to post a new one later.' });
     }
 
-    // Check for recently deleted reviews (30-day cooldown)
-    const recentlyDeleted = spot.reviews.find(r => r.email === email && r.isDeleted && r.deletedAt && (Date.now() - new Date(r.deletedAt).getTime() < 30 * 24 * 60 * 60 * 1000));
-    if (recentlyDeleted) {
-      const waitDays = Math.ceil((30 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(recentlyDeleted.deletedAt).getTime())) / (24 * 60 * 60 * 1000));
-      return res.status(400).json({ message: `You recently deleted a review. Please wait ${waitDays} more days before posting a new one.` });
+    // Check for recently deleted reviews (7-day cooldown after 3 attempts)
+    const deletedReviews = spot.reviews.filter(r => r.email === email && r.isDeleted);
+    const lastDeleted = deletedReviews.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()).reverse()[0];
+    
+    if (deletedReviews.length >= 3 && lastDeleted && (Date.now() - new Date(lastDeleted.deletedAt).getTime() < 7 * 24 * 60 * 60 * 1000)) {
+      const waitDays = Math.ceil((7 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(lastDeleted.deletedAt).getTime())) / (24 * 60 * 60 * 1000));
+      return res.status(400).json({ message: `You have reached the limit of 3 review attempts. Please wait ${waitDays} more days before posting a new one.` });
     }
 
     spot.reviews.push({ 
@@ -231,12 +233,12 @@ router.put('/:id/reviews/:reviewId', async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized to edit this review.' });
     }
 
-    // Check 30-day edit window
+    // Check 7-day edit window
     const createdAt = new Date(review.createdAt);
     const now = new Date();
     const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 3600 * 24);
     
-    if (diffDays > 30) {
+    if (diffDays > 7) {
       return res.status(400).json({ message: 'This review is now permanent and can no longer be edited.' });
     }
 
@@ -272,7 +274,15 @@ router.post('/:id/reviews/:reviewId/delete', async (req, res) => {
     review.deletedAt = new Date();
     
     await spot.save();
-    res.json({ message: 'Review deleted. You can post a new one after 30 days.' });
+
+    const deletedReviewsCount = spot.reviews.filter(r => r.email === email && r.isDeleted).length;
+    const remainingAttempts = Math.max(0, 3 - deletedReviewsCount);
+
+    if (deletedReviewsCount >= 3) {
+      res.json({ message: 'Review deleted. You have reached the 3-attempt limit and can post a new one after 7 days.' });
+    } else {
+      res.json({ message: `Review deleted. You have ${remainingAttempts} attempt(s) left before a 7-day cooldown applies.` });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

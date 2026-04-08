@@ -54,7 +54,7 @@ const IntroAnimation: React.FC = () => {
     
     <div className="w-64 h-64 flex items-center justify-center relative z-10">
         <img 
-            src="/logo.png" 
+            src="/Logo.png" 
             alt="CultureQuest Logo" 
             className="w-full h-full object-contain drop-shadow-2xl"
         />

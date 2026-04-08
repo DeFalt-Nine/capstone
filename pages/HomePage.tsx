@@ -8,6 +8,8 @@ import ParallaxElement from '../components/ParallaxElement';
 import Mascot from '../components/Mascot';
 import { fetchSiteSettings } from '../services/apiService';
 
+const MORPHING_WORDS = ["Discover", "Explore", "Enjoy", "Love"];
+
 const DEFAULT_HERO_IMAGES = [
     {
         url: 'https://images.unsplash.com/photo-1536481046830-9b11bb07e8b8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxQaGlsaXBwaW5lcyUyMG1vdW50YWluJTIwbGFuZHNjYXBlfGVufDF8fHx8MTc2MTgyNjY5N3ww&ixlib=rb-4.1.0&q=80&w=1920',
@@ -27,9 +29,10 @@ const HomePage: React.FC = () => {
     const navigate = useNavigate();
     const [heroImages, setHeroImages] = useState(DEFAULT_HERO_IMAGES);
     const [heroWelcomeText, setHeroWelcomeText] = useState("Welcome to the Valley of Colors");
-    const [heroTitle, setHeroTitle] = useState("Explore La Trinidad");
     const [heroSubtitle, setHeroSubtitle] = useState("Experience the Philippines' Strawberry Capital. A highland haven of culture, nature, and fresh flavors.");
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [wordIndex, setWordIndex] = useState(0);
+    const [isAnimating, setIsAnimating] = useState(false);
     const heroTextRef = useRef<HTMLDivElement>(null);
 
     // Fetch Site Settings
@@ -39,7 +42,6 @@ const HomePage: React.FC = () => {
                 const settings = await fetchSiteSettings();
                 if (settings && settings.home) {
                     setHeroWelcomeText(settings.home.heroWelcomeText);
-                    setHeroTitle(settings.home.heroTitle);
                     setHeroSubtitle(settings.home.heroSubtitle);
                     if (settings.home.heroImages && settings.home.heroImages.length > 0) {
                         setHeroImages(settings.home.heroImages);
@@ -50,6 +52,18 @@ const HomePage: React.FC = () => {
             }
         };
         loadSettings();
+    }, []);
+
+    // Word Morphing for the top line
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setIsAnimating(true);
+            setTimeout(() => {
+                setWordIndex(prev => (prev + 1) % MORPHING_WORDS.length);
+                setIsAnimating(false);
+            }, 400); // halfway through animation, swap the word
+        }, 4000);
+        return () => clearInterval(interval);
     }, []);
 
     // Hero Text Stagger
@@ -112,24 +126,26 @@ const HomePage: React.FC = () => {
                     </div>
                 ))}
 
-                <div className="relative z-10 text-center px-4 max-w-4xl mx-auto" ref={heroTextRef}>
+                <div className="relative z-10 text-center px-4 max-w-5xl mx-auto" ref={heroTextRef}>
                     <div>
                         <h2 className="text-lt-yellow font-bold tracking-[0.3em] uppercase text-sm md:text-base mb-4 drop-shadow-md">
                             {heroWelcomeText}
                         </h2>
-                        <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-white mb-6 leading-tight drop-shadow-lg">
-                            {heroTitle.split(' ').map((word, i) => (
-                                <React.Fragment key={i}>
-                                    {word === 'La' || word === 'Trinidad' ? (
-                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-lt-orange to-lt-yellow">
-                                            {word}{' '}
-                                        </span>
-                                    ) : (
-                                        <>{word}{' '}</>
-                                    )}
-                                    {i === 0 && <br/>}
-                                </React.Fragment>
-                            ))}
+                        <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-white mb-6 leading-tight drop-shadow-lg flex flex-col items-center">
+                            <span 
+                                className="block opacity-90"
+                                style={{ 
+                                    transition: 'opacity 0.4s ease, transform 0.4s ease, filter 0.4s ease',
+                                    opacity: isAnimating ? 0 : 1,
+                                    transform: isAnimating ? 'translateY(-20px)' : 'translateY(0)',
+                                    filter: isAnimating ? 'blur(8px)' : 'blur(0px)'
+                                }}
+                            >
+                                {MORPHING_WORDS[wordIndex]}
+                            </span>
+                            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-lt-orange to-lt-yellow">
+                                La Trinidad
+                            </span>
                         </h1>
                     </div>
                     

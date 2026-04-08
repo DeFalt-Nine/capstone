@@ -232,7 +232,7 @@ const Mascot: React.FC = () => {
             }
         } else {
             // Tuck away completely to the left
-            gsap.to(mascotRef.current, { x: -120, duration: 0.6, ease: 'power3.inOut' });
+            gsap.to(mascotRef.current, { x: -160, duration: 0.6, ease: 'power3.inOut' });
             if (bubbleRef.current) {
                 gsap.to(bubbleRef.current, { scale: 0, opacity: 0, duration: 0.3 });
             }
@@ -514,7 +514,7 @@ const Mascot: React.FC = () => {
 
             {/* Mascot Character (Cute Strawberry) */}
             <div 
-                className="relative w-20 h-20 transform group-hover:scale-110 transition-transform duration-300 cursor-pointer"
+                className="relative w-32 h-32 transform group-hover:scale-110 transition-transform duration-300 cursor-pointer"
                 onClick={() => {
                     if (!isBubbleVisible) {
                         setIsBubbleVisible(true);
@@ -525,52 +525,17 @@ const Mascot: React.FC = () => {
             >
                 {/* Pop-out Arrow (Visible when tucked) */}
                 {!isBubbleVisible && (
-                    <div className="absolute -right-10 top-1/2 -translate-y-1/2 text-lt-orange/30 hover:text-lt-orange/60 transition-colors animate-pulse p-4">
+                    <div className="absolute -right-12 top-1/2 -translate-y-1/2 text-lt-orange/30 hover:text-lt-orange/60 transition-colors animate-pulse p-4">
                         <i className="fas fa-chevron-right text-2xl"></i>
                     </div>
                 )}
-                <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-xl">
-                    {/* Strawberry Body */}
-                    <path 
-                        d="M50 95 C20 95 5 70 5 45 C5 20 25 5 50 5 C75 5 95 20 95 45 C95 70 80 95 50 95" 
-                        fill="#FF4D4D" 
-                    />
-                    {/* Seeds */}
-                    <circle cx="30" cy="30" r="2" fill="#FFD700" opacity="0.6" />
-                    <circle cx="70" cy="35" r="2" fill="#FFD700" opacity="0.6" />
-                    <circle cx="50" cy="50" r="2" fill="#FFD700" opacity="0.6" />
-                    <circle cx="35" cy="65" r="2" fill="#FFD700" opacity="0.6" />
-                    <circle cx="65" cy="70" r="2" fill="#FFD700" opacity="0.6" />
-                    
-                    {/* Leaves/Stem */}
-                    <path 
-                        d="M50 10 L35 0 L50 5 L65 0 L50 10" 
-                        fill="#2E7D32" 
-                    />
-                    <path 
-                        d="M50 10 L40 15 L50 5 L60 15 L50 10" 
-                        fill="#4CAF50" 
-                    />
-
-                    {/* Eyes */}
-                    <circle cx="35" cy="40" r="4" fill="white" />
-                    <circle cx="35" cy="40" r="2" fill="black" />
-                    <circle cx="65" cy="40" r="4" fill="white" />
-                    <circle cx="65" cy="40" r="2" fill="black" />
-
-                    {/* Smile */}
-                    <path 
-                        d="M40 60 Q50 70 60 60" 
-                        fill="none" 
-                        stroke="black" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                    />
-                </svg>
+                <div className="w-full h-full drop-shadow-xl flex items-center justify-center">
+                    <img src="/Mascot.png" alt="Mascot" className="w-full h-full object-contain" />
+                </div>
                 
                 {/* Badge */}
-                <div className="absolute -top-2 -left-2 bg-lt-yellow text-[8px] font-black px-2 py-1 rounded-full shadow-sm border border-white uppercase">
-                    Event Alert
+                <div className="absolute -top-2 -left-2 bg-lt-yellow text-[10px] font-black px-3 py-1.5 rounded-full shadow-sm border border-white uppercase whitespace-nowrap">
+                    HEY THERE!
                 </div>
             </div>
         </div>

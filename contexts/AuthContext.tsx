@@ -10,7 +10,7 @@ interface AuthContextType {
   isNameMasked: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: { nickname?: string; isNameMasked?: boolean }) => Promise<any>;
+  updateProfile: (updates: { nickname?: string; isNameMasked?: boolean }) => Promise<unknown>;
   getDisplayName: () => string;
 }
 
@@ -85,8 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (updates.isNameMasked !== undefined) setIsNameMasked(updates.isNameMasked);
       
       return data;
-    } catch (error: any) {
-      console.error('[Auth] Error updating profile:', error.message);
+    } catch (error) {
+      const err = error as Error;
+      console.error('[Auth] Error updating profile:', err.message);
       throw error;
     }
   };
@@ -105,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!user) return;
 
-    let timeoutId: any;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const resetTimer = () => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -174,6 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
