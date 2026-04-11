@@ -46,6 +46,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @desc    Fetch reviews by user email
+// @route   GET /api/tourist-spots/user/:email/reviews
+router.get('/user/:email/reviews', async (req, res) => {
+  try {
+    const spots = await TouristSpot.find({ 'reviews.email': req.params.email });
+    const userReviews = spots.flatMap(spot => 
+      spot.reviews
+        .filter(r => r.email === req.params.email && !r.isDeleted)
+        .map(r => ({
+          ...r.toObject(),
+          spotId: spot._id,
+          spotName: spot.name,
+          spotType: 'tourist'
+        }))
+    );
+    res.json(userReviews);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 // @desc    Create a tourist spot
 // @route   POST /api/tourist-spots
 router.post('/', verifyAdmin, async (req, res) => {

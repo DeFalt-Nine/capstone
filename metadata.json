@@ -1,5 +1,5 @@
 {
   "name": "Visit La Trinidad",
   "description": "A tourism website for La Trinidad, Benguet, Philippines, featuring tourist spots, local information, and an AI-powered travel assistant to help plan your trip.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["geolocation"]
 }

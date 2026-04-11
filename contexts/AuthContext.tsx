@@ -136,8 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Store current path to redirect back after sign-in
-    // For HashRouter, we care about the hash part
-    const currentPath = window.location.hash || '#/';
+    const currentPath = window.location.pathname || '/';
     localStorage.setItem('auth_redirect_path', currentPath);
 
     const { error } = await client.auth.signInWithOAuth({
@@ -156,15 +155,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const redirectPath = localStorage.getItem('auth_redirect_path');
     if (user && redirectPath) {
-      localStorage.removeItem('auth_redirect_path');
-      
-      // Normalize paths for comparison
-      const normalizedRedirect = redirectPath.startsWith('#') ? redirectPath : `#${redirectPath}`;
-      const currentHash = window.location.hash || '#/';
-      
-      if (normalizedRedirect !== '#/' && currentHash !== normalizedRedirect) {
-        window.location.hash = normalizedRedirect;
-      }
+      // Small delay to ensure Supabase URL handling is done
+      const timeoutId = setTimeout(() => {
+        localStorage.removeItem('auth_redirect_path');
+        
+        const currentPath = window.location.pathname || '/';
+        
+        if (redirectPath !== '/' && currentPath !== redirectPath) {
+          console.log('[Auth] Redirecting to:', redirectPath);
+          window.history.replaceState(null, '', redirectPath);
+        }
+      }, 500);
+      return () => clearTimeout(timeoutId);
     }
   }, [user]);
 

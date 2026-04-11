@@ -18,6 +18,7 @@ import AlertModal from '../components/AlertModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { NAV_LINKS } from '../constants';
 import AnimatedElement from '../components/AnimatedElement';
+import UniversalImageSelector from '../components/UniversalImageSelector';
 
 const TABS = [
     { id: 'tourist-spots', label: 'Tourist Spots', icon: 'fa-map-marked-alt' },
@@ -81,9 +82,6 @@ const AdminPage: React.FC = () => {
     const [isDetailView, setIsDetailView] = useState(false);
     const [detailSubView, setDetailSubView] = useState<'info' | 'reviews' | 'edit'>('info');
     const [detailItem, setDetailItem] = useState<any | null>(null);
-
-    const [imageInputType, setImageInputType] = useState<'url' | 'file'>('url');
-    const [isUploading, setIsUploading] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -93,8 +91,8 @@ const AdminPage: React.FC = () => {
                 try {
                     await verifyAdminToken(token);
                     setIsAuthenticated(true);
-                    loadData(activeTab);
-                } catch (e) {
+                } catch (err) {
+                    console.error('Auth verification failed', err);
                     localStorage.removeItem('adminToken');
                     setIsAuthenticated(false);
                 }
@@ -177,10 +175,10 @@ const AdminPage: React.FC = () => {
         if (activeTab === 'analytics' && isAuthenticated) {
             const fetchDebug = async () => {
                 try {
-                    const data = await fetchAnalyticsDebug();
-                    console.log('[Debug Analytics] Latest Events:', data);
-                } catch (e) {
-                    console.error('Debug fetch failed', e);
+                    const debugData = await fetchAnalyticsDebug();
+                    console.log('[Debug Analytics] Latest Events:', debugData);
+                } catch (err) {
+                    console.error('Debug fetch failed', err);
                 }
             };
             fetchDebug();
@@ -204,16 +202,18 @@ const AdminPage: React.FC = () => {
         }
     };
 
-    const handleLogout = async () => {
+    const handleLogout = React.useCallback(async () => {
         try {
             await logoutAdmin();
-        } catch (e) {}
+        } catch (err) {
+            console.error('Logout error', err);
+        }
         localStorage.removeItem('adminToken');
         setIsAuthenticated(false);
         setAccessCode('');
         setData([]);
         setIsLogoutConfirmOpen(false);
-    };
+    }, []);
 
     const loadData = async (tab: string) => {
         setIsLoading(true);
@@ -375,7 +375,6 @@ const formatDateRange = (start: string, end: string): string => {
    const openDetailPanel = (item: any | null, subView: 'info' | 'reviews' | 'edit') => {
     setEditItem(item || null);
     setFormData(item ? { ...item } : {});
-    setImageInputType('url');
     setFormError(null);
     setDetailItem(item);
     setDetailSubView(subView);
@@ -515,47 +514,54 @@ const formatDateRange = (start: string, end: string): string => {
         }
     };
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setIsUploading(true);
-            setFormError(null);
-            try {
-                const file = e.target.files[0];
-                const result = await uploadImage(file);
-                setFormData({ ...formData, image: result.url });
-            } catch (error: any) {
-                setFormError(error.message || "Upload failed.");
-                setAlertModal({
-                    isOpen: true,
-                    title: "Upload Failed",
-                    message: error.message || "Upload failed.",
-                    variant: 'error'
-                });
-            } finally {
-                setIsUploading(false);
-                e.target.value = ''; 
-            }
-        }
-    };
-
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, callback: (url: string) => void) => {
         if (e.target.files && e.target.files[0]) {
-            setIsUploading(true);
+            setIsLoading(true);
             setFormError(null);
             try {
                 const file = e.target.files[0];
-                const result = await uploadImage(file);
+                
+                // Convert to PNG to avoid Supabase JPEG restrictions
+                const convertToPng = (file: File): Promise<File> => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                                const ctx = canvas.getContext('2d');
+                                if (!ctx) {
+                                    reject(new Error('Failed to get canvas context'));
+                                    return;
+                                }
+                                ctx.drawImage(img, 0, 0);
+                                canvas.toBlob((blob) => {
+                                    if (blob) {
+                                        const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".png", { type: 'image/png' });
+                                        resolve(newFile);
+                                    } else {
+                                        reject(new Error('Failed to convert image'));
+                                    }
+                                }, 'image/png');
+                            };
+                            img.onerror = () => reject(new Error('Failed to load image'));
+                            img.src = event.target?.result as string;
+                        };
+                        reader.onerror = () => reject(new Error('Failed to read file'));
+                        reader.readAsDataURL(file);
+                    });
+                };
+
+                const processedFile = file.type === 'image/png' ? file : await convertToPng(file);
+                const result = await uploadImage(processedFile);
                 callback(result.url);
             } catch (error: any) {
+                console.error('Upload failed:', error);
                 setFormError(error.message || "Upload failed.");
-                setAlertModal({
-                    isOpen: true,
-                    title: "Upload Failed",
-                    message: error.message || "Upload failed.",
-                    variant: 'error'
-                });
             } finally {
-                setIsUploading(false);
+                setIsLoading(false);
                 e.target.value = ''; 
             }
         }
@@ -832,7 +838,7 @@ const formatDateRange = (start: string, end: string): string => {
                                                         htmlFor={`hero-img-${idx}`}
                                                         className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center justify-center whitespace-nowrap"
                                                     >
-                                                        {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
+                                                        {isLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
                                                     </label>
                                                 </div>
                                                 <input 
@@ -988,7 +994,7 @@ const formatDateRange = (start: string, end: string): string => {
                                                     htmlFor={`journey-img-${idx}`}
                                                     className="block w-full text-center py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors"
                                                 >
-                                                    {isUploading ? <i className="fas fa-spinner fa-spin"></i> : 'Upload Image'}
+                                                    {isLoading ? <i className="fas fa-spinner fa-spin"></i> : 'Upload Image'}
                                                 </label>
                                             </div>
                                         </div>
@@ -1074,7 +1080,7 @@ const formatDateRange = (start: string, end: string): string => {
                                         htmlFor="gov-main-img"
                                         className="block w-full text-center py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors"
                                     >
-                                        {isUploading ? <i className="fas fa-spinner fa-spin"></i> : 'Change Main Image'}
+                                        {isLoading ? <i className="fas fa-spinner fa-spin"></i> : 'Change Main Image'}
                                     </label>
                                 </div>
                             </div>
@@ -1150,7 +1156,7 @@ const formatDateRange = (start: string, end: string): string => {
                                                             htmlFor={`official-img-${idx}`}
                                                             className="block text-[9px] font-bold text-lt-yellow cursor-pointer hover:underline"
                                                         >
-                                                            {isUploading ? 'Uploading...' : 'Upload Photo'}
+                                                            {isLoading ? 'Uploading...' : 'Upload Photo'}
                                                         </label>
                                                     </div>
                                                 </div>
@@ -1475,6 +1481,7 @@ const formatDateRange = (start: string, end: string): string => {
                     onChange={e => setFormData({...formData, [key]: e.target.value})}
                     className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-lt-blue outline-none"
                     rows={4}
+                    placeholder={placeholder}
                 />
             ) : (
                 <input 
@@ -1493,6 +1500,7 @@ const formatDateRange = (start: string, end: string): string => {
         
         const addGalleryItem = (url: string) => {
             if (!url) return;
+            if (gallery.length >= 5) return;
             setFormData({ ...formData, gallery: [...gallery, url] });
         };
 
@@ -1504,7 +1512,9 @@ const formatDateRange = (start: string, end: string): string => {
 
         return (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{label} ({gallery.length})</p>
+                <div className="flex justify-between items-center">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label} ({gallery.length} / 5)</p>
+                </div>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {gallery.map((img: string, i: number) => (
@@ -1513,36 +1523,23 @@ const formatDateRange = (start: string, end: string): string => {
                             <button 
                                 type="button"
                                 onClick={() => removeGalleryItem(i)}
-                                className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             >
                                 <i className="fas fa-times text-[10px]"></i>
                             </button>
                         </div>
                     ))}
-                    <div className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-4 text-center hover:border-lt-blue hover:bg-lt-blue/5 transition-all cursor-pointer group relative">
-                        <i className="fas fa-plus text-slate-300 group-hover:text-lt-blue mb-2"></i>
-                        <span className="text-[10px] font-bold text-slate-400 group-hover:text-lt-blue">Add Image</span>
-                        <input 
-                            type="text"
-                            placeholder="Paste URL..."
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    addGalleryItem((e.target as HTMLInputElement).value);
-                                    (e.target as HTMLInputElement).value = '';
-                                }
-                            }}
-                            onBlur={(e) => {
-                                if (e.target.value) {
-                                    addGalleryItem(e.target.value);
-                                    e.target.value = '';
-                                }
-                            }}
+                    
+                    {gallery.length < 5 && (
+                        <UniversalImageSelector 
+                            onImageSelected={addGalleryItem}
+                            aspectRatio={1}
+                            label=""
+                            className="aspect-square"
                         />
-                    </div>
+                    )}
                 </div>
-                <p className="text-[10px] text-slate-400 italic">Paste an image URL and press Enter or click away to add to gallery.</p>
+                <p className="text-[10px] text-slate-400 italic">Upload or link an image to add it to the gallery.</p>
             </div>
         );
     };
@@ -1834,69 +1831,29 @@ const formatDateRange = (start: string, end: string): string => {
                                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Basic Information</p>
 
-                                    {activeTab !== 'events' && activeTab !== 'blog-posts' && renderInput('name', 'Name')}
-                                    {(activeTab === 'blog-posts' || activeTab === 'events') && renderInput('title', 'Title')}
+                                    {activeTab !== 'events' && activeTab !== 'blog-posts' && renderInput('name', 'Name', 'text', 'e.g., Strawberry Farm')}
+                                    {(activeTab === 'blog-posts' || activeTab === 'events') && renderInput('title', 'Title', 'text', 'e.g., My Trip to the Valley')}
                                     
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-1">Display Image</label>
-                                        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 mb-2">
-                                            <button 
-                                                type="button"
-                                                onClick={() => setImageInputType('url')}
-                                                className={`flex-1 py-1.5 text-xs rounded-lg font-bold transition-all ${imageInputType === 'url' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
-                                            >
-                                                <i className="fas fa-link mr-1"></i> URL
-                                            </button>
-                                            <button 
-                                                type="button"
-                                                onClick={() => setImageInputType('file')}
-                                                className={`flex-1 py-1.5 text-xs rounded-lg font-bold transition-all ${imageInputType === 'file' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
-                                            >
-                                                <i className="fas fa-cloud-upload-alt mr-1"></i> Upload
-                                            </button>
-                                        </div>
+                                    <UniversalImageSelector 
+                                        onImageSelected={(url) => setFormData({...formData, image: url})}
+                                        aspectRatio={activeTab === 'blog-posts' || activeTab === 'events' ? 16 / 9 : 4 / 3}
+                                        label="Display Image"
+                                        currentImage={formData.image}
+                                    />
 
-                                        {imageInputType === 'url' ? (
-                                            <input 
-                                                type="text" 
-                                                value={formData.image || ''} 
-                                                onChange={e => setFormData({...formData, image: e.target.value})}
-                                                className="w-full p-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-lt-blue outline-none"
-                                                placeholder="Paste image link here..."
-                                            />
-                                        ) : (
-                                            <div className="relative">
-                                                <input 
-                                                    type="file" 
-                                                    accept="image/*"
-                                                    onChange={handleFileChange}
-                                                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:bg-lt-blue/10 file:text-lt-blue hover:file:bg-lt-blue/20 cursor-pointer border border-dashed border-slate-300 p-2 rounded-xl"
-                                                    disabled={isUploading}
-                                                />
-                                                {isUploading && <div className="absolute right-4 top-1/2 transform -translate-y-1/2"><i className="fas fa-spinner fa-spin text-lt-orange"></i></div>}
-                                            </div>
-                                        )}
-                                        
-                                        {formData.image && (
-                                            <div className="mt-3 relative w-full h-48 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-inner group">
-                                                <img src={formData.image} alt="Preview" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {renderInput('description', 'Short Summary', 'textarea')}
-                                    {activeTab !== 'blog-posts' && renderInput('location', 'Location')}
+                                    {renderInput('description', 'Short Summary', 'textarea', 'A brief overview of this spot or event...')}
+                                    {activeTab !== 'blog-posts' && renderInput('location', 'Location', 'text', 'e.g., Km. 6, La Trinidad')}
                                 </div>
 
                                 {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
                                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Spot Details</p>
-                                        {activeTab === 'tourist-spots' && renderInput('history', 'Background Story', 'textarea')}
+                                        {activeTab === 'tourist-spots' && renderInput('history', 'Background Story', 'textarea', 'The historical significance or origin story...')}
                                         <div className="grid grid-cols-2 gap-4">
-                                            {renderInput('category', 'Category Label')}
-                                            {renderInput('openingHours', 'Business Hours')}
+                                            {renderInput('category', 'Category Label', 'text', 'e.g., Nature / Farm')}
+                                            {renderInput('openingHours', 'Business Hours', 'text', 'e.g., 8:00 AM - 5:00 PM')}
                                         </div>
-                                        {renderInput('bestTimeToVisit', 'Best Visit Time')}
+                                        {renderInput('bestTimeToVisit', 'Best Visit Time', 'text', 'e.g., November to April')}
                                     </div>
                                 )}
 
@@ -1951,7 +1908,7 @@ const formatDateRange = (start: string, end: string): string => {
         </p>
     )}
 </div>
-                                            {renderInput('badge', 'Event Type')}
+                                            {renderInput('badge', 'Event Type', 'text', 'e.g., Festival')}
                                         </div>
                                         <div className="mt-6">
                                             {renderGalleryInput('Event Gallery')}
@@ -1963,14 +1920,14 @@ const formatDateRange = (start: string, end: string): string => {
                                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Article Details</p>
                                         <div className="grid grid-cols-2 gap-6">
-                                            {renderInput('author', 'Writer Name')}
-                                            {renderInput('readTime', 'Est. Read Time')}
+                                            {renderInput('author', 'Writer Name', 'text', 'e.g., Jane Doe')}
+                                            {renderInput('readTime', 'Est. Read Time', 'text', 'e.g., 5 min read')}
                                         </div>
                                         <div className="grid grid-cols-2 gap-6">
-                                            {renderInput('badge', 'Article Tag')}
-                                            {renderInput('date', 'Post Date')}
+                                            {renderInput('badge', 'Article Tag', 'text', 'e.g., Travel Guide')}
+                                            {renderInput('date', 'Post Date', 'text', 'e.g., October 20, 2023')}
                                         </div>
-                                        {renderInput('content', 'Article Body (Markdown/HTML)', 'textarea')}
+                                        {renderInput('content', 'Article Body (Markdown/HTML)', 'textarea', 'Write the full article content here...')}
                                         {renderGalleryInput('Article Gallery')}
                                         
                                         {!isNew && (
@@ -2006,7 +1963,7 @@ const formatDateRange = (start: string, end: string): string => {
                                     </button>
                                     <button 
                                         type="submit" 
-                                        disabled={isUploading} 
+                                        disabled={isLoading} 
                                         className="flex-[2] bg-lt-blue text-white font-bold py-4 rounded-xl hover:bg-lt-moss transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
                                     >
                                         {isNew ? 'Create Record' : 'Save Changes'}

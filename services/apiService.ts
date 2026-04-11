@@ -4,6 +4,27 @@ import type { TouristSpot, BlogPost, LocalEvent, Report, AdminLog } from '../typ
 // Use relative path by default to leverage Vite proxy in development
 export const API_BASE = ((import.meta as any).env && (import.meta as any).env.VITE_API_URL) || '';
 
+export const generateAICover = async (prompt: string): Promise<string> => {
+    try {
+        const response = await fetch(`${API_BASE}/api/ai/generate-cover`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Pollinations API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.imageUrl;
+    } catch (error) {
+        console.error('Pollinations Generation Error:', error);
+        throw new Error("Failed to generate image with Pollinations.ai. Please try again.");
+    }
+};
+
 const getHeaders = () => {
     const token = localStorage.getItem('adminToken') || '';
     return {
@@ -78,6 +99,20 @@ export const fetchBlogPosts = async (mode?: string): Promise<BlogPost[]> => {
     const headers: HeadersInit = mode === 'admin' ? { 'x-admin-access-token': localStorage.getItem('adminToken') || '' } : {};
     
     return safeFetch(url, { headers });
+};
+
+export const fetchUserBlogPosts = async (email: string): Promise<BlogPost[]> => {
+    return safeFetch(`${API_BASE}/api/blog-posts/user/${encodeURIComponent(email)}`);
+};
+
+export const fetchUserReviews = async (email: string): Promise<any[]> => {
+    const [touristReviews, diningReviews] = await Promise.all([
+        safeFetch(`${API_BASE}/api/tourist-spots/user/${encodeURIComponent(email)}/reviews`),
+        safeFetch(`${API_BASE}/api/dining-spots/user/${encodeURIComponent(email)}/reviews`)
+    ]);
+    return [...touristReviews, ...diningReviews].sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 };
 
 export const fetchLocalEvents = async (): Promise<LocalEvent[]> => {
@@ -225,7 +260,9 @@ export const uploadImage = async (file: File) => {
         try {
             const data = JSON.parse(responseText);
             errorMessage = data.message || errorMessage;
-        } catch (e) {}
+        } catch (err) {
+            console.error('JSON parse error during upload', err);
+        }
         throw new Error(errorMessage);
     } catch (error: any) {
         throw new Error(error.message || 'Network error during upload');
@@ -239,7 +276,9 @@ export const logChatInteraction = async (userMessage: string, botResponse: strin
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userMessage, botResponse, isIntent }),
         });
-    } catch (error) {}
+    } catch (err) {
+        console.error('Chat log error', err);
+    }
 };
 
 export const subscribeToNewsletter = async (email: string) => {
@@ -328,5 +367,7 @@ export const trackEvent = async (
                 body: payload
             });
         }
-    } catch (error) {}
+    } catch (err) {
+        console.error('Analytics log error', err);
+    }
 };

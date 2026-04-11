@@ -87,6 +87,7 @@ export interface BlogPost {
   author: string;
   date: string;
   content: string;
+  gallery?: string[];
   status?: 'approved' | 'pending' | 'rejected';
   email?: string;
   socialLink?: string;
@@ -113,6 +114,7 @@ export interface LocalEvent {
   description: string;
   location: string;
   badge: string;
+  gallery?: string[];
 }
 
 export enum MessageAuthor {
@@ -124,6 +126,7 @@ export interface ChatMessage {
   author: MessageAuthor;
   text: string;
   image?: string;
+  intent?: string;
 }
 
 export interface Report {

@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { uploadImage, submitPublicBlogPost } from '../services/apiService';
+import { submitPublicBlogPost } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
+import AICoverMaker from './AICoverMaker';
+import UniversalImageSelector from './UniversalImageSelector';
 
 interface BlogSubmissionModalProps {
   onClose: () => void;
@@ -17,7 +19,8 @@ const BlogSubmissionModal: React.FC<BlogSubmissionModalProps> = ({ onClose }) =>
     email: user?.email || '',
     socialLink: '',
     videoLink: '',
-    image: ''
+    image: '',
+    gallery: [] as string[]
   });
 
   useEffect(() => {
@@ -29,29 +32,63 @@ const BlogSubmissionModal: React.FC<BlogSubmissionModalProps> = ({ onClose }) =>
       }));
     }
   }, [user, getDisplayName]);
-  
-  const [isUploading, setIsUploading] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAICoverOpen, setIsAICoverOpen] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Load draft on mount
+  useEffect(() => {
+    const draft = localStorage.getItem('blog_draft');
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        // Only restore if it's not empty
+        if (parsed.title || parsed.story || parsed.description) {
+          setFormData(prev => ({ ...prev, ...parsed }));
+        }
+      } catch (e) {
+        console.error('Failed to load blog draft', e);
+      }
+    }
+  }, []);
+
+  // Save draft on change
+  useEffect(() => {
+    if (!success) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { author: _author, email: _email, ...draftData } = formData;
+      localStorage.setItem('blog_draft', JSON.stringify(draftData));
+    }
+  }, [formData, success]);
+
+  // Clear draft on success
+  useEffect(() => {
+    if (success) {
+      localStorage.removeItem('blog_draft');
+    }
+  }, [success]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setIsUploading(true);
-      setError(null);
-      try {
-        const result = await uploadImage(e.target.files[0]);
-        setFormData({ ...formData, image: result.url });
-      } catch (err: any) {
-        setError(err.message || 'Image upload failed');
-      } finally {
-        setIsUploading(false);
-      }
+  const addGalleryItem = (url: string) => {
+    if (!url) return;
+    if (formData.gallery.length >= 5) {
+      setError('Maximum 5 gallery images allowed.');
+      return;
     }
+    setFormData(prev => ({ ...prev, gallery: [...prev.gallery, url] }));
+  };
+
+  const removeGalleryItem = (index: number) => {
+    setFormData(prev => {
+      const newGallery = [...prev.gallery];
+      newGallery.splice(index, 1);
+      return { ...prev, gallery: newGallery };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,6 +119,7 @@ const BlogSubmissionModal: React.FC<BlogSubmissionModalProps> = ({ onClose }) =>
             socialLink: formData.socialLink,
             videoLink: formData.videoLink,
             image: formData.image,
+            gallery: formData.gallery,
             // Defaults
             alt: formData.title,
             badge: 'Community Story',
@@ -194,29 +232,68 @@ const BlogSubmissionModal: React.FC<BlogSubmissionModalProps> = ({ onClose }) =>
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Short Description (Summary)</label>
-                            <input type="text" name="description" required value={formData.description} onChange={handleInputChange} className="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-lt-orange focus:outline-none" placeholder="A quick summary of your trip..." />
+                            <input type="text" name="description" required value={formData.description} onChange={handleInputChange} className="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-lt-orange focus:outline-none" placeholder="e.g., A breathtaking morning above the clouds..." />
                         </div>
                     </div>
 
                     {/* Main Story */}
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Your Full Experience</label>
-                        <textarea name="story" required value={formData.story} onChange={handleInputChange} rows={8} className="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-lt-orange focus:outline-none" placeholder="Write your full story here..."></textarea>
+                        <textarea name="story" required value={formData.story} onChange={handleInputChange} rows={8} className="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-lt-orange focus:outline-none" placeholder="Share the details of your adventure, what you saw, and what you felt..."></textarea>
+                    </div>
+
+                    {/* Gallery */}
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-4">
+                        <div className="flex justify-between items-center">
+                            <h4 className="font-bold text-sm text-slate-800">Photo Gallery (Optional)</h4>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formData.gallery.length} / 5</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Add up to 5 additional photos to your story.</p>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {formData.gallery.map((img, i) => (
+                                <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 group">
+                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                    <button 
+                                        type="button"
+                                        onClick={() => removeGalleryItem(i)}
+                                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                    >
+                                        <i className="fas fa-times text-[10px]"></i>
+                                    </button>
+                                </div>
+                            ))}
+                            
+                            {formData.gallery.length < 5 && (
+                                <UniversalImageSelector 
+                                    onImageSelected={addGalleryItem}
+                                    aspectRatio={1}
+                                    label=""
+                                    className="aspect-square"
+                                />
+                            )}
+                        </div>
                     </div>
 
                     {/* Media */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Cover Photo</label>
-                            <div className="relative">
-                                <input type="file" accept="image/*" onChange={handleFileChange} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lt-orange/10 file:text-lt-orange hover:file:bg-lt-orange/20 cursor-pointer" />
-                                {isUploading && <div className="absolute right-2 top-2"><i className="fas fa-spinner fa-spin text-lt-orange"></i></div>}
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Cover Photo</label>
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsAICoverOpen(true)}
+                                    className="text-[10px] font-bold text-lt-orange hover:text-lt-red flex items-center gap-1"
+                                >
+                                    <i className="fas fa-wand-sparkles"></i> Generate AI Cover
+                                </button>
                             </div>
-                            {formData.image && (
-                                <div className="mt-2 h-24 w-full rounded-lg overflow-hidden border border-slate-200">
-                                    <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
-                                </div>
-                            )}
+                            <UniversalImageSelector 
+                                onImageSelected={(url) => setFormData({...formData, image: url})}
+                                aspectRatio={16 / 9}
+                                label=""
+                                currentImage={formData.image}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Video Link (YouTube/TikTok)</label>
@@ -255,6 +332,16 @@ const BlogSubmissionModal: React.FC<BlogSubmissionModalProps> = ({ onClose }) =>
             )}
         </div>
       </div>
+
+      {isAICoverOpen && (
+        <AICoverMaker 
+            onClose={() => setIsAICoverOpen(false)} 
+            onSelect={(url) => {
+                setFormData({ ...formData, image: url });
+                setIsAICoverOpen(false);
+            }} 
+        />
+      )}
     </div>
   );
 };

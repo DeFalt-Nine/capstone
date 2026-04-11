@@ -29,6 +29,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @desc    Fetch blog posts by user email
+// @route   GET /api/blog-posts/user/:email
+router.get('/user/:email', async (req, res) => {
+  try {
+    const posts = await BlogPost.find({ email: req.params.email }).sort({ createdAt: -1 });
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 // @desc    Create (Admin direct post)
 router.post('/', verifyAdmin, async (req, res) => {
   try {

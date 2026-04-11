@@ -12,7 +12,7 @@ import FunFactBubble from '../components/FunFactBubble';
 import JeepneyRouteNavigator from '../components/JeepneyRouteNavigator';
 
 // Fix for Leaflet default marker icons
-// @ts-ignore
+// @ts-expect-error - Leaflet icon internals
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -154,6 +154,7 @@ const CountdownBadge: React.FC<{ dateStr: string }> = ({ dateStr }) => {
 
 const EventModal: React.FC<{ event: LocalEvent; onClose: () => void }> = ({ event, onClose }) => {
     const countdown = useCountdown(event.date);
+    const [activeTab, setActiveTab] = useState<'details' | 'gallery'>('details');
 
     useEffect(() => {
         document.body.style.overflow = 'hidden';
@@ -201,35 +202,72 @@ const EventModal: React.FC<{ event: LocalEvent; onClose: () => void }> = ({ even
                     </div>
                 </div>
 
+                {/* Tabs */}
+                <div className="px-6 border-b border-slate-100 flex-shrink-0">
+                    <nav className="flex gap-6">
+                        <button 
+                            onClick={() => setActiveTab('details')}
+                            className={`py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'details' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Details
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('gallery')}
+                            className={`py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'gallery' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Gallery ({event.gallery?.length || 0})
+                        </button>
+                    </nav>
+                </div>
+
                 {/* Body */}
-                <div className="overflow-y-auto flex-1 p-6 space-y-5 custom-scrollbar">
-                    {/* Countdown */}
-                    <div className={`${status.bg} text-white rounded-2xl p-4`}>
-                        {countdown.status === 'upcoming' ? (
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-black uppercase tracking-widest opacity-80">{status.label}</span>
-                                <div className="flex items-center gap-4">
-                                    {[{ value: countdown.days, label: 'Days' }, { value: countdown.hours, label: 'Hours' }, { value: countdown.mins, label: 'Mins' }].map(({ value, label }) => (
-                                        <div key={label} className="text-center">
-                                            <div className="text-2xl font-black leading-none">{String(value).padStart(2, '0')}</div>
-                                            <div className="text-[9px] font-bold uppercase opacity-70 mt-0.5">{label}</div>
+                <div className="overflow-y-auto flex-1 p-6 custom-scrollbar">
+                    {activeTab === 'details' ? (
+                        <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            {/* Countdown */}
+                            <div className={`${status.bg} text-white rounded-2xl p-4`}>
+                                {countdown.status === 'upcoming' ? (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-black uppercase tracking-widest opacity-80">{status.label}</span>
+                                        <div className="flex items-center gap-4">
+                                            {[{ value: countdown.days, label: 'Days' }, { value: countdown.hours, label: 'Hours' }, { value: countdown.mins, label: 'Mins' }].map(({ value, label }) => (
+                                                <div key={label} className="text-center">
+                                                    <div className="text-2xl font-black leading-none">{String(value).padStart(2, '0')}</div>
+                                                    <div className="text-[9px] font-bold uppercase opacity-70 mt-0.5">{label}</div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center font-black text-sm">{status.label}</div>
+                                )}
                             </div>
-                        ) : (
-                            <div className="text-center font-black text-sm">{status.label}</div>
-                        )}
-                    </div>
 
-                    {/* Date */}
-                    <div className="flex items-center gap-3 text-sm text-slate-600 font-medium bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                        <i className="fas fa-calendar-alt text-lt-orange text-lg"></i>
-                        <span>{event.date}</span>
-                    </div>
+                            {/* Date */}
+                            <div className="flex items-center gap-3 text-sm text-slate-600 font-medium bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <i className="fas fa-calendar-alt text-lt-orange text-lg"></i>
+                                <span>{event.date}</span>
+                            </div>
 
-                    {/* Description */}
-                    <p className="text-slate-600 leading-relaxed text-sm">{event.description}</p>
+                            {/* Description */}
+                            <p className="text-slate-600 leading-relaxed text-sm">{event.description}</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            {event.gallery && event.gallery.length > 0 ? (
+                                event.gallery.map((img, i) => (
+                                    <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-slate-200 shadow-sm group cursor-pointer hover:ring-2 hover:ring-lt-orange transition-all">
+                                        <img src={img} alt={`${event.title} gallery ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="col-span-full py-20 text-center text-slate-400">
+                                    <i className="far fa-images text-4xl mb-3 opacity-20"></i>
+                                    <p className="text-sm font-medium">No gallery images available yet.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>,
@@ -761,7 +799,7 @@ const [selectedEvent, setSelectedEvent] = useState<LocalEvent | null>(null);
 
   const tabClass = (tab: 'culture' | 'events' | 'emergency') => {
       const isActive = activeTab === tab;
-      let activeColor = tab === 'culture' ? 'text-lt-blue border-lt-blue bg-lt-blue/10' : tab === 'events' ? 'text-lt-yellow border-lt-yellow bg-lt-yellow/10' : 'text-lt-red border-lt-red bg-lt-red/10';
+      const activeColor = tab === 'culture' ? 'text-lt-blue border-lt-blue bg-lt-blue/10' : tab === 'events' ? 'text-lt-yellow border-lt-yellow bg-lt-yellow/10' : 'text-lt-red border-lt-red bg-lt-red/10';
       return `flex-1 py-4 px-2 text-center font-bold text-sm md:text-base transition-all border-b-4 rounded-t-lg flex items-center justify-center gap-2 ${isActive ? activeColor : 'border-transparent text-slate-500 hover:bg-slate-100'}`;
   };
 

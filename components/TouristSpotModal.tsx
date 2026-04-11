@@ -91,6 +91,20 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
       setReviewMaskName(isNameMasked);
     }
 
+    // Load draft
+    const draftKey = `review_draft_${spot._id}`;
+    const draft = localStorage.getItem(draftKey);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.rating) setReviewRating(parsed.rating);
+        if (parsed.comment) setReviewComment(parsed.comment);
+        if (parsed.images) setReviewImages(parsed.images);
+      } catch (err) {
+        console.error('Failed to load review draft', err);
+      }
+    }
+
     const handleClickOutside = (event: MouseEvent) => {
         if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
             // Placeholder for future logic
@@ -105,6 +119,24 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
       window.speechSynthesis.cancel();
     };
   }, [onClose, spot, isReportOpen, user, nickname, isNameMasked]);
+
+  useEffect(() => {
+    if (!submitSuccess && !isEditing) {
+      const draftKey = `review_draft_${spot._id}`;
+      localStorage.setItem(draftKey, JSON.stringify({
+        rating: reviewRating,
+        comment: reviewComment,
+        images: reviewImages
+      }));
+    }
+  }, [reviewRating, reviewComment, reviewImages, spot._id, submitSuccess, isEditing]);
+
+  useEffect(() => {
+    if (submitSuccess) {
+      const draftKey = `review_draft_${spot._id}`;
+      localStorage.removeItem(draftKey);
+    }
+  }, [submitSuccess, spot._id]);
 
   const toggleAudioGuide = () => {
       if (isSpeaking) {
@@ -140,7 +172,7 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
   };
 
   const updateMapRoute = (origin: string, isCoords: boolean) => {
-      let modeFlag = travelMode === 'walking' ? 'w' : travelMode === 'transit' ? 'r' : 'd';
+      const modeFlag = travelMode === 'walking' ? 'w' : travelMode === 'transit' ? 'r' : 'd';
       const originParam = isCoords ? origin : encodeURIComponent(origin);
       const destParam = encodeURIComponent(`${spot.name} ${spot.location}`);
       setIframeSrc(`https://maps.google.com/maps?saddr=${originParam}&daddr=${destParam}&dirflg=${modeFlag}&t=m&z=12&output=embed`);
@@ -324,6 +356,7 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
           <div className="border-b border-slate-200 flex-shrink-0">
             <nav className="-mb-px flex space-x-8">
               <button className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'details' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-500 hover:text-slate-800'}`} onClick={() => handleTabChange('details')}>Details</button>
+              <button className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'gallery' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-500 hover:text-slate-800'}`} onClick={() => handleTabChange('gallery')}>Gallery ({spot.gallery?.length || 0})</button>
               <button className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'reviews' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-500 hover:text-slate-800'}`} onClick={() => handleTabChange('reviews')}>Reviews ({spot.reviews?.length || 0})</button>
               <button className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'map' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-500 hover:text-slate-800'}`} onClick={() => handleTabChange('map')}>Map & Route</button>
             </nav>
@@ -383,6 +416,25 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
               </div>
             )}
             
+            {activeTab === 'gallery' && (
+              <div className="animate-fade-in space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {spot.gallery && spot.gallery.length > 0 ? (
+                    spot.gallery.map((img, i) => (
+                      <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-slate-200 shadow-sm group cursor-pointer hover:ring-2 hover:ring-lt-orange transition-all">
+                        <img src={img} alt={`${spot.name} gallery ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-20 text-center text-slate-400">
+                      <i className="far fa-images text-4xl mb-3 opacity-20"></i>
+                      <p>No gallery images available yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {activeTab === 'reviews' && (
               <div className="grid grid-cols-1 md:grid-cols-12 gap-8 animate-fade-in">
                 <div className="md:col-span-5 md:border-r md:border-slate-200 md:pr-8">
@@ -490,7 +542,7 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
                                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nickname / Alias (Optional)</label>
                                         <input 
                                             type="text" 
-                                            placeholder="Enter a nickname..." 
+                                            placeholder="e.g., Jane Doe" 
                                             value={reviewNickname} 
                                             onChange={e => setReviewNickname(e.target.value)} 
                                             className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-lt-orange/20" 
@@ -525,7 +577,7 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Rating</label>
                                 <StarRatingInput rating={reviewRating} setRating={setReviewRating} disabled={isSubmitting} />
                             </div>
-                            <textarea placeholder="Share your experience..." value={reviewComment} onChange={e => setReviewComment(e.target.value)} rows={3} className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-lt-orange/20"></textarea>
+                            <textarea placeholder="e.g., The strawberries were so sweet and the view was amazing!" value={reviewComment} onChange={e => setReviewComment(e.target.value)} rows={3} className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-lt-orange/20"></textarea>
                             
                             <div className="space-y-2">
                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Add Photos (Max 3)</label>

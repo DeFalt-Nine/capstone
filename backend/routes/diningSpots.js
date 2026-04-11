@@ -43,6 +43,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @desc    Fetch reviews by user email
+// @route   GET /api/dining-spots/user/:email/reviews
+router.get('/user/:email/reviews', async (req, res) => {
+  try {
+    const spots = await DiningSpot.find({ 'reviews.email': req.params.email });
+    const userReviews = spots.flatMap(spot => 
+      spot.reviews
+        .filter(r => r.email === req.params.email && !r.isDeleted)
+        .map(r => ({
+          ...r.toObject(),
+          spotId: spot._id,
+          spotName: spot.name,
+          spotType: 'dining'
+        }))
+    );
+    res.json(userReviews);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 // @desc    Create
 router.post('/', verifyAdmin, async (req, res) => {
   try {

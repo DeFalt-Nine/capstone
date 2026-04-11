@@ -91,6 +91,22 @@ const BlogPostModal: React.FC<BlogPostModalProps> = ({ post, onClose }) => {
                 >
                 </div>
                 
+                {/* Gallery Section */}
+                {post.gallery && post.gallery.length > 0 && (
+                    <div className="mt-12 space-y-6">
+                        <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                            <i className="fas fa-images text-lt-orange"></i> Story Gallery
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {post.gallery.map((img, i) => (
+                                <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-slate-200 shadow-sm group cursor-pointer hover:ring-2 hover:ring-lt-orange transition-all">
+                                    <img src={img} alt={`${post.title} gallery ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
                 {/* Footer / Share Section */}
                 <div className="mt-12 pt-8 border-t border-slate-200 flex justify-between items-center">
                     <p className="text-slate-500 italic">Thanks for reading!</p>
