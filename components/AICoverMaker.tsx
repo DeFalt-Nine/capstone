@@ -60,7 +60,7 @@ const AICoverMaker: React.FC<AICoverMakerProps> = ({ onSelect, onClose }) => {
       const timeDesc = TIME_MAP[time] || time;
       const styleDesc = STYLE_MAP[style] || style;
 
-      const prompt = `${styleDesc} of ${subjectDesc} during ${timeDesc}. High quality, sharp render, no text, no people, no faces, clean composition, 16:9 aspect ratio.`;
+      const prompt = `${styleDesc} of ${subjectDesc} during ${timeDesc}. High quality, cinematic, professional photography, sharp render, no text, no people, no faces, clean composition, 16:9 aspect ratio, 1280x720 resolution.`;
 
       const imageUrl = await generateAICover(prompt);
       setPreviewImage(imageUrl);
@@ -180,11 +180,12 @@ const AICoverMaker: React.FC<AICoverMakerProps> = ({ onSelect, onClose }) => {
         </div>
 
         {/* Right Side: Preview */}
-        <div className="flex-grow bg-slate-200 relative min-h-[300px] md:min-h-0 flex items-center justify-center overflow-hidden">
+        <div className="flex-grow bg-slate-200 relative min-h-[300px] md:min-h-0 flex items-center justify-center overflow-hidden p-4 md:p-8">
           {previewImage ? (
-            <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
+            <div className="w-full max-w-2xl aspect-video relative rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-500 group">
               <img src={previewImage} alt="AI Preview" className="w-full h-full object-cover" />
-              <div className="absolute bottom-6 left-6 right-6 flex gap-3">
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div className="absolute bottom-6 left-6 right-6 flex gap-3 transform translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
                 <button
                   onClick={() => onSelect(previewImage)}
                   className="flex-grow py-3 bg-white text-slate-900 rounded-xl font-bold shadow-2xl hover:bg-lt-orange hover:text-white transition-all"

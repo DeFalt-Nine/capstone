@@ -50,7 +50,7 @@ const BlogPostModal: React.FC<BlogPostModalProps> = ({ post, onClose }) => {
         </button>
 
         {/* Hero Image Section */}
-        <div className="relative h-80 md:h-96 flex-shrink-0 w-full overflow-hidden group">
+        <div className="relative aspect-video flex-shrink-0 w-full overflow-hidden group">
              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"></div>
              <img 
                 src={post.image} 

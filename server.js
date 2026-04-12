@@ -38,7 +38,7 @@ async function startServer() {
 
   // Database Connection Middleware
   const ensureDbConnection = async (req, res, next) => {
-    console.log(`[API] ${req.method} ${req.url} - Checking DB connection...`);
+    console.log(`[API] ${req.method} ${req.originalUrl} - Checking DB connection...`);
     try {
       if (!process.env.MONGO_URI) {
         return res.status(500).json({
@@ -61,7 +61,7 @@ async function startServer() {
   app.use('/api/health', healthRoutes);
   app.use('/api/upload', uploadRoutes);
   app.use('/api/chatbot', ensureDbConnection, chatbotRoutes);
-  app.use('/api/analytics', ensureDbConnection, analyticsRoutes);
+  app.use('/api/v1/stats', ensureDbConnection, analyticsRoutes);
   app.use('/api/tourist-spots', ensureDbConnection, touristSpotsRoutes);
   app.use('/api/dining-spots', ensureDbConnection, diningSpotsRoutes);
   app.use('/api/blog-posts', ensureDbConnection, blogPostsRoutes);
@@ -74,7 +74,8 @@ async function startServer() {
   
   // 404 for API routes
   app.all('/api/*', (req, res) => {
-    res.status(404).json({ message: `API route not found: ${req.method} ${req.url}` });
+    console.log(`[API] 404 - Not Found: ${req.method} ${req.originalUrl}`);
+    res.status(404).json({ message: `API route not found: ${req.method} ${req.originalUrl}` });
   });
 
   // Serve static uploads

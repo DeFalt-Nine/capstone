@@ -77,7 +77,7 @@ const BlogPage: React.FC = () => {
                 className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col group h-full cursor-pointer transform hover:-translate-y-2 transition-all duration-300 border border-slate-100 hover:shadow-xl"
                 onClick={() => handlePostClick(post)}
             >
-              <div className="relative h-56 overflow-hidden">
+              <div className="relative aspect-video overflow-hidden">
                 <img src={post.image} alt={post.alt} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 <div className="absolute top-4 left-4">
                     <span className="bg-white/90 backdrop-blur-md text-lt-orange text-xs font-bold px-3 py-1 rounded-full shadow-sm uppercase tracking-wide border border-lt-orange/20">

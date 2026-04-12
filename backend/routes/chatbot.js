@@ -1,5 +1,4 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import ChatLog from '../models/ChatLog.js';
 
 const router = express.Router();

@@ -4,7 +4,7 @@ import type { NavLinkItem, Stat, EmergencyContact, Hotline, Norm, BlogPost, Hist
 export const NAV_LINKS: NavLinkItem[] = [
   { name: 'Home', path: '/' },
   { name: 'About', path: '/about' },
-  { name: 'Tourist Spots', path: '/tourist-spots' },
+  { name: 'Tourist', path: '/tourist-spots' },
   { name: 'Visitor Info', path: '/visitor-info' }, // Consolidated link
   { name: 'Blog', path: '/blog' },
 ];
