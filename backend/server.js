@@ -27,6 +27,7 @@ import subscribersRoutes from './routes/subscribers.js';
 import reportRoutes from './routes/reports.js';
 import adminLogRoutes from './routes/adminLogs.js';
 import siteSettingsRoutes from './routes/siteSettings.js';
+import aiRoutes from './routes/ai.js';
 
 const app = express();
 
@@ -90,6 +91,7 @@ app.use('/api/subscribers', subscribersRoutes);
 app.use('/api/reports', reportRoutes); 
 app.use('/api/admin-logs', adminLogRoutes); 
 app.use('/api/site-settings', siteSettingsRoutes); 
+app.use('/api/ai', aiRoutes);
 
 // 6. Catch-all for undefined API routes (must return JSON, not HTML)
 app.all('/api/*', (req, res) => {
