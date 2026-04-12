@@ -33,7 +33,8 @@ const app = express();
 
 // Middleware
 app.use(cors()); 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Ensure uploads directory exists (only in non-Vercel environment)
 if (!process.env.VERCEL) {
@@ -77,10 +78,13 @@ app.use('/api/health', healthRoutes);
 // 3. File Uploads
 app.use('/api/upload', uploadRoutes); 
 
-// 4. Global Database Middleware for all other API routes
+// 4. AI Generation (No DB needed)
+app.use('/api/ai', aiRoutes);
+
+// 5. Global Database Middleware for all other API routes
 app.use('/api', ensureDbConnection);
 
-// 5. API Routes
+// 6. API Routes
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/v1/stats', analyticsRoutes);
 app.use('/api/tourist-spots', touristSpotsRoutes);
@@ -91,7 +95,6 @@ app.use('/api/subscribers', subscribersRoutes);
 app.use('/api/reports', reportRoutes); 
 app.use('/api/admin-logs', adminLogRoutes); 
 app.use('/api/site-settings', siteSettingsRoutes); 
-app.use('/api/ai', aiRoutes);
 
 // 6. Catch-all for undefined API routes (must return JSON, not HTML)
 app.all('/api/*', (req, res) => {
