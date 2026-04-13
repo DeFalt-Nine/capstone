@@ -91,50 +91,52 @@ This creates an interactive link for the user to see details on our site.`;
     let fullBotResponse = '';
     let buffer = '';
 
-    responseStream.on('data', (chunk) => {
-      buffer += chunk.toString();
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
+    try {
+        for await (const chunk of responseStream) {
+            buffer += chunk.toString();
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
 
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (!trimmedLine.startsWith('data: ')) continue;
-        
-        const jsonStr = trimmedLine.slice(6);
-        if (jsonStr === '[DONE]') continue;
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine.startsWith('data: ')) continue;
+                
+                const jsonStr = trimmedLine.slice(6);
+                if (jsonStr === '[DONE]') continue;
 
-        try {
-          const json = JSON.parse(jsonStr);
-          const { choices } = json;
-          const [choice] = choices || [];
-          const { delta } = choice || {};
-          const { content } = delta || {};
-          
-          if (content) {
-            res.write(content);
-            fullBotResponse += content;
-          }
-        } catch (e) {
-          // Ignore
+                try {
+                    const json = JSON.parse(jsonStr);
+                    const { choices } = json;
+                    const [choice] = choices || [];
+                    const { delta } = choice || {};
+                    const { content } = delta || {};
+                    
+                    if (content) {
+                        res.write(content);
+                        fullBotResponse += content;
+                    }
+                } catch (e) {
+                    // Ignore
+                }
+            }
         }
-      }
-    });
 
-    responseStream.on('end', async () => {
-      res.end();
-      if (fullBotResponse) {
-        await ChatLog.create({
-          userMessage: message,
-          botResponse: fullBotResponse,
-          isIntent: false,
-        });
-      }
-    });
-
-    responseStream.on('error', (err) => {
-      console.error('Stream error:', err);
-      res.end();
-    });
+        res.end();
+        if (fullBotResponse) {
+            await ChatLog.create({
+                userMessage: message,
+                botResponse: fullBotResponse,
+                isIntent: false,
+            });
+        }
+    } catch (err) {
+        console.error('Stream error:', err);
+        if (!res.headersSent) {
+            res.status(500).end();
+        } else {
+            res.end();
+        }
+    }
   } catch (error) {
     const { message: errorMessage } = error;
     console.error('Error in chatbot route:', errorMessage);
