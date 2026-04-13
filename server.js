@@ -46,6 +46,7 @@ async function startServer() {
         });
       }
       await connectDB();
+      console.log(`[API] ${req.method} ${req.originalUrl} - DB connection ready.`);
       next();
     } catch (error) {
       console.error('[Database] Connection failure:', error.message);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { 
     fetchTouristSpots, fetchDiningSpots, fetchBlogPosts, fetchLocalEvents, fetchReports,
     deleteItem, createItem, updateItem, uploadImage, deleteReview, deleteReport, verifyAdminToken,
@@ -38,7 +38,11 @@ const AdminPage: React.FC = () => {
     const [loginError, setLoginError] = useState<string | null>(null);
     const [accessCode, setAccessCode] = useState('');
     
-    const [activeTab, setActiveTab] = useState('tourist-spots');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get('tab') || 'tourist-spots';
+    const detailId = searchParams.get('id');
+    const isDetailView = !!detailId;
+    
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [viewMode, setViewMode] = useState<'management' | 'preview'>('management');
     
@@ -79,10 +83,39 @@ const AdminPage: React.FC = () => {
     const [editItem, setEditItem] = useState<any | null>(null);
     const [formData, setFormData] = useState<any>({});
     
-    const [isDetailView, setIsDetailView] = useState(false);
     const [detailSubView, setDetailSubView] = useState<'info' | 'reviews' | 'edit'>('info');
     const [detailItem, setDetailItem] = useState<any | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
+
+    const setActiveTab = (tab: string) => {
+        setSearchParams({ tab });
+        setViewMode('management');
+    };
+
+    const setIsDetailView = (show: boolean) => {
+        if (!show) {
+            setSearchParams({ tab: activeTab });
+        }
+    };
+
+    useEffect(() => {
+        if (detailId && detailId !== 'new' && data.length > 0) {
+            const item = data.find((i: any) => i._id === detailId);
+            if (item) {
+                setDetailItem(item);
+                setEditItem(item);
+                setFormData({ ...item });
+            }
+        } else if (detailId === 'new') {
+            setDetailItem(null);
+            setEditItem(null);
+            setFormData({});
+            setDetailSubView('edit');
+        } else {
+            setDetailItem(null);
+            setEditItem(null);
+        }
+    }, [detailId, data]);
 
     useEffect(() => {
         const checkExistingAuth = async () => {
@@ -378,7 +411,12 @@ const formatDateRange = (start: string, end: string): string => {
     setFormError(null);
     setDetailItem(item);
     setDetailSubView(subView);
-    setIsDetailView(true);
+    
+    if (item?._id) {
+        setSearchParams({ tab: activeTab, id: item._id });
+    } else {
+        setSearchParams({ tab: activeTab, id: 'new' });
+    }
 
     // ── Parse existing date back into start/end for date pickers ──
     if (item?.date) {
@@ -1604,7 +1642,7 @@ const formatDateRange = (start: string, end: string): string => {
                                 <i className="fas fa-arrow-left text-sm"></i>
                             </span>
                             <span className="text-xs font-bold hidden sm:block">
-                                {TABS.find(t => t.id === activeTab)?.label}
+                                Back to {TABS.find(t => t.id === activeTab)?.label}
                             </span>
                         </button>
 
@@ -2101,8 +2139,6 @@ const formatDateRange = (start: string, end: string): string => {
                             key={tab.id}
                             onClick={() => {
                                 setActiveTab(tab.id);
-                                setViewMode('management');
-                                setIsDetailView(false);
                             }}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all group ${
                                 activeTab === tab.id && viewMode === 'management'
@@ -2206,6 +2242,15 @@ const formatDateRange = (start: string, end: string): string => {
                                 </div>
                                 <span className="text-xs font-bold text-slate-600 hidden sm:block">Administrator</span>
                             </div>
+                            <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block"></div>
+                            <Link 
+                                to="/" 
+                                className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-lt-blue transition-colors group"
+                                title="Return to public website"
+                            >
+                                <i className="fas fa-external-link-alt text-xs group-hover:scale-110 transition-transform"></i>
+                                <span className="text-xs font-bold hidden lg:block">Website</span>
+                            </Link>
                         </div>
                     </header>
                 )}
@@ -2464,7 +2509,7 @@ const formatDateRange = (start: string, end: string): string => {
                             <div className="flex-1 relative bg-slate-800 p-4 md:p-8">
                                 <div className="w-full h-full rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)] border border-slate-700 bg-white relative">
                                     <iframe 
-                                        src={`${window.location.origin}${window.location.pathname}#${previewUrl}`}
+                                        src={`${window.location.origin}${previewUrl}`}
                                         className="w-full h-full border-none"
                                         title="Site Preview"
                                     ></iframe>

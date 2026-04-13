@@ -56,6 +56,7 @@ const ensureDbConnection = async (req, res, next) => {
         });
     }
     await connectDB();
+    console.log(`[Backend] ${req.method} ${req.path} - DB connection ready.`);
     next();
   } catch (error) {
     console.error('[Database] Connection failure:', error.message);

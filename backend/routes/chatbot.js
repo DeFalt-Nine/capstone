@@ -27,29 +27,17 @@ router.post('/', async (req, res) => {
 IMPORTANT RULES:
 1. Keep responses SHORT (2-3 sentences max).
 2. Use **bold** for key location names.
-3. TRANSPORTATION FACTS: 
+3. SCOPE: ONLY answer questions related to La Trinidad, tourism, local culture, travel, or directions within the area.
+4. OFF-TOPIC: If a user asks something unrelated (e.g., general cooking, math, global news, coding), politely decline and state that you are only trained to assist with La Trinidad travel and tourism. DO NOT try to force a connection to La Trinidad for unrelated topics (e.g., don't talk about "La Trinidad rice" if asked how to cook rice).
+5. TRANSPORTATION FACTS: 
    - TRICYCLES DO NOT EXIST in Baguio or La Trinidad.
    - MOTORCYCLE TAXIS (Angkas/Joyride) are NOT available here.
    - Use only: Jeepneys, Taxis (White/Grey), or Private Cars.
-4. CRITICAL: When you mention any of the following specific places, you MUST wrap them in double brackets exactly like this: [[Place Name]]. 
+6. CRITICAL: When you mention ANY specific place, landmark, restaurant, or terminal, you MUST wrap them in double brackets exactly like this: [[Place Name]]. 
+   - Examples: [[La Trinidad Strawberry Farm]], [[Baguio City Hall]], [[SM Baguio]], [[Bell Church]], [[Jack's Restaurant]].
+   - This creates an interactive link for the user to see details on our site and a Google Maps link.
    - DO NOT use empty brackets [[ ]] or brackets with just whitespace.
-   - [[La Trinidad Strawberry Farm]]
-   - [[Bell Church]]
-   - [[Mount Kalugong Cultural Village]]
-   - [[Colors of Stobosa]]
-   - [[Mt. Yangbew]]
-   - [[Benguet Museum]]
-   - [[Lily of the Valley Organic Farms]]
-   - [[La Trinidad Vegetable Trading Post]]
-   - [[Mount Costa]]
-   - [[Bahong Rose Gardens]]
-   - [[Avong nen Romy]]
-   - [[Jack's Restaurant]]
-   - [[Calajo Restaurant]]
-   - [[Mount Kalugong Kape-an]]
-   - [[Sizzling Plate]]
-
-This creates an interactive link for the user to see details on our site.`;
+`;
 
     if (intentContext) {
       systemInstruction += `\n\nUSE THIS FACTUAL INFORMATION TO GUIDE YOUR RESPONSE:\n${intentContext}`;
@@ -90,44 +78,46 @@ This creates an interactive link for the user to see details on our site.`;
 
     let fullBotResponse = '';
     let buffer = '';
+    const decoder = new TextDecoder();
 
     try {
         for await (const chunk of responseStream) {
-            buffer += chunk.toString();
+            buffer += decoder.decode(chunk, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop();
+            buffer = lines.pop() || '';
 
             for (const line of lines) {
                 const trimmedLine = line.trim();
-                if (!trimmedLine.startsWith('data: ')) continue;
+                if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
                 
                 const jsonStr = trimmedLine.slice(6);
                 if (jsonStr === '[DONE]') continue;
 
                 try {
                     const json = JSON.parse(jsonStr);
-                    const { choices } = json;
-                    const [choice] = choices || [];
-                    const { delta } = choice || {};
-                    const { content } = delta || {};
+                    const content = json.choices?.[0]?.delta?.content;
                     
                     if (content) {
                         res.write(content);
                         fullBotResponse += content;
                     }
                 } catch (e) {
-                    // Ignore
+                    console.error('Error parsing JSON from stream:', e.message, 'Line:', jsonStr);
                 }
             }
         }
 
         res.end();
         if (fullBotResponse) {
-            await ChatLog.create({
-                userMessage: message,
-                botResponse: fullBotResponse,
-                isIntent: false,
-            });
+            try {
+                await ChatLog.create({
+                    userMessage: message,
+                    botResponse: fullBotResponse,
+                    isIntent: false,
+                });
+            } catch (dbErr) {
+                console.error('Error saving chat log to DB:', dbErr.message);
+            }
         }
     } catch (err) {
         console.error('Stream error:', err);

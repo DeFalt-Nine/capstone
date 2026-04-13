@@ -63,7 +63,7 @@ const TAXI_ROUTES: TaxiRoute[] = [
     { landmarks: ['town', 'sm'], distance: '6.0', timeLight: '15-20m', timeHeavy: '30-50m', fareRange: '₱140-₱190' }
 ];
 
-const TERMINAL_INFO = "📍 **Jeepney Terminals in Baguio:**\n1. **Baguio City Hall** (Beside Fire Station) - Routes: 'Buyagan', 'Km. 5', 'Km. 6'.\n2. **Baguio Center Mall** (Lower Ground) - Very frequent LT bound jeeps.\n3. **Magsaysay Ave** (Near Slaughterhouse) - For 'Tawang' or 'Ambiong' jeeps.";
+const TERMINAL_INFO = "📍 **Jeepney Terminals in Baguio:**\n1. [[Baguio City Hall]] (Beside Fire Station) - Routes: 'Buyagan', 'Km. 5', 'Km. 6'.\n2. [[Baguio Center Mall]] (Lower Ground) - Very frequent LT bound jeeps.\n3. [[Magsaysay Ave]] (Near Slaughterhouse) - For 'Tawang' or 'Ambiong' jeeps.";
 
 const handleTaxiEstimation = (message: string): string => {
     const lowerMsg = message.toLowerCase();
@@ -82,7 +82,7 @@ const handleTaxiEstimation = (message: string): string => {
         );
 
         if (route) {
-            return `🚕 **Taxi Estimate Found!**\n\n**Route:** ${detectedLandmarks[0].name} ↔ ${detectedLandmarks[1].name}\n**Distance:** ~${route.distance} km\n**Fare Range:** ${route.fareRange}\n\n**Est. Time:**\n- 🟢 Light Traffic: **${route.timeLight}**\n- 🔴 Heavy Traffic: **${route.timeHeavy}**\n\n*Note: Metered rates include a ₱45 flag-down fee plus distance/time charges per LTFRB regulations.*${TAXI_RULE}`;
+            return `🚕 **Taxi Estimate Found!**\n\n**Route:** [[${detectedLandmarks[0].name}]] ↔ [[${detectedLandmarks[1].name}]]\n**Distance:** ~${route.distance} km\n**Fare Range:** ${route.fareRange}\n\n**Est. Time:**\n- 🟢 Light Traffic: **${route.timeLight}**\n- 🔴 Heavy Traffic: **${route.timeHeavy}**\n\n*Note: Metered rates include a ₱45 flag-down fee plus distance/time charges per LTFRB regulations.*${TAXI_RULE}`;
         }
     }
 
@@ -91,13 +91,13 @@ const handleTaxiEstimation = (message: string): string => {
         const target = detectedLandmarks[0];
         // If they asked for City Center specifically, give a general tip
         if (target.id === 'sm') {
-            return "🚕 **Taxi from City Center:**\nTrips to La Trinidad spots like the Strawberry Farm usually cost **₱140-₱180**. Trips to Bell Church are around **₱100-₱120**." + TAXI_RULE;
+            return "🚕 **Taxi from City Center:**\nTrips to La Trinidad spots like the [[Strawberry Farm]] usually cost **₱140-₱180**. Trips to [[Bell Church]] are around **₱100-₱120**." + TAXI_RULE;
         }
 
         const commonRoute = TAXI_ROUTES.find(r => r.landmarks.includes(target.id) && r.landmarks.includes('sm'));
         
         if (commonRoute) {
-            return `🚕 **Taxi info for ${target.name}:**\n\nFrom Baguio City Center (SM/Session Area), the estimate is:\n**Fare:** ${commonRoute.fareRange}\n**Time:** ${commonRoute.timeLight} (up to ${commonRoute.timeHeavy} in traffic).\n\nDistance is roughly ${commonRoute.distance} km.${TAXI_RULE}`;
+            return `🚕 **Taxi info for [[${target.name}]]:**\n\nFrom Baguio City Center (SM/Session Area), the estimate is:\n**Fare:** ${commonRoute.fareRange}\n**Time:** ${commonRoute.timeLight} (up to ${commonRoute.timeHeavy} in traffic).\n\nDistance is roughly ${commonRoute.distance} km.${TAXI_RULE}`;
         }
     }
 

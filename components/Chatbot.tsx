@@ -147,14 +147,24 @@ const Chatbot: React.FC = () => {
               if (!spotName) return <span key={partIndex}>{part}</span>;
               
               return (
-                <button 
-                  key={partIndex}
-                  onClick={() => handlePlaceLink(spotName)}
-                  className="inline-flex items-center gap-1 bg-lt-blue/10 text-lt-blue hover:bg-lt-blue hover:text-white px-2 py-0.5 rounded-md font-bold text-[13px] transition-all border border-lt-blue/20 mx-0.5 align-middle group shadow-sm"
-                >
-                  <i className="fas fa-map-marker-alt text-[10px] opacity-70 group-hover:scale-110 transition-transform"></i>
-                  {spotName}
-                </button>
+                <div key={partIndex} className="inline-flex items-center gap-0.5 mx-0.5 align-middle">
+                  <button 
+                    onClick={() => handlePlaceLink(spotName)}
+                    className="inline-flex items-center gap-1 bg-lt-blue/10 text-lt-blue hover:bg-lt-blue hover:text-white px-2 py-0.5 rounded-l-md font-bold text-[13px] transition-all border border-lt-blue/20 group shadow-sm"
+                  >
+                    <i className="fas fa-map-marker-alt text-[10px] opacity-70 group-hover:scale-110 transition-transform"></i>
+                    {spotName}
+                  </button>
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spotName + ' La Trinidad')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-lt-blue/10 text-lt-blue hover:bg-lt-blue hover:text-white px-1.5 py-0.5 rounded-r-md border border-l-0 border-lt-blue/20 transition-all flex items-center justify-center shadow-sm"
+                    title="View on Google Maps"
+                  >
+                    <i className="fas fa-external-link-alt text-[10px]"></i>
+                  </a>
+                </div>
               );
             }
             return <span key={partIndex}>{part}</span>;
