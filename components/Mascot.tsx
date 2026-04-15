@@ -134,38 +134,26 @@ const Mascot: React.FC = () => {
                 const currentMonth = now.getMonth();
 
                 // Helper to parse event date into a comparable Date object
-                const getEventDate = (event: LocalEvent, year: number) => {
-                    const dateStr = event.date.toLowerCase();
-                    const months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
-                    
-                    let monthIndex = -1;
-                    for (let i = 0; i < months.length; i++) {
-                        if (dateStr.includes(months[i])) {
-                            monthIndex = i;
-                            break;
-                        }
+                const getEventDate = (dateStr: string) => {
+                    if (dateStr.includes('(')) {
+                        const month = dateStr.split(' ')[0];
+                        const year = new Date().getFullYear();
+                        return new Date(`${month} 1, ${year}`);
                     }
-
-                    if (monthIndex === -1) return null;
-
-                    const dayMatch = dateStr.match(/\d+/);
-                    const day = dayMatch ? parseInt(dayMatch[0]) : 1;
-
-                    return new Date(year, monthIndex, day);
+                    return new Date(dateStr);
                 };
 
-                // Find all future events (including those later this month)
+                // Find all future events
                 const futureEvents = events.map(event => {
-                    let eventDate = getEventDate(event, currentYear);
-                    if (!eventDate) return null;
+                    const eventDate = getEventDate(event.date);
+                    if (isNaN(eventDate.getTime())) return null;
 
                     // If event has passed this year, check next year
-                    // But if it's a month-long event and it's the current month, it's "now"
                     const isMonthLong = event.date.toLowerCase().includes('month-long');
                     const isCurrentMonth = eventDate.getMonth() === currentMonth;
 
                     if (eventDate < now && !isMonthLong && !isCurrentMonth) {
-                        eventDate = getEventDate(event, currentYear + 1);
+                        eventDate.setFullYear(currentYear + 1);
                     }
 
                     return { event, date: eventDate };
@@ -473,11 +461,11 @@ const Mascot: React.FC = () => {
                     <div className="space-y-2">
                         <p className="text-xs font-bold text-slate-800 leading-tight">
                             {eventStatus?.type === 'now' ? (
-                                <>The <span className="text-lt-red font-black underline cursor-pointer" onClick={() => navigate(`/visitor-info?tab=events&event=${encodeURIComponent(upcomingEvent?.title || '')}`)}>
+                                <>The <span className="text-lt-red font-black underline cursor-pointer" onClick={() => navigate(`/events?id=${encodeURIComponent(upcomingEvent?.title.toLowerCase().replace(/\s+/g, '-') || '')}`)}>
                                     {upcomingEvent?.title}
                                 </span> is happening <span className="text-lt-red animate-pulse">RN!</span> See now or something else? 🍓</>
                             ) : upcomingEvent ? (
-                                <>The <span className="text-lt-orange underline cursor-pointer" onClick={() => navigate(`/visitor-info?tab=events&event=${encodeURIComponent(upcomingEvent.title)}`)}>
+                                <>The <span className="text-lt-orange underline cursor-pointer" onClick={() => navigate(`/events?id=${encodeURIComponent(upcomingEvent.title.toLowerCase().replace(/\s+/g, '-') || '')}`)}>
                                     {upcomingEvent.title}
                                 </span> is happening in <span className="text-lt-orange font-black">{eventStatus?.days === 1 ? '1 day' : `${eventStatus?.days} days`}!</span> While waiting, feeling <span className="text-lt-blue font-bold italic">{currentVibe.label}</span>? {currentVibe.icon}</>
                             ) : (
@@ -489,7 +477,7 @@ const Mascot: React.FC = () => {
                             <button 
                                 onClick={eventStatus?.type === 'now' || (eventStatus?.type === 'upcoming' && !showOverlay) ? () => {
                                     if (eventStatus?.type === 'now') {
-                                        navigate(`/visitor-info?tab=events&event=${encodeURIComponent(upcomingEvent?.title || '')}`);
+                                        navigate(`/events?id=${encodeURIComponent(upcomingEvent?.title.toLowerCase().replace(/\s+/g, '-') || '')}`);
                                     } else {
                                         handleVibeClick();
                                     }

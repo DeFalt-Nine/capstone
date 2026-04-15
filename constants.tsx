@@ -5,6 +5,7 @@ export const NAV_LINKS: NavLinkItem[] = [
   { name: 'Home', path: '/' },
   { name: 'About', path: '/about' },
   { name: 'Tourist', path: '/tourist-spots' },
+  { name: 'Events', path: '/events' },
   { name: 'Visitor Info', path: '/visitor-info' }, // Consolidated link
   { name: 'Blog', path: '/blog' },
 ];
