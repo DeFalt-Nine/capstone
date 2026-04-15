@@ -143,8 +143,8 @@ const HomePage: React.FC = () => {
                             >
                                 {MORPHING_WORDS[wordIndex]}
                             </span>
-                            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-lt-orange to-lt-yellow">
-                                La Trinidad
+                            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-lt-orange to-lt-yellow text-center">
+                                Limitless La Trinidad
                             </span>
                         </h1>
                     </div>

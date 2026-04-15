@@ -30,8 +30,12 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="footer-col">
             <div className="flex items-center gap-3 mb-4">
-              <i className="fas fa-mountain text-3xl text-lt-yellow"></i>
-              <span className="text-xl font-bold">Visit La Trinidad</span>
+              <img 
+                src="/Limitless La Trinidad.svg" 
+                alt="Limitless La Trinidad Logo" 
+                className="w-20 h-20 object-contain brightness-0 invert"
+              />
+              <span className="text-xl font-bold">Limitless La Trinidad</span>
             </div>
             <p className="text-white/90 text-sm mb-4">
               Discover the strawberry capital of the Philippines. Experience mountain beauty, rich culture, and warm hospitality.
@@ -93,7 +97,7 @@ const Footer: React.FC = () => {
         </div>
 
         <div className="mt-12 border-t border-white/10 pt-8 text-center text-sm text-white/70">
-          <p>© {currentYear} Visit La Trinidad. Made with <i className="fas fa-heart text-lt-red mx-1"></i> for promoting sustainable tourism.</p>
+          <p>© {currentYear} Limitless La Trinidad. Made with <i className="fas fa-heart text-lt-red mx-1"></i> for promoting sustainable tourism.</p>
           <div className="mt-2 text-xs opacity-80 flex justify-center gap-4">
             <p>Disclaimer: This is a tourism information website.</p>
             <Link to="/admin" className="opacity-50 hover:opacity-100 hover:text-lt-yellow transition-opacity">Admin</Link>

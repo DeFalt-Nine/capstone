@@ -74,9 +74,15 @@ const Header: React.FC = () => {
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center">
             <NavLink to="/" className="flex-shrink-0 flex items-center gap-3 group">
-              <i className={`fas fa-mountain text-3xl transition-colors drop-shadow-sm ${location.pathname === '/' && !isScrolled ? 'text-lt-yellow' : 'text-lt-blue'}`}></i>
+              <img 
+                src="/Limitless La Trinidad.svg" 
+                alt="Limitless La Trinidad Logo" 
+                className={`w-20 h-20 object-contain transition-all duration-300 group-hover:scale-110 ${
+                  location.pathname === '/' && !isScrolled ? 'brightness-0 invert' : ''
+                }`}
+              />
               <div>
-                 <h1 className={`text-xl font-bold tracking-tight transition-colors ${location.pathname === '/' && !isScrolled ? 'text-white group-hover:text-lt-yellow' : 'text-slate-800 group-hover:text-lt-orange'}`}>Visit La Trinidad</h1>
+                 <h1 className={`text-xl font-bold tracking-tight transition-colors ${location.pathname === '/' && !isScrolled ? 'text-white group-hover:text-lt-yellow' : 'text-slate-800 group-hover:text-lt-orange'}`}>Limitless La Trinidad</h1>
                  <p className={`text-xs font-light font-semibold ${location.pathname === '/' && !isScrolled ? 'text-white/80' : 'text-lt-blue'}`}>Benguet, Philippines</p>
               </div>
             </NavLink>
