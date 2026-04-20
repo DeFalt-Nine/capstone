@@ -3,223 +3,65 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchLocalEvents } from '../services/apiService';
 import { LocalEvent } from '../types';
+import { LOCAL_EVENTS } from '../constants';
 import AnimatedElement from '../components/AnimatedElement';
 import ParallaxElement from '../components/ParallaxElement';
-import { motion, AnimatePresence } from 'framer-motion';
-
-const EventModal: React.FC<{ event: LocalEvent; onClose: () => void }> = ({ event, onClose }) => {
-    // Helper for countdown
-    const useCountdown = (dateStr: string) => {
-        const [status, setStatus] = useState<{ label: string, color: string }>({ label: '', color: '' });
-
-        useEffect(() => {
-            const calculate = () => {
-                const now = new Date().getTime();
-                let startDate: number;
-                let endDate: number;
-                
-                if (dateStr.includes('(')) {
-                    const month = dateStr.split(' ')[0];
-                    const year = new Date().getFullYear();
-                    startDate = new Date(`${month} 1, ${year}`).getTime();
-                    // Month-long events end at the end of the month
-                    endDate = new Date(year, new Date(`${month} 1, ${year}`).getMonth() + 1, 0, 23, 59, 59).getTime();
-                } else {
-                    startDate = new Date(dateStr).getTime();
-                    // Single day events end at the end of that day
-                    endDate = startDate + (24 * 60 * 60 * 1000) - 1;
-                }
-
-                if (isNaN(startDate)) {
-                    setStatus({ label: '', color: '' });
-                    return;
-                }
-
-                if (now > endDate) {
-                    setStatus({ label: 'Ended', color: 'bg-slate-500' });
-                    return;
-                }
-
-                if (now >= startDate && now <= endDate) {
-                    setStatus({ label: 'Ongoing', color: 'bg-red-500 animate-pulse' });
-                    return;
-                }
-
-                const diff = startDate - now;
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                
-                const label = days === 0 ? `Upcoming: ${hours}h left` : `Upcoming: ${days}d ${hours}h left`;
-                setStatus({ label, color: 'bg-lt-blue' });
-            };
-
-            calculate();
-            const timer = setInterval(calculate, 60000);
-            return () => clearInterval(timer);
-        }, [dateStr]);
-
-        return status;
-    };
-
-    const countdown = useCountdown(event.date);
-
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white w-full max-w-4xl rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[90vh]"
-            >
-                <div className="md:w-1/2 relative h-64 md:h-auto">
-                    <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <div className="absolute bottom-6 left-6 right-6">
-                        <span className="bg-lt-yellow text-slate-900 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
-                            {event.badge}
-                        </span>
-                        <h2 className="text-3xl font-black text-white drop-shadow-lg leading-tight">{event.title}</h2>
-                        <div className="flex items-center gap-2 text-white/90 text-sm mt-2">
-                            <i className="fas fa-map-marker-alt text-lt-yellow"></i>
-                            <span>{event.location}</span>
-                            <a 
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location + ' La Trinidad')}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="ml-2 text-[10px] font-bold text-lt-yellow hover:underline flex items-center gap-1 bg-black/20 px-2 py-1 rounded-full backdrop-blur-sm"
-                            >
-                                <i className="fas fa-external-link-alt"></i> Map
-                            </a>
-                        </div>
-                    </div>
-                    <button 
-                        onClick={onClose}
-                        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/40 transition-colors md:hidden"
-                    >
-                        <i className="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div className="md:w-1/2 p-8 md:p-12 overflow-y-auto custom-scrollbar bg-slate-50">
-                    <div className="hidden md:flex justify-end mb-6">
-                        <button 
-                            onClick={onClose}
-                            className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 hover:text-lt-orange hover:shadow-md transition-all"
-                        >
-                            <i className="fas fa-times text-xl"></i>
-                        </button>
-                    </div>
-
-                    <div className="space-y-8">
-                        <div>
-                            <h4 className="text-xs font-black text-lt-orange uppercase tracking-[0.2em] mb-3">Event Schedule</h4>
-                            <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex flex-col items-center justify-center border border-slate-100">
-                                    <i className="fas fa-calendar-day text-lt-orange text-xl"></i>
-                                </div>
-                                <div>
-                                    <p className="text-xl font-bold text-slate-800">{event.date}</p>
-                                    {countdown.label && (
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <div className={`w-2 h-2 rounded-full ${countdown.color}`}></div>
-                                            <p className="text-sm font-bold text-slate-500">{countdown.label}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 className="text-xs font-black text-lt-orange uppercase tracking-[0.2em] mb-3">About the Event</h4>
-                            <p className="text-slate-600 leading-relaxed text-lg">{event.description}</p>
-                        </div>
-
-                        {event.gallery && event.gallery.length > 0 && (
-                            <div>
-                                <h4 className="text-xs font-black text-lt-orange uppercase tracking-[0.2em] mb-4">Gallery</h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {event.gallery.map((img, i) => (
-                                        <div key={i} className="aspect-video rounded-2xl overflow-hidden shadow-sm group">
-                                            <img src={img} alt={`${event.title} gallery ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="pt-6">
-                            <button 
-                                onClick={() => {
-                                    const query = encodeURIComponent(`${event.title} ${event.location} La Trinidad`);
-                                    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-                                }}
-                                className="w-full bg-lt-orange text-white font-bold py-4 rounded-2xl shadow-lg shadow-lt-orange/20 hover:bg-lt-moss transition-all flex items-center justify-center gap-3"
-                            >
-                                <i className="fas fa-directions"></i> Get Directions
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
-        </div>
-    );
-};
+import EventModal from '../components/EventModal';
+import { parseEventDates, getEventStatus, formatCountdown } from '../services/dateUtils';
+import { AnimatePresence } from 'framer-motion';
 
 const CountdownBadge: React.FC<{ dateStr: string }> = ({ dateStr }) => {
-    const [status, setStatus] = useState<{ label: string, color: string }>({ label: '', color: '' });
+    const [status, setStatus] = useState(getEventStatus(dateStr));
 
     useEffect(() => {
-        const calculate = () => {
-            const now = new Date().getTime();
-            let startDate: number;
-            let endDate: number;
-            
-            if (dateStr.includes('(')) {
-                const month = dateStr.split(' ')[0];
-                const year = new Date().getFullYear();
-                startDate = new Date(`${month} 1, ${year}`).getTime();
-                endDate = new Date(year, new Date(`${month} 1, ${year}`).getMonth() + 1, 0, 23, 59, 59).getTime();
-            } else {
-                startDate = new Date(dateStr).getTime();
-                endDate = startDate + (24 * 60 * 60 * 1000) - 1;
-            }
-
-            if (isNaN(startDate)) {
-                setStatus({ label: '', color: '' });
-                return;
-            }
-
-            if (now > endDate) {
-                setStatus({ label: 'Ended', color: 'bg-slate-500' });
-                return;
-            }
-
-            if (now >= startDate && now <= endDate) {
-                setStatus({ label: 'Ongoing', color: 'bg-red-500 animate-pulse' });
-                return;
-            }
-
-            const diff = startDate - now;
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            
-            const label = days === 0 ? `${hours}h away` : `${days}d ${hours}h away`;
-            setStatus({ label, color: 'bg-lt-blue' });
-        };
-
-        calculate();
-        const timer = setInterval(calculate, 60000);
+        const timer = setInterval(() => {
+            setStatus(getEventStatus(dateStr));
+        }, 1000);
         return () => clearInterval(timer);
     }, [dateStr]);
 
-    if (!status.label) return null;
+    if (status.type === 'unknown') return null;
+
+    const timeLeftStr = status.timeLeft > 0 ? formatCountdown(status.timeLeft) : "";
 
     return (
-        <div className="absolute bottom-4 left-4">
-            <span className={`backdrop-blur-md text-white text-[9px] font-black px-3 py-1.5 rounded-full shadow-lg border border-white/10 flex items-center gap-1.5 ${status.label === 'Ended' ? 'bg-slate-800/60' : 'bg-black/60'}`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${status.color}`}></div>
-                {status.label}
-            </span>
+        <div className="absolute inset-0 z-20 flex flex-col justify-end pointer-events-none">
+            {/* Overlay Gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80" />
+            
+            {/* Content Band */}
+            <div className="relative p-6 pb-8 flex flex-col gap-1 transition-transform duration-500">
+                <div className="flex items-center gap-2.5">
+                    <div className={`w-3 h-3 rounded-full shadow-lg ${status.color} ${status.type === 'ongoing' ? 'animate-pulse' : ''}`}></div>
+                    <span className="text-white font-black tracking-[0.25em] text-[12px] uppercase drop-shadow-md">
+                        {status.label}
+                    </span>
+                </div>
+                
+                {status.type === 'upcoming' && timeLeftStr && (
+                    <div className="flex flex-col gap-0.5 mt-1">
+                        <span className="text-white/60 text-[10px] font-black uppercase tracking-widest leading-none">Starts In</span>
+                        <span className="text-white font-mono text-2xl font-black tracking-tight drop-shadow-xl">
+                            {timeLeftStr}
+                        </span>
+                    </div>
+                )}
+                
+                {status.type === 'ongoing' && (
+                    <div className="flex flex-col gap-0.5 mt-1">
+                        <span className="text-lt-yellow/60 text-[10px] font-black uppercase tracking-widest leading-none">Happening Now</span>
+                        <span className="text-white font-mono text-lg font-black tracking-tight drop-shadow-xl">
+                             Ends in: {timeLeftStr} 🍓
+                        </span>
+                    </div>
+                )}
+
+                {status.type === 'ended' && (
+                    <div className="mt-2 text-white/50 font-black text-xs uppercase tracking-widest drop-shadow-lg">
+                        See you next year!
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -232,43 +74,48 @@ const EventsPage: React.FC = () => {
 
     useEffect(() => {
         const loadEvents = async () => {
+            setLoading(true);
             try {
-                const data = await fetchLocalEvents();
+                let data = await fetchLocalEvents();
                 
-                // Sort events by date (closest first)
-                const sortedData = [...data].sort((a, b) => {
-                    const now = new Date().getTime();
+                // Fallback to static constants if API is empty
+                if (!data || data.length === 0) {
+                    console.log("[Events] Database empty, falling back to LOCAL_EVENTS");
+                    data = LOCAL_EVENTS;
+                }
+                
+                // Sort events (Ongoing first, then Upcoming closest, then Ended)
+                const sorted = [...data].sort((a, b) => {
+                    const nowTime = new Date().getTime();
+                    const datesA = parseEventDates(a.date);
+                    const datesB = parseEventDates(b.date);
                     
-                    const getTargetDate = (dateStr: string) => {
-                        if (dateStr.includes('(')) {
-                            const month = dateStr.split(' ')[0];
-                            const year = new Date().getFullYear();
-                            return new Date(`${month} 1, ${year}`).getTime();
-                        }
-                        return new Date(dateStr).getTime();
-                    };
+                    if (!datesA && !datesB) return 0;
+                    if (!datesA) return 1;
+                    if (!datesB) return -1;
 
-                    const dateA = getTargetDate(a.date);
-                    const dateB = getTargetDate(b.date);
+                    const isOngoingA = nowTime >= datesA.start.getTime() && nowTime <= datesA.end.getTime();
+                    const isOngoingB = nowTime >= datesB.start.getTime() && nowTime <= datesB.end.getTime();
 
-                    const diffA = dateA - now;
-                    const diffB = dateB - now;
+                    if (isOngoingA && !isOngoingB) return -1;
+                    if (!isOngoingA && isOngoingB) return 1;
 
-                    // If both are in the future, sort by closest
-                    if (diffA >= 0 && diffB >= 0) return diffA - diffB;
-                    // If one is in the past, move it to the end
-                    if (diffA < 0 && diffB >= 0) return 1;
-                    if (diffA >= 0 && diffB < 0) return -1;
-                    // If both are in the past, sort by most recent
-                    return diffB - diffA;
+                    const isEndedA = nowTime > datesA.end.getTime();
+                    const isEndedB = nowTime > datesB.end.getTime();
+
+                    if (isEndedA && !isEndedB) return 1;
+                    if (!isEndedA && isEndedB) return -1;
+
+                    // Proximity for both upcoming or both already ended
+                    return datesA.start.getTime() - datesB.start.getTime();
                 });
 
-                setEvents(sortedData);
+                setEvents(sorted);
                 
                 // Check for deep link
                 const eventTitle = searchParams.get('id');
-                if (eventTitle && sortedData.length > 0) {
-                    const found = sortedData.find(e => e.title.toLowerCase().replace(/\s+/g, '-') === eventTitle.toLowerCase());
+                if (eventTitle && sorted.length > 0) {
+                    const found = sorted.find(e => e.title.toLowerCase().replace(/\s+/g, '-') === eventTitle.toLowerCase());
                     if (found) setSelectedEvent(found);
                 }
             } catch (err) {
@@ -314,30 +161,33 @@ const EventsPage: React.FC = () => {
                         <p className="text-slate-400 font-bold animate-pulse">Loading amazing events...</p>
                     </div>
                 ) : events.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                         {events.map((event, index) => (
                             <AnimatedElement 
                                 key={event._id || index} 
-                                delay={index * 100} 
+                                delay={index * 80} 
                                 direction="up" 
-                                distance={50}
+                                distance={30}
                             >
                                 <div 
                                     onClick={() => setSelectedEvent(event)}
-                                    className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 group cursor-pointer border border-slate-100 flex flex-col h-full transform hover:-translate-y-2"
+                                    className="bg-white rounded-[2.5rem] overflow-hidden shadow-[0_10px_40px_-15px_rgba(0,0,0,0.1)] hover:shadow-[0_25px_60px_-20px_rgba(0,0,0,0.2)] transition-all duration-500 group cursor-pointer border border-slate-100 flex flex-col h-full transform hover:-translate-y-3"
                                 >
-                                    <div className="relative h-64 overflow-hidden">
+                                    <div className="relative h-72 overflow-hidden">
                                         <img 
                                             src={event.image} 
                                             alt={event.title} 
-                                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" 
+                                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-1000" 
                                         />
-                                        <div className="absolute top-4 left-4">
-                                            <span className="bg-lt-yellow/90 backdrop-blur text-slate-900 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm uppercase tracking-wider">
+                                        
+                                        {/* Status Badge Top Left */}
+                                        <div className="absolute top-5 left-5 z-30">
+                                            <span className="bg-white/90 backdrop-blur-md text-slate-900 text-[10px] font-black px-4 py-2 rounded-full shadow-lg border border-white/50 uppercase tracking-[0.1em]">
                                                 {event.badge}
                                             </span>
                                         </div>
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                                        {/* Countdown Overlay - Always Visible but interactive */}
                                         <CountdownBadge dateStr={event.date} />
                                     </div>
                                     

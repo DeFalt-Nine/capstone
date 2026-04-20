@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { fetchLocalEvents, fetchTouristSpots, fetchDiningSpots } from '../services/apiService';
+import { parseEventDates } from '../services/dateUtils';
 import type { LocalEvent, TouristSpot } from '../types';
 
 const VIBES = [
@@ -57,7 +58,7 @@ const SURVEY_QUESTIONS = [
     }
 ];
 
-const Mascot: React.FC = () => {
+export default function Mascot() {
     const navigate = useNavigate();
     const [upcomingEvent, setUpcomingEvent] = useState<LocalEvent | null>(null);
     const [eventStatus, setEventStatus] = useState<{ type: 'now' | 'upcoming', days?: number } | null>(null);
@@ -109,12 +110,10 @@ const Mascot: React.FC = () => {
     useEffect(() => {
         const hasSeenIntro = sessionStorage.getItem('hasSeenIntro') === 'true';
         
-        // Show mascot faster if returning
-        if (hasSeenIntro) {
-            setIsVisible(true);
-        } else {
-            // Wait for intro on first visit
-            setTimeout(() => setIsVisible(true), 3000);
+        // Show mascot immediately
+        setIsVisible(true);
+        if (!hasSeenIntro) {
+            sessionStorage.setItem('hasSeenIntro', 'true');
         }
 
         const initMascot = async () => {
@@ -124,64 +123,55 @@ const Mascot: React.FC = () => {
 
                 let events = await fetchLocalEvents();
                 if (!events || events.length === 0) {
-                    // Fallback to static events if API is empty
                     const { LOCAL_EVENTS } = await import('../constants');
                     events = LOCAL_EVENTS;
                 }
 
                 const now = new Date();
-                const currentYear = now.getFullYear();
-                const currentMonth = now.getMonth();
+                const nowTime = now.getTime();
 
-                // Helper to parse event date into a comparable Date object
-                const getEventDate = (dateStr: string) => {
-                    if (dateStr.includes('(')) {
-                        const month = dateStr.split(' ')[0];
-                        const year = new Date().getFullYear();
-                        return new Date(`${month} 1, ${year}`);
-                    }
-                    return new Date(dateStr);
-                };
+                const evaluatedEvents = events.map(event => {
+                    const dates = parseEventDates(event.date);
+                    if (!dates) return null;
 
-                // Find all future events
-                const futureEvents = events.map(event => {
-                    const eventDate = getEventDate(event.date);
-                    if (isNaN(eventDate.getTime())) return null;
+                    let start = dates.start.getTime();
+                    let end = dates.end.getTime();
 
                     // If event has passed this year, check next year
-                    const isMonthLong = event.date.toLowerCase().includes('month-long');
-                    const isCurrentMonth = eventDate.getMonth() === currentMonth;
-
-                    if (eventDate < now && !isMonthLong && !isCurrentMonth) {
-                        eventDate.setFullYear(currentYear + 1);
+                    if (nowTime > end) {
+                        const nextYearStart = new Date(dates.start);
+                        nextYearStart.setFullYear(nextYearStart.getFullYear() + 1);
+                        const nextYearEnd = new Date(dates.end);
+                        nextYearEnd.setFullYear(nextYearEnd.getFullYear() + 1);
+                        start = nextYearStart.getTime();
+                        end = nextYearEnd.getTime();
                     }
 
-                    return { event, date: eventDate };
-                }).filter(e => e !== null) as { event: LocalEvent, date: Date }[];
+                    return { 
+                        event, 
+                        start, 
+                        end,
+                        isOngoing: nowTime >= start && nowTime <= end,
+                        isUpcoming: nowTime < start
+                    };
+                }).filter(e => e !== null) as any[];
 
-                // Sort by date
-                futureEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+                const ongoing = evaluatedEvents.find(e => e.isOngoing);
+                if (ongoing) {
+                    setUpcomingEvent(ongoing.event);
+                    setEventStatus({ type: 'now' });
+                    return;
+                }
 
-                const nearest = futureEvents[0];
+                const upcomingEvents = evaluatedEvents
+                    .filter(e => e.isUpcoming)
+                    .sort((a, b) => a.start - b.start);
 
-                if (nearest) {
+                if (upcomingEvents.length > 0) {
+                    const nearest = upcomingEvents[0];
                     setUpcomingEvent(nearest.event);
-                    
-                    const isMonthLong = nearest.event.date.toLowerCase().includes('month-long');
-                    const isCurrentMonth = nearest.date.getMonth() === currentMonth;
-                    
-                    if (isMonthLong && isCurrentMonth) {
-                        setEventStatus({ type: 'now' });
-                    } else {
-                        const diffTime = nearest.date.getTime() - now.getTime();
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        
-                        if (diffDays <= 0) {
-                            setEventStatus({ type: 'now' });
-                        } else {
-                            setEventStatus({ type: 'upcoming', days: diffDays });
-                        }
-                    }
+                    const diffDays = Math.ceil((nearest.start - nowTime) / (1000 * 60 * 60 * 24));
+                    setEventStatus({ type: 'upcoming', days: diffDays });
                 }
             } catch (err) {
                 console.error("Mascot init failed:", err);
@@ -205,7 +195,7 @@ const Mascot: React.FC = () => {
                 );
             }
         }
-    }, [isVisible]);
+    }, [isVisible, isBubbleVisible]);
 
     useEffect(() => {
         if (!mascotRef.current) return;
@@ -528,6 +518,4 @@ const Mascot: React.FC = () => {
             </div>
         </div>
     );
-};
-
-export default Mascot;
+}
