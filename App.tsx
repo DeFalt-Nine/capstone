@@ -6,6 +6,7 @@ import { PlannerProvider } from './contexts/PlannerContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Chatbot from './components/Chatbot';
+import Mascot from './components/Mascot';
 import DataConsentBanner from './components/DataConsentBanner';
 
 // Pages
@@ -25,7 +26,7 @@ const AppContent: React.FC = () => {
   const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen overflow-x-hidden">
       {!isAdminPage && <Header />}
       <main className="flex-grow">
         <Routes>
@@ -43,6 +44,7 @@ const AppContent: React.FC = () => {
       </main>
       {!isAdminPage && <Footer />}
       {!isAdminPage && <Chatbot />}
+      {!isAdminPage && <Mascot />}
       {!isAdminPage && <DataConsentBanner />}
     </div>
   );

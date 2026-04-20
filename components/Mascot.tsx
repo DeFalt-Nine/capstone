@@ -183,19 +183,20 @@ export default function Mascot() {
 
     useEffect(() => {
         if (isVisible && mascotRef.current) {
+            // Initial Entrance - only if it hasn't happened yet
             gsap.fromTo(mascotRef.current, 
-                { x: -100, opacity: 0 },
+                { x: -160, opacity: 0 },
                 { x: 0, opacity: 1, duration: 1, ease: 'back.out(1.7)' }
             );
             
-            if (bubbleRef.current && isBubbleVisible) {
+            if (bubbleRef.current) {
                 gsap.fromTo(bubbleRef.current,
                     { scale: 0, opacity: 0 },
-                    { scale: 1, opacity: 1, delay: 0.8, duration: 0.5, ease: 'back.out(2)' }
+                    { scale: 1, opacity: 1, delay: 1, duration: 0.5, ease: 'back.out(2)' }
                 );
             }
         }
-    }, [isVisible, isBubbleVisible]);
+    }, [isVisible]); // Remove isBubbleVisible from dependency array
 
     useEffect(() => {
         if (!mascotRef.current) return;
@@ -503,8 +504,8 @@ export default function Mascot() {
             >
                 {/* Pop-out Arrow (Visible when tucked) */}
                 {!isBubbleVisible && (
-                    <div className="absolute -right-12 top-1/2 -translate-y-1/2 text-lt-orange/30 hover:text-lt-orange/60 transition-colors animate-pulse p-4">
-                        <i className="fas fa-chevron-right text-2xl"></i>
+                    <div className="absolute -right-12 top-1/2 -translate-y-1/2 text-green-500 hover:text-green-400 transition-colors animate-pulse p-4">
+                        <i className="fas fa-chevron-right text-2xl drop-shadow-sm"></i>
                     </div>
                 )}
                 <div className="w-full h-full drop-shadow-xl flex items-center justify-center">

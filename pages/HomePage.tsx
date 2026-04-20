@@ -5,7 +5,6 @@ import { gsap } from 'gsap';
 import AnimatedElement from '../components/AnimatedElement';
 import IntroAnimation from '../components/IntroAnimation';
 import ParallaxElement from '../components/ParallaxElement';
-import Mascot from '../components/Mascot';
 import { fetchSiteSettings } from '../services/apiService';
 
 const MORPHING_WORDS = ["Discover", "Explore", "Enjoy", "Love"];
@@ -266,8 +265,6 @@ const HomePage: React.FC = () => {
                     </ParallaxElement>
                 </div>
             </section>
-
-            <Mascot />
         </div>
     );
 };
