@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import BlogPost from '../models/BlogPost.js';
+import { supabase } from '../config/supabase.js';
 import { verifyAdmin } from '../middleware/auth.js';
 import { deleteImage } from '../services/storageService.js';
 import adminLogService from '../services/adminLogService.js';
@@ -11,19 +11,17 @@ router.get('/', async (req, res) => {
   try {
     const isAdmin = req.query.mode === 'admin';
     
-    // Public users see 'approved' posts OR posts with no status (legacy support)
-    // Admin sees everything
-    let query = isAdmin 
-        ? {} 
-        : { 
-            $or: [
-                { status: 'approved' },
-                { status: { $exists: false } } 
-            ] 
-          };
+    let query = supabase.from('blog_posts').select('*');
     
-    const posts = await BlogPost.find(query).sort({ createdAt: -1 });
-    res.json(posts);
+    if (!isAdmin) {
+       // Filter for approved posts for public
+       query = query.filter('status', 'eq', 'approved');
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data.map(p => ({ ...p, _id: p.id, createdAt: p.created_at })));
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
@@ -33,8 +31,14 @@ router.get('/', async (req, res) => {
 // @route   GET /api/blog-posts/user/:email
 router.get('/user/:email', async (req, res) => {
   try {
-    const posts = await BlogPost.find({ email: req.params.email }).sort({ createdAt: -1 });
-    res.json(posts);
+    const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .eq('email', req.params.email)
+        .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data.map(p => ({ ...p, _id: p.id, createdAt: p.created_at })));
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
@@ -43,21 +47,28 @@ router.get('/user/:email', async (req, res) => {
 // @desc    Create (Admin direct post)
 router.post('/', verifyAdmin, async (req, res) => {
   try {
-    const newPost = await BlogPost.create({
-        ...req.body,
-        status: 'approved' // Admin created posts are auto-approved
-    });
+    const { _id, ...payload } = req.body;
+    const { data, error } = await supabase
+        .from('blog_posts')
+        .insert([{
+            ...payload,
+            status: 'approved'
+        }])
+        .select();
+
+    if (error) throw error;
+    const newPost = data[0];
 
     // Log the action
     await adminLogService.logAdminAction({
       action: 'create',
       targetType: 'blog-post',
-      targetId: newPost._id.toString(),
+      targetId: newPost.id.toString(),
       targetName: newPost.title,
       details: `Created new blog post: ${newPost.title}`
     });
 
-    res.status(201).json(newPost);
+    res.status(201).json({ ...newPost, _id: newPost.id });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -73,23 +84,27 @@ router.post('/submit', async (req, res) => {
             return res.status(400).json({ message: "Missing required fields." });
         }
 
-        const newPost = await BlogPost.create({
-            title,
-            description,
-            content, // In a real app, sanitize this HTML!
-            author,
-            email,
-            image,
-            socialLink,
-            videoLink,
-            alt: title,
-            badge: 'Community Story',
-            readTime: '3 min read', // Default for now
-            date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-            status: 'pending' // Crucial: Always pending for public submissions
-        });
+        const { data, error } = await supabase
+            .from('blog_posts')
+            .insert([{
+                title,
+                description,
+                content,
+                author,
+                email,
+                image,
+                social_link: socialLink,
+                video_link: videoLink,
+                alt: title,
+                badge: 'Community Story',
+                status: 'pending'
+            }])
+            .select();
 
-        res.status(201).json({ message: "Story submitted successfully! It is pending review.", post: newPost });
+        if (error) throw error;
+        const newPost = data[0];
+
+        res.status(201).json({ message: "Story submitted successfully! It is pending review.", post: { ...newPost, _id: newPost.id } });
     } catch (error) {
         console.error("Submission error:", error);
         res.status(500).json({ message: "Server error during submission." });
@@ -99,8 +114,18 @@ router.post('/submit', async (req, res) => {
 // @desc    Update (Admin - Status Change, Edit)
 router.put('/:id', verifyAdmin, async (req, res) => {
   try {
-    const oldPost = await BlogPost.findById(req.params.id);
-    const updatedPost = await BlogPost.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { data: oldPost } = await supabase.from('blog_posts').select('*').eq('id', req.params.id).single();
+    if (!oldPost) return res.status(404).json({ message: 'Post not found' });
+
+    const { _id, id, created_at, ...payload } = req.body;
+    const { data: updatedPostData, error } = await supabase
+        .from('blog_posts')
+        .update({ ...payload, updated_at: new Date() })
+        .eq('id', req.params.id)
+        .select();
+
+    if (error) throw error;
+    const updatedPost = updatedPostData[0];
     
     // Log the action
     let action = 'update';
@@ -114,12 +139,12 @@ router.put('/:id', verifyAdmin, async (req, res) => {
     await adminLogService.logAdminAction({
       action,
       targetType: 'blog-post',
-      targetId: updatedPost._id.toString(),
+      targetId: updatedPost.id.toString(),
       targetName: updatedPost.title,
       details
     });
 
-    res.json(updatedPost);
+    res.json({ ...updatedPost, _id: updatedPost.id });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -128,7 +153,7 @@ router.put('/:id', verifyAdmin, async (req, res) => {
 // @desc    Delete (Admin)
 router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
-    const post = await BlogPost.findById(req.params.id);
+    const { data: post } = await supabase.from('blog_posts').select('*').eq('id', req.params.id).single();
     if (!post) return res.status(404).json({ message: 'Post not found' });
 
     // Delete image from storage
@@ -136,7 +161,7 @@ router.delete('/:id', verifyAdmin, async (req, res) => {
         await deleteImage(post.image);
     }
 
-    await BlogPost.findByIdAndDelete(req.params.id);
+    await supabase.from('blog_posts').delete().eq('id', req.params.id);
 
     // Log the action
     await adminLogService.logAdminAction({
@@ -157,8 +182,14 @@ router.delete('/:id', verifyAdmin, async (req, res) => {
 // @route   PUT /api/blog-posts/:id/seen
 router.put('/:id/seen', verifyAdmin, async (req, res) => {
   try {
-    const post = await BlogPost.findByIdAndUpdate(req.params.id, { isSeen: true }, { new: true });
-    res.json(post);
+    const { data, error } = await supabase
+        .from('blog_posts')
+        .update({ is_seen: true })
+        .eq('id', req.params.id)
+        .select();
+    
+    if (error) throw error;
+    res.json({ ...data[0], _id: data[0].id });
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }

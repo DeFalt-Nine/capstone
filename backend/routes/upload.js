@@ -105,6 +105,16 @@ router.post('/', (req, res) => {
 
             if (error) {
                 console.error('[Supabase Upload Error]', error);
+                
+                // Specific handling for DNS/Connectivity issues
+                const isDnsError = 
+                    error.code === 'ENOTFOUND' || 
+                    (error.originalError && (error.originalError.code === 'ENOTFOUND' || (error.originalError.cause && error.originalError.cause.code === 'ENOTFOUND')));
+
+                if (isDnsError) {
+                    throw new Error(`Could not connect to Supabase at "${supabaseUrl}". Your machine cannot find this host. Please check your internet connection, VPN, or verify the URL in your .env file.`);
+                }
+
                 if (error.message && error.message.includes('Bucket not found')) {
                     throw new Error(`Supabase bucket "${supabaseBucket}" not found. Please create a public bucket named "${supabaseBucket}" in your Supabase dashboard. Note that bucket names are case-sensitive.`);
                 }

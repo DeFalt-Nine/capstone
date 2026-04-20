@@ -8,7 +8,6 @@ import { dirname } from 'path';
 import { createServer as createViteServer } from 'vite';
 
 // Backend logic imports - Pointing into the backend folder
-import { connectDB } from './backend/config/db.js';
 import authRoutes from './backend/routes/auth.js';
 import healthRoutes from './backend/routes/health.js';
 import uploadRoutes from './backend/routes/upload.js';
@@ -36,25 +35,17 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  // Database Connection Middleware
+  // Database Connection Middleware - Migrated to Supabase
   const ensureDbConnection = async (req, res, next) => {
-    console.log(`[API] ${req.method} ${req.originalUrl} - Checking DB connection...`);
-    try {
-      if (!process.env.MONGO_URI) {
-        return res.status(500).json({
-          message: 'Server Configuration Error: MONGO_URI is missing in .env file.'
-        });
-      }
-      await connectDB();
-      console.log(`[API] ${req.method} ${req.originalUrl} - DB connection ready.`);
-      next();
-    } catch (error) {
-      console.error('[Database] Connection failure:', error.message);
-      res.status(503).json({
-        message: 'Database connection failed. Please ensure MongoDB is running and your MONGO_URI is correct.',
-        error: error.message
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return res.status(500).json({
+        message: 'Server Configuration Error: Supabase credentials (URL/Key) are missing.'
       });
     }
+    next();
   };
 
   // API Routes

@@ -1,48 +1,50 @@
 import express from 'express';
 const router = express.Router();
-import TouristSpot from '../models/TouristSpot.js';
-import Subscriber from '../models/Subscriber.js';
-import mongoose from 'mongoose';
+import { supabase } from '../config/supabase.js';
 import { verifyAdmin } from '../middleware/auth.js';
 import { deleteImage } from '../services/storageService.js';
 import adminLogService from '../services/adminLogService.js';
+
+/**
+ * Mapping Helper: Converts Postgres snack_case to camelCase if needed,
+ * but currently our frontend expects mostly what's in Mongoose.
+ * Note: MongoDB _id vs Postgres id.
+ */
+const formatSpot = (spot) => {
+    if (!spot) return null;
+    const activeReviews = (spot.reviews || []).filter(r => !r.is_deleted);
+    const avgRating = activeReviews.length > 0 
+        ? activeReviews.reduce((acc, r) => acc + r.rating, 0) / activeReviews.length 
+        : 0;
+
+    return {
+        ...spot,
+        _id: spot.id, // Compatibility with frontend
+        averageRating: avgRating,
+        reviewCount: activeReviews.length,
+        reviews: activeReviews.map(r => ({
+            ...r,
+            _id: r.id, // Compatibility
+            createdAt: r.created_at
+        }))
+    };
+};
 
 // @desc    Fetch all tourist spots
 // @route   GET /api/tourist-spots
 router.get('/', async (req, res) => {
   try {
-    const spots = await TouristSpot.aggregate([
-      {
-        $addFields: {
-          activeReviews: {
-            $filter: {
-              input: { $ifNull: ['$reviews', []] },
-              as: 'review',
-              cond: { $ne: ['$$review.isDeleted', true] }
-            }
-          }
-        }
-      },
-      {
-        $addFields: {
-          averageRating: { $ifNull: [{ $avg: '$activeReviews.rating' }, 0] },
-          reviewCount: { $size: '$activeReviews' },
-          reviews: '$activeReviews' // Only return active reviews to frontend
-        }
-      },
-      {
-        $project: {
-          activeReviews: 0 // Remove the temporary field
-        }
-      }
-    ]);
-    res.json(spots);
+    const { data, error } = await supabase
+      .from('tourist_spots')
+      .select('*, reviews(*)');
+
+    if (error) throw error;
+    
+    const formatted = data.map(formatSpot);
+    res.json(formatted);
   } catch (error) { 
-    console.error("Error fetching tourist spots:", error);
-    if (error.name === 'MongooseServerSelectionError') {
-      return res.status(503).json({ message: 'Could not connect to the database.' });
-    }
-    res.status(500).json({ message: 'Server Error' });
+    console.error("Error fetching tourist spots from Supabase:", error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
 
@@ -50,19 +52,26 @@ router.get('/', async (req, res) => {
 // @route   GET /api/tourist-spots/user/:email/reviews
 router.get('/user/:email/reviews', async (req, res) => {
   try {
-    const spots = await TouristSpot.find({ 'reviews.email': req.params.email });
-    const userReviews = spots.flatMap(spot => 
-      spot.reviews
-        .filter(r => r.email === req.params.email && !r.isDeleted)
-        .map(r => ({
-          ...r.toObject(),
-          spotId: spot._id,
-          spotName: spot.name,
-          spotType: 'tourist'
-        }))
-    );
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*, tourist_spots(id, name)')
+      .eq('email', req.params.email)
+      .eq('is_deleted', false)
+      .eq('entity_type', 'tourist');
+
+    if (error) throw error;
+
+    const userReviews = data.map(r => ({
+      ...r,
+      _id: r.id,
+      spotId: r.tourist_spots?.id,
+      spotName: r.tourist_spots?.name,
+      spotType: 'tourist'
+    }));
+
     res.json(userReviews);
   } catch (error) {
+    console.error("Error fetching user reviews:", error);
     res.status(500).json({ message: 'Server Error' });
   }
 });
@@ -71,19 +80,28 @@ router.get('/user/:email/reviews', async (req, res) => {
 // @route   POST /api/tourist-spots
 router.post('/', verifyAdmin, async (req, res) => {
   try {
-    const newSpot = await TouristSpot.create(req.body);
+    const { _id, reviews, ...payload } = req.body;
+    
+    const { data, error } = await supabase
+      .from('tourist_spots')
+      .insert([payload])
+      .select();
+
+    if (error) throw error;
+    const newSpot = data[0];
     
     // Log the action
     await adminLogService.logAdminAction({
       action: 'create',
       targetType: 'tourist-spot',
-      targetId: newSpot._id.toString(),
+      targetId: newSpot.id.toString(),
       targetName: newSpot.name,
       details: `Created new tourist spot: ${newSpot.name}`
     });
 
-    res.status(201).json(newSpot);
+    res.status(201).json({ ...newSpot, _id: newSpot.id });
   } catch (error) {
+    console.error("Error creating spot:", error);
     res.status(400).json({ message: error.message });
   }
 });
@@ -92,19 +110,31 @@ router.post('/', verifyAdmin, async (req, res) => {
 // @route   PUT /api/tourist-spots/:id
 router.put('/:id', verifyAdmin, async (req, res) => {
   try {
-    const updatedSpot = await TouristSpot.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { _id, id, reviews, created_at, updated_at, ...payload } = req.body;
+    
+    const { data, error } = await supabase
+      .from('tourist_spots')
+      .update({ ...payload, updated_at: new Date() })
+      .eq('id', req.params.id)
+      .select();
+
+    if (error) throw error;
+    if (!data || data.length === 0) return res.status(404).json({ message: 'Spot not found' });
+    
+    const updatedSpot = data[0];
     
     // Log the action
     await adminLogService.logAdminAction({
       action: 'update',
       targetType: 'tourist-spot',
-      targetId: updatedSpot._id.toString(),
+      targetId: updatedSpot.id.toString(),
       targetName: updatedSpot.name,
       details: `Updated tourist spot: ${updatedSpot.name}`
     });
 
-    res.json(updatedSpot);
+    res.json({ ...updatedSpot, _id: updatedSpot.id });
   } catch (error) {
+    console.error("Error updating spot:", error);
     res.status(400).json({ message: error.message });
   }
 });
@@ -113,8 +143,13 @@ router.put('/:id', verifyAdmin, async (req, res) => {
 // @route   DELETE /api/tourist-spots/:id
 router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
-    const spot = await TouristSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+    const { data: spot, error: fetchError } = await supabase
+      .from('tourist_spots')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (fetchError || !spot) return res.status(404).json({ message: 'Spot not found' });
 
     // Delete main image
     if (spot.image) {
@@ -128,18 +163,14 @@ router.delete('/:id', verifyAdmin, async (req, res) => {
         }
     }
 
-    // Delete review images
-    if (spot.reviews && spot.reviews.length > 0) {
-        for (const review of spot.reviews) {
-            if (review.images && review.images.length > 0) {
-                for (const imgUrl of review.images) {
-                    await deleteImage(imgUrl);
-                }
-            }
-        }
-    }
+    // reviews are auto-deleted by cascade in Supabase schema if set up correctly
+    // If not, we should manually delete them or they will remain as orphans if no FK is set
+    const { error: deleteError } = await supabase
+      .from('tourist_spots')
+      .delete()
+      .eq('id', req.params.id);
 
-    await TouristSpot.findByIdAndDelete(req.params.id);
+    if (deleteError) throw deleteError;
 
     // Log the action
     await adminLogService.logAdminAction({
@@ -152,6 +183,7 @@ router.delete('/:id', verifyAdmin, async (req, res) => {
 
     res.json({ message: 'Spot removed and images deleted' });
   } catch (error) {
+    console.error("Error deleting spot:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -160,25 +192,31 @@ router.delete('/:id', verifyAdmin, async (req, res) => {
 // @route   DELETE /api/tourist-spots/:id/reviews/:reviewId
 router.delete('/:id/reviews/:reviewId', verifyAdmin, async (req, res) => {
   try {
-    const spot = await TouristSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+    const { data: review, error: rError } = await supabase
+      .from('reviews')
+      .select('*, tourist_spots(name)')
+      .eq('id', req.params.reviewId)
+      .single();
 
-    // Filter out the review to be deleted
-    const reviewToDelete = spot.reviews.find(r => r._id.toString() === req.params.reviewId);
-    spot.reviews = spot.reviews.filter(r => r._id.toString() !== req.params.reviewId);
-    
-    await spot.save();
+    if (rError || !review) return res.status(404).json({ message: 'Review not found' });
+
+    const { error: dError } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', req.params.reviewId);
+
+    if (dError) throw dError;
 
     // Log the action
     await adminLogService.logAdminAction({
       action: 'delete_review',
       targetType: 'tourist-spot',
-      targetId: spot._id.toString(),
-      targetName: spot.name,
-      details: `Deleted review by ${reviewToDelete?.name || 'unknown'} from ${spot.name}`
+      targetId: req.params.id,
+      targetName: review.tourist_spots?.name || 'Unknown',
+      details: `Deleted review by ${review.name} from spot`
     });
 
-    res.json(spot);
+    res.json({ message: 'Review deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -191,48 +229,58 @@ router.post('/:id/reviews', async (req, res) => {
   if (!name || !email || !rating) return res.status(400).json({ message: 'Required fields missing.' });
 
   try {
-    const spot = await TouristSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Not found' });
+    // 1. Check if spot exists
+    const { data: spot, error: sError } = await supabase
+        .from('tourist_spots')
+        .select('id, name')
+        .eq('id', req.params.id)
+        .single();
+    if (sError || !spot) return res.status(404).json({ message: 'Spot not found' });
 
-    // Check for existing reviews by this email
-    const existingReview = spot.reviews.find(r => r.email === email && !r.isDeleted);
-    if (existingReview) {
-      return res.status(400).json({ message: 'You have already left a review for this spot. You can edit it within 7 days or delete it to post a new one later.' });
+    // 2. Check for existing reviews by this email
+    const { data: existing, error: exError } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('email', email)
+        .eq('spot_id', req.params.id)
+        .eq('is_deleted', false)
+        .limit(1);
+
+    if (existing && existing.length > 0) {
+      return res.status(400).json({ message: 'You have already left a review for this spot.' });
     }
 
-    // Check for recently deleted reviews (7-day cooldown after 3 attempts)
-    const deletedReviews = spot.reviews.filter(r => r.email === email && r.isDeleted);
-    const lastDeleted = deletedReviews.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()).reverse()[0];
-    
-    if (deletedReviews.length >= 3 && lastDeleted && (Date.now() - new Date(lastDeleted.deletedAt).getTime() < 7 * 24 * 60 * 60 * 1000)) {
-      const waitDays = Math.ceil((7 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(lastDeleted.deletedAt).getTime())) / (24 * 60 * 60 * 1000));
-      return res.status(400).json({ message: `You have reached the limit of 3 review attempts. Please wait ${waitDays} more days before posting a new one.` });
-    }
+    // 3. Insert review
+    const { data: newReview, error: iError } = await supabase
+        .from('reviews')
+        .insert([{
+            spot_id: req.params.id,
+            name,
+            email,
+            rating: Number(rating),
+            comment,
+            images: images || [],
+            entity_type: 'tourist'
+        }])
+        .select();
 
-    spot.reviews.push({ 
-        name, 
-        email, 
-        rating: Number(rating), 
-        comment,
-        images: images || [] 
-    });
-    await spot.save();
+    if (iError) throw iError;
 
-    try {
-        await Subscriber.findOneAndUpdate(
-            { email: email },
-            { $setOnInsert: { email: email, source: 'review' } },
-            { upsert: true }
-        );
-    } catch (e) {}
-    
-    const updatedSpot = await TouristSpot.aggregate([
-        { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
-        { $addFields: { averageRating: { $ifNull: [ { $avg: '$reviews.rating' }, 0 ] } } }
-    ]);
+    // Update subscriber (async)
+    supabase.from('subscribers')
+        .upsert({ email: email, source: 'review' }, { onConflict: 'email' })
+        .then(() => {});
 
-    res.status(201).json(updatedSpot[0]);
+    // Fetch updated spot with all reviews to return
+    const { data: updatedSpotData } = await supabase
+        .from('tourist_spots')
+        .select('*, reviews(*)')
+        .eq('id', req.params.id)
+        .single();
+
+    res.status(201).json(formatSpot(updatedSpotData));
   } catch (error) {
+    console.error("Error adding review:", error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -243,67 +291,76 @@ router.put('/:id/reviews/:reviewId', async (req, res) => {
   const { rating, comment, images, email } = req.body;
   
   try {
-    const spot = await TouristSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+    const { data: review, error: rError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('id', req.params.reviewId)
+        .single();
 
-    const review = spot.reviews.id(req.params.reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    if (rError || !review) return res.status(404).json({ message: 'Review not found' });
 
-    // Security check: email must match
     if (review.email !== email) {
-      return res.status(403).json({ message: 'Unauthorized to edit this review.' });
+      return res.status(403).json({ message: 'Unauthorized.' });
     }
 
-    // Check 7-day edit window
-    const createdAt = new Date(review.createdAt);
-    const now = new Date();
-    const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 3600 * 24);
-    
+    // 7-day window check
+    const diffDays = (new Date().getTime() - new Date(review.created_at).getTime()) / (1000 * 3600 * 24);
     if (diffDays > 7) {
-      return res.status(400).json({ message: 'This review is now permanent and can no longer be edited.' });
+      return res.status(400).json({ message: 'Permanent: cannot edit after 7 days.' });
     }
 
-    if (rating) review.rating = Number(rating);
-    if (comment !== undefined) review.comment = comment;
-    if (images) review.images = images;
+    const { data: updated, error: uError } = await supabase
+        .from('reviews')
+        .update({
+            rating: rating ? Number(rating) : review.rating,
+            comment: comment !== undefined ? comment : review.comment,
+            images: images || review.images,
+            updated_at: new Date()
+        })
+        .eq('id', req.params.reviewId)
+        .select();
 
-    await spot.save();
-    res.json(spot);
+    if (uError) throw uError;
+
+    // Fetch full spot to return
+    const { data: fullSpot } = await supabase
+    .from('tourist_spots')
+    .select('*, reviews(*)')
+    .eq('id', req.params.id)
+    .single();
+
+    res.json(formatSpot(fullSpot));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
 // @desc    Delete a review (User)
-// @route   DELETE /api/tourist-spots/:id/reviews/:reviewId/user
+// @route   POST /api/tourist-spots/:id/reviews/:reviewId/delete
 router.post('/:id/reviews/:reviewId/delete', async (req, res) => {
   const { email } = req.body;
   
   try {
-    const spot = await TouristSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+    const { data: review, error: rError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('id', req.params.reviewId)
+        .single();
 
-    const review = spot.reviews.id(req.params.reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    if (rError || !review) return res.status(404).json({ message: 'Review not found' });
 
-    // Security check: email must match
     if (review.email !== email) {
-      return res.status(403).json({ message: 'Unauthorized to delete this review.' });
+      return res.status(403).json({ message: 'Unauthorized.' });
     }
 
-    review.isDeleted = true;
-    review.deletedAt = new Date();
-    
-    await spot.save();
+    const { error: dError } = await supabase
+        .from('reviews')
+        .update({ is_deleted: true, deleted_at: new Date() })
+        .eq('id', req.params.reviewId);
 
-    const deletedReviewsCount = spot.reviews.filter(r => r.email === email && r.isDeleted).length;
-    const remainingAttempts = Math.max(0, 3 - deletedReviewsCount);
+    if (dError) throw dError;
 
-    if (deletedReviewsCount >= 3) {
-      res.json({ message: 'Review deleted. You have reached the 3-attempt limit and can post a new one after 7 days.' });
-    } else {
-      res.json({ message: `Review deleted. You have ${remainingAttempts} attempt(s) left before a 7-day cooldown applies.` });
-    }
+    res.json({ message: 'Review deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -313,15 +370,8 @@ router.post('/:id/reviews/:reviewId/delete', async (req, res) => {
 // @route   PUT /api/tourist-spots/:id/reviews/:reviewId/seen
 router.put('/:id/reviews/:reviewId/seen', verifyAdmin, async (req, res) => {
   try {
-    const spot = await TouristSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
-
-    const review = spot.reviews.id(req.params.reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
-
-    review.isSeen = true;
-    await spot.save();
-    res.json(spot);
+    await supabase.from('reviews').update({ is_seen: true }).eq('id', req.params.reviewId);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -331,16 +381,8 @@ router.put('/:id/reviews/:reviewId/seen', verifyAdmin, async (req, res) => {
 // @route   PUT /api/tourist-spots/:id/reviews/:reviewId/resolved
 router.put('/:id/reviews/:reviewId/resolved', verifyAdmin, async (req, res) => {
   try {
-    const spot = await TouristSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
-
-    const review = spot.reviews.id(req.params.reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
-
-    review.isResolved = true;
-    review.isSeen = true; // Also mark as seen if resolved
-    await spot.save();
-    res.json(spot);
+    await supabase.from('reviews').update({ is_resolved: true, is_seen: true }).eq('id', req.params.reviewId);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

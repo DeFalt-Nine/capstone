@@ -1,7 +1,8 @@
 import express from 'express';
-import ChatLog from '../models/ChatLog.js';
+import { supabase } from '../config/supabase.js';
 
 const router = express.Router();
+// ... (rest of the system instructions and streaming logic remains same)
 
 router.post('/', async (req, res) => {
   try {
@@ -110,11 +111,13 @@ IMPORTANT RULES:
         res.end();
         if (fullBotResponse) {
             try {
-                await ChatLog.create({
-                    userMessage: message,
-                    botResponse: fullBotResponse,
-                    isIntent: false,
-                });
+                if (supabase) {
+                    await supabase.from('chat_logs').insert([{
+                        user_message: message,
+                        bot_response: fullBotResponse,
+                        is_intent: false,
+                    }]);
+                }
             } catch (dbErr) {
                 console.error('Error saving chat log to DB:', dbErr.message);
             }

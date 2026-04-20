@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import Subscriber from '../models/Subscriber.js';
+import { supabase } from '../config/supabase.js';
 
 // @desc    Subscribe to newsletter
 // @route   POST /api/subscribers
@@ -13,12 +13,11 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // Use findOneAndUpdate with upsert to prevent duplicates without throwing an error
-    await Subscriber.findOneAndUpdate(
-      { email: email },
-      { $setOnInsert: { email: email, source: 'newsletter' } },
-      { upsert: true, new: true }
-    );
+    const { error } = await supabase
+      .from('subscribers')
+      .upsert([{ email: email, source: 'newsletter' }], { onConflict: 'email' });
+
+    if (error) throw error;
 
     res.status(201).json({ message: 'Successfully subscribed!' });
   } catch (error) {

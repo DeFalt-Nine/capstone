@@ -1,44 +1,47 @@
 import express from 'express';
 const router = express.Router();
-import DiningSpot from '../models/DiningSpot.js';
-import Subscriber from '../models/Subscriber.js';
-import mongoose from 'mongoose';
+import { supabase } from '../config/supabase.js';
 import { verifyAdmin } from '../middleware/auth.js';
 import { deleteImage } from '../services/storageService.js';
 import adminLogService from '../services/adminLogService.js';
+
+/**
+ * Mapping Helper: Compatibility with frontend
+ */
+const formatDiningSpot = (spot) => {
+    if (!spot) return null;
+    const activeReviews = (spot.reviews || []).filter(r => !r.is_deleted);
+    const avgRating = activeReviews.length > 0 
+        ? activeReviews.reduce((acc, r) => acc + r.rating, 0) / activeReviews.length 
+        : 0;
+
+    return {
+        ...spot,
+        _id: spot.id,
+        averageRating: avgRating,
+        reviewCount: activeReviews.length,
+        reviews: activeReviews.map(r => ({
+            ...r,
+            _id: r.id,
+            createdAt: r.created_at
+        }))
+    };
+};
 
 // @desc    Fetch all dining spots
 // @route   GET /api/dining-spots
 router.get('/', async (req, res) => {
   try {
-    const spots = await DiningSpot.aggregate([
-      {
-        $addFields: {
-          activeReviews: {
-            $filter: {
-              input: { $ifNull: ['$reviews', []] },
-              as: 'review',
-              cond: { $ne: ['$$review.isDeleted', true] }
-            }
-          }
-        }
-      },
-      {
-        $addFields: {
-          averageRating: { $ifNull: [{ $avg: '$activeReviews.rating' }, 0] },
-          reviewCount: { $size: '$activeReviews' },
-          reviews: '$activeReviews' // Only return active reviews to frontend
-        }
-      },
-      {
-        $project: {
-          activeReviews: 0 // Remove the temporary field
-        }
-      }
-    ]);
-    res.json(spots);
+    const { data, error } = await supabase
+      .from('dining_spots')
+      .select('*, reviews(*)');
+
+    if (error) throw error;
+    
+    const formatted = data.map(formatDiningSpot);
+    res.json(formatted);
   } catch (error) { 
-    console.error("Error fetching dining spots:", error);
+    console.error("Error fetching dining spots from Supabase:", error);
     res.status(500).json({ message: 'Server Error' });
   }
 });
@@ -47,17 +50,23 @@ router.get('/', async (req, res) => {
 // @route   GET /api/dining-spots/user/:email/reviews
 router.get('/user/:email/reviews', async (req, res) => {
   try {
-    const spots = await DiningSpot.find({ 'reviews.email': req.params.email });
-    const userReviews = spots.flatMap(spot => 
-      spot.reviews
-        .filter(r => r.email === req.params.email && !r.isDeleted)
-        .map(r => ({
-          ...r.toObject(),
-          spotId: spot._id,
-          spotName: spot.name,
-          spotType: 'dining'
-        }))
-    );
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*, dining_spots(id, name)')
+      .eq('email', req.params.email)
+      .eq('is_deleted', false)
+      .eq('entity_type', 'dining');
+
+    if (error) throw error;
+
+    const userReviews = data.map(r => ({
+      ...r,
+      _id: r.id,
+      spotId: r.dining_spots?.id,
+      spotName: r.dining_spots?.name,
+      spotType: 'dining'
+    }));
+
     res.json(userReviews);
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
@@ -67,18 +76,26 @@ router.get('/user/:email/reviews', async (req, res) => {
 // @desc    Create
 router.post('/', verifyAdmin, async (req, res) => {
   try {
-    const newSpot = await DiningSpot.create(req.body);
+    const { _id, reviews, ...payload } = req.body;
+    
+    const { data, error } = await supabase
+      .from('dining_spots')
+      .insert([payload])
+      .select();
+
+    if (error) throw error;
+    const newSpot = data[0];
     
     // Log the action
     await adminLogService.logAdminAction({
       action: 'create',
       targetType: 'dining-spot',
-      targetId: newSpot._id.toString(),
+      targetId: newSpot.id.toString(),
       targetName: newSpot.name,
       details: `Created new dining spot: ${newSpot.name}`
     });
 
-    res.status(201).json(newSpot);
+    res.status(201).json({ ...newSpot, _id: newSpot.id });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -87,18 +104,29 @@ router.post('/', verifyAdmin, async (req, res) => {
 // @desc    Update
 router.put('/:id', verifyAdmin, async (req, res) => {
   try {
-    const updatedSpot = await DiningSpot.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { _id, id, reviews, created_at, updated_at, ...payload } = req.body;
+    
+    const { data, error } = await supabase
+      .from('dining_spots')
+      .update({ ...payload, updated_at: new Date() })
+      .eq('id', req.params.id)
+      .select();
+
+    if (error) throw error;
+    if (!data || data.length === 0) return res.status(404).json({ message: 'Spot not found' });
+    
+    const updatedSpot = data[0];
     
     // Log the action
     await adminLogService.logAdminAction({
       action: 'update',
       targetType: 'dining-spot',
-      targetId: updatedSpot._id.toString(),
+      targetId: updatedSpot.id.toString(),
       targetName: updatedSpot.name,
       details: `Updated dining spot: ${updatedSpot.name}`
     });
 
-    res.json(updatedSpot);
+    res.json({ ...updatedSpot, _id: updatedSpot.id });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -107,8 +135,13 @@ router.put('/:id', verifyAdmin, async (req, res) => {
 // @desc    Delete
 router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
-    const spot = await DiningSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+    const { data: spot, error: fetchError } = await supabase
+      .from('dining_spots')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (fetchError || !spot) return res.status(404).json({ message: 'Spot not found' });
 
     // Delete main image
     if (spot.image) {
@@ -122,18 +155,12 @@ router.delete('/:id', verifyAdmin, async (req, res) => {
         }
     }
 
-    // Delete review images
-    if (spot.reviews && spot.reviews.length > 0) {
-        for (const review of spot.reviews) {
-            if (review.images && review.images.length > 0) {
-                for (const imgUrl of review.images) {
-                    await deleteImage(imgUrl);
-                }
-            }
-        }
-    }
+    const { error: deleteError } = await supabase
+      .from('dining_spots')
+      .delete()
+      .eq('id', req.params.id);
 
-    await DiningSpot.findByIdAndDelete(req.params.id);
+    if (deleteError) throw deleteError;
 
     // Log the action
     await adminLogService.logAdminAction({
@@ -154,25 +181,31 @@ router.delete('/:id', verifyAdmin, async (req, res) => {
 // @route   DELETE /api/dining-spots/:id/reviews/:reviewId
 router.delete('/:id/reviews/:reviewId', verifyAdmin, async (req, res) => {
   try {
-    const spot = await DiningSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+    const { data: review, error: rError } = await supabase
+      .from('reviews')
+      .select('*, dining_spots(name)')
+      .eq('id', req.params.reviewId)
+      .single();
 
-    // Filter out the review to be deleted
-    const reviewToDelete = spot.reviews.find(r => r._id.toString() === req.params.reviewId);
-    spot.reviews = spot.reviews.filter(r => r._id.toString() !== req.params.reviewId);
-    
-    await spot.save();
+    if (rError || !review) return res.status(404).json({ message: 'Review not found' });
+
+    const { error: dError } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', req.params.reviewId);
+
+    if (dError) throw dError;
 
     // Log the action
     await adminLogService.logAdminAction({
       action: 'delete_review',
       targetType: 'dining-spot',
-      targetId: spot._id.toString(),
-      targetName: spot.name,
-      details: `Deleted review by ${reviewToDelete?.name || 'unknown'} from ${spot.name}`
+      targetId: req.params.id,
+      targetName: review.dining_spots?.name || 'Unknown',
+      details: `Deleted review by ${review.name} from spot`
     });
 
-    res.json(spot);
+    res.json({ message: 'Review deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -184,48 +217,58 @@ router.post('/:id/reviews', async (req, res) => {
   if (!name || !email || !rating) return res.status(400).json({ message: 'Required fields missing.' });
 
   try {
-    const spot = await DiningSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Not found' });
+    // 1. Check if spot exists
+    const { data: spot, error: sError } = await supabase
+        .from('dining_spots')
+        .select('id, name')
+        .eq('id', req.params.id)
+        .single();
+    if (sError || !spot) return res.status(404).json({ message: 'Spot not found' });
 
-    // Check for existing reviews by this email
-    const existingReview = spot.reviews.find(r => r.email === email && !r.isDeleted);
-    if (existingReview) {
-      return res.status(400).json({ message: 'You have already left a review for this spot. You can edit it within 7 days or delete it to post a new one later.' });
+    // 2. Check for existing reviews by this email
+    const { data: existing } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('email', email)
+        .eq('dining_id', req.params.id)
+        .eq('is_deleted', false)
+        .limit(1);
+
+    if (existing && existing.length > 0) {
+      return res.status(400).json({ message: 'You have already left a review for this spot.' });
     }
 
-    // Check for recently deleted reviews (7-day cooldown after 3 attempts)
-    const deletedReviews = spot.reviews.filter(r => r.email === email && r.isDeleted);
-    const lastDeleted = deletedReviews.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()).reverse()[0];
+    // 3. Insert review
+    const { data, error: iError } = await supabase
+        .from('reviews')
+        .insert([{
+            dining_id: req.params.id,
+            name,
+            email,
+            rating: Number(rating),
+            comment,
+            images: images || [],
+            entity_type: 'dining'
+        }])
+        .select();
+
+    if (iError) throw iError;
+
+    // Update subscriber (async)
+    supabase.from('subscribers')
+        .upsert({ email: email, source: 'review' }, { onConflict: 'email' })
+        .then(() => {});
     
-    if (deletedReviews.length >= 3 && lastDeleted && (Date.now() - new Date(lastDeleted.deletedAt).getTime() < 7 * 24 * 60 * 60 * 1000)) {
-      const waitDays = Math.ceil((7 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(lastDeleted.deletedAt).getTime())) / (24 * 60 * 60 * 1000));
-      return res.status(400).json({ message: `You have reached the limit of 3 review attempts. Please wait ${waitDays} more days before posting a new one.` });
-    }
+    // Fetch updated spot
+    const { data: updatedSpotData } = await supabase
+        .from('dining_spots')
+        .select('*, reviews(*)')
+        .eq('id', req.params.id)
+        .single();
 
-    spot.reviews.push({ 
-        name, 
-        email, 
-        rating: Number(rating), 
-        comment,
-        images: images || [] 
-    });
-    await spot.save();
-
-    try {
-        await Subscriber.findOneAndUpdate(
-            { email: email },
-            { $setOnInsert: { email: email, source: 'review' } },
-            { upsert: true }
-        );
-    } catch (e) {}
-    
-    const updatedSpot = await DiningSpot.aggregate([
-        { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
-        { $addFields: { averageRating: { $ifNull: [ { $avg: '$reviews.rating' }, 0 ] } } }
-    ]);
-
-    res.status(201).json(updatedSpot[0]);
+    res.status(201).json(formatDiningSpot(updatedSpotData));
   } catch (error) {
+    console.error("Error adding review:", error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -235,32 +278,44 @@ router.put('/:id/reviews/:reviewId', async (req, res) => {
   const { rating, comment, images, email } = req.body;
   
   try {
-    const spot = await DiningSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+    const { data: review, error: rError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('id', req.params.reviewId)
+        .single();
 
-    const review = spot.reviews.id(req.params.reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    if (rError || !review) return res.status(404).json({ message: 'Review not found' });
 
-    // Security check: email must match
     if (review.email !== email) {
       return res.status(403).json({ message: 'Unauthorized to edit this review.' });
     }
 
-    // Check 7-day edit window
-    const createdAt = new Date(review.createdAt);
-    const now = new Date();
-    const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 3600 * 24);
-    
+    // 7-day window check
+    const diffDays = (new Date().getTime() - new Date(review.created_at).getTime()) / (1000 * 3600 * 24);
     if (diffDays > 7) {
       return res.status(400).json({ message: 'This review is now permanent and can no longer be edited.' });
     }
 
-    if (rating) review.rating = Number(rating);
-    if (comment !== undefined) review.comment = comment;
-    if (images) review.images = images;
+    const { error: uError } = await supabase
+        .from('reviews')
+        .update({
+            rating: rating ? Number(rating) : review.rating,
+            comment: comment !== undefined ? comment : review.comment,
+            images: images || review.images,
+            updated_at: new Date()
+        })
+        .eq('id', req.params.reviewId);
 
-    await spot.save();
-    res.json(spot);
+    if (uError) throw uError;
+
+    // Fetch full spot to return
+    const { data: fullSpot } = await supabase
+    .from('dining_spots')
+    .select('*, reviews(*)')
+    .eq('id', req.params.id)
+    .single();
+
+    res.json(formatDiningSpot(fullSpot));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -271,30 +326,26 @@ router.post('/:id/reviews/:reviewId/delete', async (req, res) => {
   const { email } = req.body;
   
   try {
-    const spot = await DiningSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
+    const { data: review, error: rError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('id', req.params.reviewId)
+        .single();
 
-    const review = spot.reviews.id(req.params.reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    if (rError || !review) return res.status(404).json({ message: 'Review not found' });
 
-    // Security check: email must match
     if (review.email !== email) {
-      return res.status(403).json({ message: 'Unauthorized to delete this review.' });
+      return res.status(403).json({ message: 'Unauthorized.' });
     }
 
-    review.isDeleted = true;
-    review.deletedAt = new Date();
-    
-    await spot.save();
+    const { error: dError } = await supabase
+        .from('reviews')
+        .update({ is_deleted: true, deleted_at: new Date() })
+        .eq('id', req.params.reviewId);
 
-    const deletedReviewsCount = spot.reviews.filter(r => r.email === email && r.isDeleted).length;
-    const remainingAttempts = Math.max(0, 3 - deletedReviewsCount);
+    if (dError) throw dError;
 
-    if (deletedReviewsCount >= 3) {
-      res.json({ message: 'Review deleted. You have reached the 3-attempt limit and can post a new one after 7 days.' });
-    } else {
-      res.json({ message: `Review deleted. You have ${remainingAttempts} attempt(s) left before a 7-day cooldown applies.` });
-    }
+    res.json({ message: 'Review deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -304,15 +355,8 @@ router.post('/:id/reviews/:reviewId/delete', async (req, res) => {
 // @route   PUT /api/dining-spots/:id/reviews/:reviewId/seen
 router.put('/:id/reviews/:reviewId/seen', verifyAdmin, async (req, res) => {
   try {
-    const spot = await DiningSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
-
-    const review = spot.reviews.id(req.params.reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
-
-    review.isSeen = true;
-    await spot.save();
-    res.json(spot);
+    await supabase.from('reviews').update({ is_seen: true }).eq('id', req.params.reviewId);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -322,16 +366,8 @@ router.put('/:id/reviews/:reviewId/seen', verifyAdmin, async (req, res) => {
 // @route   PUT /api/dining-spots/:id/reviews/:reviewId/resolved
 router.put('/:id/reviews/:reviewId/resolved', verifyAdmin, async (req, res) => {
   try {
-    const spot = await DiningSpot.findById(req.params.id);
-    if (!spot) return res.status(404).json({ message: 'Spot not found' });
-
-    const review = spot.reviews.id(req.params.reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
-
-    review.isResolved = true;
-    review.isSeen = true; // Also mark as seen if resolved
-    await spot.save();
-    res.json(spot);
+    await supabase.from('reviews').update({ is_resolved: true, is_seen: true }).eq('id', req.params.reviewId);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -72,9 +72,12 @@ const UniversalImageSelector: React.FC<UniversalImageSelectorProps> = ({
     <div className={`space-y-3 ${className}`}>
       {label && <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</label>}
       
-      <div className="relative group">
+      <div className="relative group text-left">
         {currentImage ? (
-          <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-200 shadow-sm group">
+          <div 
+            className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-sm group bg-slate-50"
+            style={{ aspectRatio: `${aspectRatio}` }}
+          >
             <img src={currentImage} alt="Preview" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm">
               <button 
@@ -100,18 +103,18 @@ const UniversalImageSelector: React.FC<UniversalImageSelectorProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-2xl hover:border-lt-blue hover:bg-lt-blue/5 transition-all group"
+              className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-lt-blue hover:bg-lt-blue/5 transition-all group"
             >
-              <i className="fas fa-cloud-upload-alt text-2xl text-slate-300 group-hover:text-lt-blue mb-2"></i>
-              <span className="text-xs font-bold text-slate-500 group-hover:text-lt-blue">Upload File</span>
+              <i className="fas fa-cloud-upload-alt text-xl text-slate-300 group-hover:text-lt-blue mb-2"></i>
+              <span className="text-[10px] font-bold text-slate-500 group-hover:text-lt-blue">Upload File</span>
             </button>
             <button
               type="button"
               onClick={() => setShowUrlInput(true)}
-              className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-2xl hover:border-lt-orange hover:bg-lt-orange/5 transition-all group"
+              className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-lt-orange hover:bg-lt-orange/5 transition-all group"
             >
-              <i className="fas fa-link text-2xl text-slate-300 group-hover:text-lt-orange mb-2"></i>
-              <span className="text-xs font-bold text-slate-500 group-hover:text-lt-orange">Link Image</span>
+              <i className="fas fa-link text-xl text-slate-300 group-hover:text-lt-orange mb-2"></i>
+              <span className="text-[10px] font-bold text-slate-500 group-hover:text-lt-orange">Link Image</span>
             </button>
           </div>
         )}

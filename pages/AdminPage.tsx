@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { 
     fetchTouristSpots, fetchDiningSpots, fetchBlogPosts, fetchLocalEvents, fetchReports,
-    deleteItem, createItem, updateItem, uploadImage, deleteReview, deleteReport, verifyAdminToken,
+    deleteItem, createItem, updateItem, deleteReview, deleteReport, verifyAdminToken,
     fetchAnalyticsSummary,
     fetchAnalyticsDebug,
     fetchAdminLogs,
@@ -552,59 +552,6 @@ const formatDateRange = (start: string, end: string): string => {
         }
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, callback: (url: string) => void) => {
-        if (e.target.files && e.target.files[0]) {
-            setIsLoading(true);
-            setFormError(null);
-            try {
-                const file = e.target.files[0];
-                
-                // Convert to PNG to avoid Supabase JPEG restrictions
-                const convertToPng = (file: File): Promise<File> => {
-                    return new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                            const img = new Image();
-                            img.onload = () => {
-                                const canvas = document.createElement('canvas');
-                                canvas.width = img.width;
-                                canvas.height = img.height;
-                                const ctx = canvas.getContext('2d');
-                                if (!ctx) {
-                                    reject(new Error('Failed to get canvas context'));
-                                    return;
-                                }
-                                ctx.drawImage(img, 0, 0);
-                                canvas.toBlob((blob) => {
-                                    if (blob) {
-                                        const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".png", { type: 'image/png' });
-                                        resolve(newFile);
-                                    } else {
-                                        reject(new Error('Failed to convert image'));
-                                    }
-                                }, 'image/png');
-                            };
-                            img.onerror = () => reject(new Error('Failed to load image'));
-                            img.src = event.target?.result as string;
-                        };
-                        reader.onerror = () => reject(new Error('Failed to read file'));
-                        reader.readAsDataURL(file);
-                    });
-                };
-
-                const processedFile = file.type === 'image/png' ? file : await convertToPng(file);
-                const result = await uploadImage(processedFile);
-                callback(result.url);
-            } catch (error: any) {
-                console.error('Upload failed:', error);
-                setFormError(error.message || "Upload failed.");
-            } finally {
-                setIsLoading(false);
-                e.target.value = ''; 
-            }
-        }
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setFormError(null);
@@ -844,47 +791,26 @@ const formatDateRange = (start: string, end: string): string => {
                                 <h3 className="font-bold text-slate-800">Home Hero Slideshow</h3>
                             </div>
 
-                            <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {Array.isArray(siteSettingsForm.home.heroImages) && siteSettingsForm.home.heroImages.map((img: any, idx: number) => (
-                                    <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-100 relative group">
-                                        <span className="absolute -top-2 -left-2 w-6 h-6 bg-slate-800 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md">
+                                    <div key={idx} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 relative group">
+                                        <span className="absolute -top-2 -left-2 w-6 h-6 bg-slate-800 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-md z-10 border border-white">
                                             {idx + 1}
                                         </span>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <div className="sm:col-span-1">
-                                                <div className="aspect-video rounded-lg overflow-hidden border border-slate-200 bg-white">
-                                                    <img src={img.url} alt={img.alt} className="w-full h-full object-cover" />
-                                                </div>
-                                            </div>
-                                            <div className="sm:col-span-2 space-y-3">
-                                                <div className="flex gap-2">
-                                                    <input 
-                                                        type="text" 
-                                                        placeholder="Image URL"
-                                                        value={img.url}
-                                                        onChange={(e) => updateHomeHeroImage(idx, 'url', e.target.value)}
-                                                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-lt-orange outline-none"
-                                                    />
-                                                    <input 
-                                                        type="file" 
-                                                        id={`hero-img-${idx}`}
-                                                        className="hidden"
-                                                        accept="image/*"
-                                                        onChange={(e) => handleFileUpload(e, (url) => updateHomeHeroImage(idx, 'url', url))}
-                                                    />
-                                                    <label 
-                                                        htmlFor={`hero-img-${idx}`}
-                                                        className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center justify-center whitespace-nowrap"
-                                                    >
-                                                        {isLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
-                                                    </label>
-                                                </div>
+                                        <div className="space-y-2">
+                                            <UniversalImageSelector 
+                                                currentImage={img.url}
+                                                onImageSelected={(url) => updateHomeHeroImage(idx, 'url', url)}
+                                                label={`Slide ${idx + 1}`}
+                                                aspectRatio={16/9}
+                                            />
+                                            <div>
                                                 <input 
                                                     type="text" 
                                                     placeholder="Alt Text"
                                                     value={img.alt}
                                                     onChange={(e) => updateHomeHeroImage(idx, 'alt', e.target.value)}
-                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-lt-orange outline-none"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-[10px] focus:ring-2 focus:ring-lt-orange/20 focus:border-lt-orange outline-none transition-all"
                                                 />
                                             </div>
                                         </div>
@@ -924,18 +850,12 @@ const formatDateRange = (start: string, end: string): string => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Hero Image URL</label>
-                                    <div className="flex gap-3">
-                                        <div className="w-16 h-12 rounded-lg overflow-hidden border border-slate-200 flex-shrink-0 bg-slate-100">
-                                            <img src={siteSettingsForm.about.heroImage} alt="" className="w-full h-full object-cover" />
-                                        </div>
-                                        <input 
-                                            type="text" 
-                                            value={siteSettingsForm.about.heroImage}
-                                            onChange={(e) => updateAboutField('heroImage', e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lt-blue/20 focus:border-lt-blue outline-none transition-all"
-                                        />
-                                    </div>
+                                    <UniversalImageSelector 
+                                        currentImage={siteSettingsForm.about.heroImage}
+                                        onImageSelected={(url) => updateAboutField('heroImage', url)}
+                                        label="Hero Background Image"
+                                        aspectRatio={16/9}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -989,75 +909,51 @@ const formatDateRange = (start: string, end: string): string => {
                             </button>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {(siteSettingsForm.about.journeyThroughTime || []).map((item: any, idx: number) => (
-                                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 relative">
+                                <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 relative group flex flex-col">
                                     <button 
                                         onClick={() => removeJourneyItem(idx)}
-                                        className="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition-colors"
+                                        className="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition-colors z-20"
                                     >
-                                        <i className="fas fa-trash-alt"></i>
+                                        <i className="fas fa-times-circle text-lg"></i>
                                     </button>
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                        <div className="md:col-span-1 space-y-4">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Year</label>
+                                    
+                                    <div className="mb-3">
+                                        <UniversalImageSelector 
+                                            currentImage={item.image}
+                                            onImageSelected={(url) => updateJourneyItem(idx, 'image', url)}
+                                            label={`Event ${idx + 1}`}
+                                            aspectRatio={16/9}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2 flex-grow">
+                                        <div className="flex gap-2">
+                                            <div className="w-20 flex-shrink-0">
                                                 <input 
                                                     type="text" 
                                                     value={item.year}
                                                     onChange={(e) => updateJourneyItem(idx, 'year', e.target.value)}
-                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-lt-blue"
-                                                    placeholder="e.g. 1900"
+                                                    className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black outline-none focus:border-lt-blue text-center"
+                                                    placeholder="Year"
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Image</label>
-                                                <div className="aspect-square rounded-lg overflow-hidden border border-slate-200 bg-white mb-2">
-                                                    {item.image ? (
-                                                        <img src={item.image} className="w-full h-full object-cover" alt="" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                                            <i className="fas fa-image text-2xl"></i>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <input 
-                                                    type="file" 
-                                                    id={`journey-img-${idx}`}
-                                                    className="hidden"
-                                                    accept="image/*"
-                                                    onChange={(e) => handleFileUpload(e, (url) => updateJourneyItem(idx, 'image', url))}
-                                                />
-                                                <label 
-                                                    htmlFor={`journey-img-${idx}`}
-                                                    className="block w-full text-center py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors"
-                                                >
-                                                    {isLoading ? <i className="fas fa-spinner fa-spin"></i> : 'Upload Image'}
-                                                </label>
-                                            </div>
+                                            <input 
+                                                type="text" 
+                                                value={item.title}
+                                                onChange={(e) => updateJourneyItem(idx, 'title', e.target.value)}
+                                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-lt-blue"
+                                                placeholder="Title"
+                                            />
                                         </div>
-                                        <div className="md:col-span-3 space-y-4">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Title</label>
-                                                <input 
-                                                    type="text" 
-                                                    value={item.title}
-                                                    onChange={(e) => updateJourneyItem(idx, 'title', e.target.value)}
-                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-lt-blue"
-                                                    placeholder="Event Title"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Content</label>
-                                                <textarea 
-                                                    rows={4}
-                                                    value={item.content}
-                                                    onChange={(e) => updateJourneyItem(idx, 'content', e.target.value)}
-                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-lt-blue resize-none"
-                                                    placeholder="Describe this historical event..."
-                                                />
-                                            </div>
-                                        </div>
+                                        <textarea 
+                                            rows={3}
+                                            value={item.content}
+                                            onChange={(e) => updateJourneyItem(idx, 'content', e.target.value)}
+                                            className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] outline-none focus:border-lt-blue resize-none leading-snug h-20"
+                                            placeholder="Content..."
+                                        />
                                     </div>
                                 </div>
                             ))}
@@ -1065,18 +961,18 @@ const formatDateRange = (start: string, end: string): string => {
                     </div>
 
                     {/* Local Government */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-8">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mt-8">
+                        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
                             <div className="w-10 h-10 rounded-full bg-lt-yellow/10 text-lt-yellow flex items-center justify-center">
                                 <i className="fas fa-landmark"></i>
                             </div>
                             <h3 className="font-bold text-slate-800">Local Government Section</h3>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <div className="md:col-span-1 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="md:col-span-3 space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Section Title</label>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Section Title</label>
                                     <input 
                                         type="text" 
                                         value={siteSettingsForm.about.localGovernment?.title || ''}
@@ -1087,46 +983,14 @@ const formatDateRange = (start: string, end: string): string => {
                                                 localGovernment: { ...siteSettingsForm.about.localGovernment, title: e.target.value }
                                             }
                                         })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-lt-yellow"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-lt-yellow font-bold text-slate-700"
+                                        placeholder="e.g. Capital of Benguet"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Main Image</label>
-                                    <div className="aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-100 mb-3">
-                                        {siteSettingsForm.about.localGovernment?.image ? (
-                                            <img src={siteSettingsForm.about.localGovernment.image} className="w-full h-full object-cover" alt="" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                                <i className="fas fa-image text-3xl"></i>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <input 
-                                        type="file" 
-                                        id="gov-main-img"
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={(e) => handleFileUpload(e, (url) => setSiteSettingsForm({
-                                            ...siteSettingsForm,
-                                            about: {
-                                                ...siteSettingsForm.about,
-                                                localGovernment: { ...siteSettingsForm.about.localGovernment, image: url }
-                                            }
-                                        }))}
-                                    />
-                                    <label 
-                                        htmlFor="gov-main-img"
-                                        className="block w-full text-center py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors"
-                                    >
-                                        {isLoading ? <i className="fas fa-spinner fa-spin"></i> : 'Change Main Image'}
-                                    </label>
-                                </div>
-                            </div>
-                            <div className="md:col-span-2 space-y-6">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Government Content</label>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Government Description / Story</label>
                                     <textarea 
-                                        rows={6}
+                                        rows={4}
                                         value={siteSettingsForm.about.localGovernment?.content || ''}
                                         onChange={(e) => setSiteSettingsForm({
                                             ...siteSettingsForm,
@@ -1135,67 +999,72 @@ const formatDateRange = (start: string, end: string): string => {
                                                 localGovernment: { ...siteSettingsForm.about.localGovernment, content: e.target.value }
                                             }
                                         })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-lt-yellow resize-none"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-lt-yellow resize-none leading-relaxed"
+                                        placeholder="Describe the LGU structure, vision, or history..."
                                     />
                                 </div>
+                            </div>
+                            <div className="md:col-span-1 pt-5">
+                                <UniversalImageSelector 
+                                    currentImage={siteSettingsForm.about.localGovernment?.image}
+                                    onImageSelected={(url) => setSiteSettingsForm({
+                                        ...siteSettingsForm,
+                                        about: {
+                                            ...siteSettingsForm.about,
+                                            localGovernment: { ...siteSettingsForm.about.localGovernment, image: url }
+                                        }
+                                    })}
+                                    label="LGU Logo / Seal"
+                                    aspectRatio={1}
+                                />
+                            </div>
+                        </div>
 
-                                <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Government Officials</label>
-                                        <button 
-                                            onClick={addOfficial}
-                                            className="text-[10px] font-bold text-lt-yellow hover:text-lt-orange flex items-center gap-1"
-                                        >
-                                            <i className="fas fa-plus-circle"></i> Add Official
-                                        </button>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {(siteSettingsForm.about.localGovernment?.officials || []).map((official: any, idx: number) => (
-                                            <div key={idx} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm relative group">
+                        <div className="mt-8 pt-6 border-t border-slate-100">
+                             <div className="flex items-center justify-between mb-4">
+                                 <div>
+                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Government Officials</label>
+                                     <p className="text-[10px] text-slate-400 mt-0.5">Add key members of the municipal leadership.</p>
+                                 </div>
+                                 <button 
+                                     onClick={addOfficial}
+                                     className="px-3 py-1.5 bg-lt-yellow/10 text-lt-yellow rounded-lg text-[10px] font-bold hover:bg-lt-yellow hover:text-white transition-all flex items-center gap-1.5 border border-lt-yellow/20"
+                                 >
+                                     <i className="fas fa-plus-circle"></i> Add Official
+                                 </button>
+                             </div>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                 {(siteSettingsForm.about.localGovernment?.officials || []).map((official: any, idx: number) => (
+                                            <div key={idx} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm relative group">
                                                 <button 
                                                     onClick={() => removeOfficial(idx)}
-                                                    className="absolute top-2 right-2 text-slate-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                    className="absolute top-1.5 right-1.5 text-slate-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all z-10"
                                                 >
-                                                    <i className="fas fa-times-circle"></i>
+                                                    <i className="fas fa-times-circle text-[10px]"></i>
                                                 </button>
-                                                <div className="flex gap-4">
-                                                    <div className="w-16 h-16 rounded-full overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
-                                                        {official.image ? (
-                                                            <img src={official.image} className="w-full h-full object-cover" alt="" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-slate-200">
-                                                                <i className="fas fa-user"></i>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1 space-y-2">
+                                                <div className="flex gap-3 items-center">
+                                                    <UniversalImageSelector 
+                                                        currentImage={official.image}
+                                                        onImageSelected={(url) => updateOfficial(idx, 'image', url)}
+                                                        label=""
+                                                        aspectRatio={1}
+                                                        className="w-16 flex-shrink-0"
+                                                    />
+                                                    <div className="flex-1 space-y-1.5">
                                                         <input 
                                                             type="text" 
                                                             placeholder="Name"
                                                             value={official.name}
                                                             onChange={(e) => updateOfficial(idx, 'name', e.target.value)}
-                                                            className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-xs outline-none focus:border-lt-yellow"
+                                                            className="w-full bg-slate-50 border border-slate-100 rounded px-2 py-0.5 text-[11px] outline-none focus:border-lt-yellow"
                                                         />
                                                         <input 
                                                             type="text" 
                                                             placeholder="Position"
                                                             value={official.position}
                                                             onChange={(e) => updateOfficial(idx, 'position', e.target.value)}
-                                                            className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-xs outline-none focus:border-lt-yellow"
+                                                            className="w-full bg-slate-50 border border-slate-100 rounded px-2 py-0.5 text-[10px] outline-none focus:border-lt-yellow italic"
                                                         />
-                                                        <input 
-                                                            type="file" 
-                                                            id={`official-img-${idx}`}
-                                                            className="hidden"
-                                                            accept="image/*"
-                                                            onChange={(e) => handleFileUpload(e, (url) => updateOfficial(idx, 'image', url))}
-                                                        />
-                                                        <label 
-                                                            htmlFor={`official-img-${idx}`}
-                                                            className="block text-[9px] font-bold text-lt-yellow cursor-pointer hover:underline"
-                                                        >
-                                                            {isLoading ? 'Uploading...' : 'Upload Photo'}
-                                                        </label>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1205,8 +1074,6 @@ const formatDateRange = (start: string, end: string): string => {
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
         );
     };
 
@@ -2100,39 +1967,25 @@ const formatDateRange = (start: string, end: string): string => {
 
             {/* ── Sidebar: hidden when detail view is open ─────────────── */}
             <aside 
-                className={`bg-white border-r border-slate-200 flex flex-col h-screen z-40 transition-all duration-300 ease-in-out shrink-0 ${
+                className={`bg-[#0f172a] text-slate-400 flex flex-col h-screen z-40 transition-all duration-300 ease-in-out shrink-0 ${
                     isSidebarOpen && !isDetailView ? 'w-72' : 'w-0 overflow-hidden'
                 }`}
             >
-                <div className="p-6 border-b border-slate-100 flex items-center justify-between min-w-[288px]">
+                <div className="p-6 border-b border-slate-800/50 flex items-center justify-between min-w-[288px]">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-lt-blue rounded-xl flex items-center justify-center text-white shadow-lg shadow-lt-blue/20">
                             <i className="fas fa-user-shield text-xl"></i>
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold text-slate-900 leading-none">Admin</h1>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Control Panel</p>
+                            <h1 className="text-lg font-bold text-white leading-none">Admin</h1>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Control Panel</p>
                         </div>
                     </div>
-                    <button 
-                        onClick={() => setIsSidebarOpen(false)}
-                        className="text-slate-400 hover:text-lt-blue transition-colors"
-                    >
-                        <i className="fas fa-chevron-left"></i>
-                    </button>
                 </div>
 
                 <nav className="flex-grow p-4 space-y-1 overflow-y-auto custom-scrollbar min-w-[288px]">
-                    <div className="px-3 mb-2 flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Management</p>
-                        {viewMode === 'preview' && (
-                            <button 
-                                onClick={() => setViewMode('management')}
-                                className="text-[10px] font-bold text-lt-blue hover:underline"
-                            >
-                                Back to Data
-                            </button>
-                        )}
+                    <div className="px-3 mb-4 mt-2">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Management</p>
                     </div>
                     {TABS.map((tab: any) => (
                         <button
@@ -2140,45 +1993,47 @@ const formatDateRange = (start: string, end: string): string => {
                             onClick={() => {
                                 setActiveTab(tab.id);
                             }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all group ${
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all group relative ${
                                 activeTab === tab.id && viewMode === 'management'
-                                ? 'bg-lt-blue text-white shadow-md shadow-lt-blue/20' 
-                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                ? 'bg-lt-blue/10 text-lt-blue shadow-sm' 
+                                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                             }`}
                         >
-                            <i className={`fas ${tab.icon} w-5 text-center ${activeTab === tab.id && viewMode === 'management' ? 'text-white' : 'text-slate-400 group-hover:text-lt-blue'}`}></i>
-                            {tab.label}
+                            <i className={`fas ${tab.icon} w-5 text-center ${activeTab === tab.id && viewMode === 'management' ? 'text-lt-blue' : 'text-slate-500 group-hover:text-lt-blue'}`}></i>
+                            <span className="flex-1 text-left">{tab.label}</span>
+                            
+                            {notifications[tab.badge as keyof typeof notifications] > 0 && tab.badge && (
+                                <span className="px-1.5 py-0.5 text-[9px] bg-red-500 text-white rounded-full font-bold min-w-[18px] text-center shadow-lg shadow-red-500/20">
+                                    {notifications[tab.badge as keyof typeof notifications]}
+                                </span>
+                            )}
                             {tab.id === 'tourist-spots' && notifications.touristReviews > 0 && (
-                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold min-w-[18px] text-center">
+                                <span className="px-1.5 py-0.5 text-[9px] bg-lt-orange text-white rounded-full font-bold min-w-[18px] text-center">
                                     {notifications.touristReviews}
                                 </span>
                             )}
                             {tab.id === 'dining-spots' && notifications.diningReviews > 0 && (
-                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold min-w-[18px] text-center">
+                                <span className="px-1.5 py-0.5 text-[9px] bg-lt-orange text-white rounded-full font-bold min-w-[18px] text-center">
                                     {notifications.diningReviews}
                                 </span>
                             )}
-                            {tab.id === 'reports' && notifications.reports > 0 && (
-                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold min-w-[18px] text-center">
-                                    {notifications.reports}
-                                </span>
-                            )}
                             {tab.id === 'blog-posts' && notifications.blogPosts > 0 && (
-                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold min-w-[18px] text-center">
+                                <span className="px-1.5 py-0.5 text-[9px] bg-lt-blue text-white rounded-full font-bold min-w-[18px] text-center">
                                     {notifications.blogPosts}
                                 </span>
                             )}
                             {activeTab === tab.id && viewMode === 'management' && (
-                                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white"></div>
+                                <div className="absolute left-0 w-1 h-5 bg-lt-blue rounded-r-full"></div>
                             )}
                         </button>
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-slate-100 min-w-[288px]">
+                <div className="p-4 border-t border-slate-800/50 min-w-[288px]">
                     <button 
-                        onClick={() => setIsLogoutConfirmOpen(true)} 
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-red-500 hover:bg-red-50 transition-all"
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                        onClickCapture={(e) => { e.stopPropagation(); setIsLogoutConfirmOpen(true); }}
                     >
                         <i className="fas fa-power-off w-5 text-center"></i>
                         Sign Out
@@ -2190,25 +2045,32 @@ const formatDateRange = (start: string, end: string): string => {
             <main className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
                 {/* Top header — hidden when detail view is open (it has its own sticky header) */}
                 {!isDetailView && (
-                    <header className="bg-white border-b border-slate-200 px-8 py-4 flex flex-col md:flex-row justify-between items-center sticky top-0 z-20 gap-4">
+                    <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-4 flex flex-col md:flex-row justify-between items-center sticky top-0 z-20 gap-4">
                         <div className="flex items-center gap-6 w-full md:w-auto">
+                            <button 
+                                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-lt-blue hover:bg-lt-blue/5 transition-all"
+                            >
+                                <i className={`fas ${isSidebarOpen ? 'fa-align-left' : 'fa-align-justify'}`}></i>
+                            </button>
+                            <div className="h-6 w-px bg-slate-100 hidden md:block"></div>
                             <div className="flex items-center gap-3">
-                                <h2 className="text-xl font-bold text-slate-800">
+                                <h2 className="text-lg font-black text-slate-900 tracking-tight">
                                     {viewMode === 'management' ? TABS.find(t => t.id === activeTab)?.label : 'Site Preview'}
                                 </h2>
                                 {viewMode === 'management' && activeTab !== 'analytics' && (
-                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
+                                    <span className="text-[10px] bg-lt-blue/10 text-lt-blue px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider">
                                         {data.length} Records
                                     </span>
                                 )}
                             </div>
                         </div>
                         
-                        <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+                        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
                             {viewMode === 'management' && activeTab !== 'reports' && activeTab !== 'analytics' && activeTab !== 'activity-log' && (
                                 <button 
                                     onClick={() => handleOpenModal()} 
-                                    className="bg-lt-blue hover:bg-lt-moss text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md shadow-lt-blue/10 transition-all flex items-center gap-2 active:scale-95"
+                                    className="bg-lt-blue hover:bg-[#1d4ed8] text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-lt-blue/20 transition-all flex items-center gap-2 active:scale-95 border border-lt-blue"
                                 >
                                     <i className="fas fa-plus"></i> Add New
                                 </button>
@@ -2216,9 +2078,9 @@ const formatDateRange = (start: string, end: string): string => {
                             {activeTab === 'analytics' && (
                                 <button 
                                     onClick={() => loadData('analytics')} 
-                                    className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95"
+                                    className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95"
                                 >
-                                    <i className="fas fa-sync-alt"></i> Refresh
+                                    <i className="fas fa-sync-alt"></i> Refresh Reports
                                 </button>
                             )}
                             <button 
@@ -2226,31 +2088,25 @@ const formatDateRange = (start: string, end: string): string => {
                                     if (viewMode === 'preview') setViewMode('management');
                                     else setViewMode('preview');
                                 }}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 border ${
+                                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border shadow-sm ${
                                     viewMode === 'preview' 
-                                    ? 'bg-lt-orange text-white border-lt-orange shadow-md shadow-lt-orange/20' 
+                                    ? 'bg-lt-orange text-white border-lt-orange shadow-lt-orange/20' 
                                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                                 }`}
                             >
                                 <i className={`fas ${viewMode === 'preview' ? 'fa-edit' : 'fa-eye'}`}></i>
-                                {viewMode === 'preview' ? 'Exit Preview' : 'Live Preview'}
+                                {viewMode === 'preview' ? 'Management Mode' : 'Live Preview'}
                             </button>
-                            <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block"></div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-lt-orange/10 text-lt-orange flex items-center justify-center text-xs font-bold">
+                            <div className="h-8 w-px bg-slate-100 mx-1 hidden sm:block"></div>
+                            <div className="flex items-center gap-3 bg-slate-50 pl-1 pr-4 py-1 rounded-full border border-slate-100">
+                                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-black shadow-lg">
                                     AD
                                 </div>
-                                <span className="text-xs font-bold text-slate-600 hidden sm:block">Administrator</span>
+                                <div className="hidden lg:block">
+                                    <p className="text-[10px] font-black text-slate-900 leading-none">Super Admin</p>
+                                    <p className="text-[9px] text-slate-400 font-bold mt-0.5">La Trinidad LGU</p>
+                                </div>
                             </div>
-                            <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block"></div>
-                            <Link 
-                                to="/" 
-                                className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-lt-blue transition-colors group"
-                                title="Return to public website"
-                            >
-                                <i className="fas fa-external-link-alt text-xs group-hover:scale-110 transition-transform"></i>
-                                <span className="text-xs font-bold hidden lg:block">Website</span>
-                            </Link>
                         </div>
                     </header>
                 )}
@@ -2279,99 +2135,99 @@ const formatDateRange = (start: string, end: string): string => {
                                                 <p className="text-sm font-medium">Synchronizing data...</p>
                                             </div>
                                         ) : data.length === 0 ? (
-                                            <div className="p-32 text-center text-slate-400">
-                                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                                                    <i className="fas fa-folder-open text-3xl opacity-20"></i>
+                                            <div className="p-32 text-center">
+                                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100">
+                                                    <i className="fas fa-folder-open text-3xl text-slate-200"></i>
                                                 </div>
-                                                <h3 className="text-lg font-bold text-slate-900 mb-1">No results found</h3>
-                                                <p className="text-sm text-slate-500">There are no records to display in this section yet.</p>
+                                                <h3 className="text-lg font-black text-slate-900 mb-1">No results found</h3>
+                                                <p className="text-sm text-slate-500 mb-8 max-w-xs mx-auto text-pretty">There are no records to display in this section yet. Start by creating a new entry.</p>
                                                 {activeTab !== 'reports' && (
                                                     <button 
                                                         onClick={() => handleOpenModal()}
-                                                        className="mt-6 text-lt-blue font-bold text-sm hover:underline"
+                                                        className="inline-flex items-center gap-2 bg-lt-blue hover:bg-lt-blue/90 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-lt-blue/20 transition-all active:scale-95"
                                                     >
-                                                        Create your first entry
+                                                        <i className="fas fa-plus"></i>
+                                                        Create first record
                                                     </button>
                                                 )}
                                             </div>
                                         ) : (
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full text-left">
-                                                    <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
+                                            <div className="overflow-x-auto relative shadow-sm border border-slate-200 rounded-xl">
+                                                <table className="w-full text-left border-separate border-spacing-0">
+                                                    <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-slate-200">
                                                         <tr>
-                                                            {activeTab !== 'reports' && <th className="p-5 w-20 text-center">Media</th>}
+                                                            {activeTab !== 'reports' && <th className="p-4 w-24 text-center text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Media</th>}
                                                             {activeTab === 'reports' ? (
                                                                 <>
-                                                                    <th className="p-5">Target</th>
-                                                                    <th className="p-5">Reason</th>
-                                                                    <th className="p-5">Description</th>
+                                                                    <th className="p-4 text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Target</th>
+                                                                    <th className="p-4 text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Reason</th>
+                                                                    <th className="p-4 text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Description</th>
                                                                 </>
                                                             ) : (
-                                                                <th className="p-5">Information</th>
+                                                                <th className="p-4 text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Information</th>
                                                             )}
-                                                            {activeTab === 'blog-posts' && <th className="p-5">Status</th>}
-                                                            {activeTab === 'blog-posts' && <th className="p-5">Author</th>}
-                                                            {(activeTab === 'tourist-spots' || activeTab === 'blog-posts') && <th className="p-5 text-center">Views</th>}
-                                                            {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && <th className="p-5 text-center">Reviews</th>}
-                                                            <th className="p-5 text-right">Actions</th>
+                                                            {activeTab === 'blog-posts' && <th className="p-4 text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Status</th>}
+                                                            {activeTab === 'blog-posts' && <th className="p-4 text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Author</th>}
+                                                            {(activeTab === 'tourist-spots' || activeTab === 'blog-posts') && <th className="p-4 text-center text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Performance</th>}
+                                                            {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && <th className="p-4 text-center text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Community</th>}
+                                                            <th className="p-4 text-right text-[10px] uppercase font-black text-slate-400 tracking-widest border-b border-slate-100">Actions</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody className="divide-y divide-slate-100">
+                                                    <tbody className="divide-y divide-slate-50">
                                                         {sortedData.map((item: any) => (
-                                                            <tr 
-                                                                key={item._id} 
-                                                                className="hover:bg-slate-50/60 transition-colors group cursor-pointer"
-                                                                onClick={() => handleOpenDetailModal(item)}
-                                                            >
+                                                                <tr 
+                                                                    key={item._id} 
+                                                                    className="hover:bg-lt-blue/[0.02] transition-colors group cursor-pointer"
+                                                                    onClick={() => handleOpenDetailModal(item)}
+                                                                >
                                                                 {activeTab !== 'reports' && (
-                                                                    <td className="p-5" onClick={e => e.stopPropagation()}>
-                                                                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
-                                                                            <img src={item.image} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                                    <td className="p-4" onClick={e => e.stopPropagation()}>
+                                                                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-sm relative group/thumb">
+                                                                            <img src={item.image} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                                                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white text-xs">
+                                                                                <i className="fas fa-expand"></i>
+                                                                            </div>
                                                                         </div>
                                                                     </td>
                                                                 )}
                                                                 
                                                                 {activeTab === 'reports' ? (
                                                                     <>
-                                                                        <td className="p-5">
-                                                                            <div className="flex items-start gap-3">
+                                                                        <td className="p-4">
+                                                                            <div className="flex items-center gap-3">
                                                                                 {!item.isSeen && (
-                                                                                    <div className="mt-1.5">
-                                                                                        <span className="relative flex h-2 w-2">
-                                                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                                                                                        </span>
-                                                                                    </div>
+                                                                                    <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10_rgba(239,68,68,0.5)] flex-shrink-0 animate-pulse"></div>
                                                                                 )}
-                                                                                <div>
-                                                                                    <div className="font-bold text-slate-800 text-sm">{item.targetName}</div>
-                                                                                    <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{item.targetType}</div>
+                                                                                <div className="min-w-0">
+                                                                                    <div className="font-bold text-slate-900 text-sm truncate">{item.targetName}</div>
+                                                                                    <div className="text-[10px] text-slate-400 uppercase font-black tracking-tight mt-0.5">{item.targetType}</div>
                                                                                 </div>
                                                                             </div>
                                                                         </td>
-                                                                        <td className="p-5">
-                                                                            <span className="text-[10px] text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-lg font-bold uppercase tracking-wider">
+                                                                        <td className="p-4">
+                                                                            <span className="text-[10px] text-red-600 bg-red-50 px-2.5 py-1 rounded-full font-black uppercase tracking-wider border border-red-100">
                                                                                 {item.reason}
                                                                             </span>
                                                                         </td>
-                                                                        <td className="p-5 text-xs text-slate-500 max-w-xs truncate">{item.description}</td>
+                                                                        <td className="p-4">
+                                                                            <p className="text-xs text-slate-500 max-w-xs line-clamp-2 leading-relaxed">{item.description}</p>
+                                                                        </td>
                                                                     </>
                                                                 ) : (
-                                                                    <td className="p-5">
-                                                                        <div className="flex items-start gap-3">
+                                                                    <td className="p-4">
+                                                                        <div className="flex items-start gap-4">
                                                                             {activeTab === 'blog-posts' && !item.isSeen && (
-                                                                                <div className="mt-1.5">
-                                                                                    <span className="relative flex h-2 w-2">
-                                                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                                                                                    </span>
+                                                                                <div className="mt-1.5 flex-shrink-0">
+                                                                                    <div className="w-2 h-2 rounded-full bg-lt-blue shadow-[0_0_10px_rgba(59,130,246,0.5)] animate-pulse"></div>
                                                                                 </div>
                                                                             )}
-                                                                            <div>
-                                                                                <div className="font-bold text-slate-800 text-sm group-hover:text-lt-blue transition-colors">{item.name || item.title}</div>
-                                                                                <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-1">
-                                                                                    <i className="fas fa-map-marker-alt text-[8px]"></i>
-                                                                                    {item.location || item.date || 'No meta provided'}
+                                                                            <div className="min-w-0">
+                                                                                <div className="font-black text-slate-900 text-sm group-hover:text-lt-blue transition-colors truncate tracking-tight">{item.name || item.title}</div>
+                                                                                <div className="flex items-center gap-2 mt-1">
+                                                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 text-slate-500 rounded-md border border-slate-100 text-[10px] font-bold">
+                                                                                        <i className="fas fa-map-marker-alt text-[8px] opacity-70"></i>
+                                                                                        {item.location || item.date || 'No meta provided'}
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
@@ -2379,10 +2235,10 @@ const formatDateRange = (start: string, end: string): string => {
                                                                 )}
 
                                                                 {activeTab === 'blog-posts' && (
-                                                                    <td className="p-5">
-                                                                        <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-lg border ${
-                                                                            item.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' :
-                                                                            item.status === 'approved' ? 'bg-green-50 text-green-600 border-green-200' :
+                                                                    <td className="p-4">
+                                                                        <span className={`text-[9px] uppercase font-black px-2.5 py-1 rounded-full border tracking-widest ${
+                                                                            item.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                                                            item.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
                                                                             'bg-red-50 text-red-600 border-red-200'
                                                                         }`}>
                                                                             {item.status || 'approved'}
@@ -2390,47 +2246,71 @@ const formatDateRange = (start: string, end: string): string => {
                                                                     </td>
                                                                 )}
                                                                 {activeTab === 'blog-posts' && (
-                                                                    <td className="p-5">
-                                                                        <div className="text-xs font-bold text-slate-700">{item.author}</div>
-                                                                        {item.email && <div className="text-[10px] text-slate-400">{item.email}</div>}
+                                                                    <td className="p-4">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="w-6 h-6 rounded-full bg-lt-blue/10 text-lt-blue flex items-center justify-center text-[8px] font-black uppercase">
+                                                                                {item.author?.substring(0, 2) || 'AU'}
+                                                                            </div>
+                                                                            <div className="min-w-0">
+                                                                                <div className="text-xs font-bold text-slate-900 leading-none truncate max-w-[120px]">{item.author}</div>
+                                                                                <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[120px]">{item.email || 'No email provided'}</div>
+                                                                            </div>
+                                                                        </div>
                                                                     </td>
                                                                 )}
                                                                 {(activeTab === 'tourist-spots' || activeTab === 'blog-posts') && (
-                                                                    <td className="p-5 text-center">
-                                                                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold">
-                                                                            <i className="fas fa-eye text-[8px]"></i>
-                                                                            {item.views || 0}
+                                                                    <td className="p-4 text-center">
+                                                                        <div className="inline-flex flex-col items-center">
+                                                                            <div className="text-xs font-black text-slate-900 font-mono tracking-tighter">
+                                                                                {item.views?.toLocaleString() || 0}
+                                                                            </div>
+                                                                            <div className="text-[9px] text-slate-400 uppercase font-bold mt-0.5 tracking-widest">Views</div>
                                                                         </div>
                                                                     </td>
                                                                 )}
                                                                 {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
-                                                                    <td className="p-5 text-center" onClick={e => e.stopPropagation()}>
+                                                                    <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
                                                                         <button 
                                                                             onClick={() => handleOpenReviewModal(item)}
-                                                                            className="inline-flex items-center gap-2 text-slate-400 hover:text-lt-orange transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm"
+                                                                            className="inline-flex items-center gap-2 text-slate-500 hover:text-white hover:bg-slate-900 transition-all border border-slate-200 px-4 py-2 rounded-xl text-xs font-black shadow-sm group/btn"
                                                                         >
-                                                                            <i className="fas fa-comment-dots text-[10px]"></i> 
+                                                                            <i className="fas fa-comment-dots text-[10px] text-slate-400 group-hover/btn:text-white"></i> 
                                                                             {item.reviews?.length || 0}
                                                                         </button>
                                                                     </td>
                                                                 )}
-                                                                <td className="p-5 text-right" onClick={e => e.stopPropagation()}>
-                                                                    <div className="flex justify-end gap-2">
+                                                                <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
+                                                                    <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                         {activeTab === 'blog-posts' && item.status === 'pending' && (
-                                                                            <button onClick={() => handleApprove(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all">
-                                                                                Approve
+                                                                            <button 
+                                                                                onClick={() => handleApprove(item._id)} 
+                                                                                className="bg-lt-blue text-white w-10 h-10 rounded-xl hover:bg-blue-600 shadow-md shadow-lt-blue/10 transition-all flex items-center justify-center active:scale-90"
+                                                                                title="Approve post"
+                                                                            >
+                                                                                <i className="fas fa-check text-xs"></i>
                                                                             </button>
                                                                         )}
                                                                         {activeTab === 'reports' ? (
-                                                                            <button onClick={() => handleDelete(item._id)} className="bg-lt-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-lt-moss shadow-sm transition-all">
+                                                                            <button 
+                                                                                onClick={() => handleDelete(item._id)} 
+                                                                                className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-600 shadow-md shadow-emerald-500/10 transition-all active:scale-95"
+                                                                            >
                                                                                 Resolve
                                                                             </button>
                                                                         ) : (
                                                                             <>
-                                                                                <button onClick={() => handleOpenModal(item)} className="p-2 text-slate-400 hover:text-lt-blue hover:bg-slate-100 rounded-lg transition-colors" title="Edit Item">
-                                                                                    <i className="fas fa-pen text-xs"></i>
+                                                                                <button 
+                                                                                    onClick={() => handleOpenModal(item)} 
+                                                                                    className="w-10 h-10 flex items-center justify-center text-slate-400 bg-white border border-slate-200 hover:border-lt-blue hover:text-lt-blue rounded-xl transition-all shadow-sm hover:shadow-md active:scale-90" 
+                                                                                    title="Edit Item"
+                                                                                >
+                                                                                    <i className="fas fa-pen-nib text-xs"></i>
                                                                                 </button>
-                                                                                <button onClick={() => handleDelete(item._id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete Item">
+                                                                                <button 
+                                                                                    onClick={() => handleDelete(item._id)} 
+                                                                                    className="w-10 h-10 flex items-center justify-center text-slate-400 bg-white border border-slate-200 hover:border-red-500 hover:text-red-500 rounded-xl transition-all shadow-sm hover:shadow-md active:scale-90" 
+                                                                                    title="Delete Item"
+                                                                                >
                                                                                     <i className="fas fa-trash-alt text-xs"></i>
                                                                                 </button>
                                                                             </>

@@ -86,47 +86,49 @@ const ImageCropper: React.FC<ImageCropperProps> = ({ image, aspectRatio, onCropC
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col">
-      <div className="flex-grow relative">
-        <Cropper
-          image={image}
-          crop={crop}
-          zoom={zoom}
-          aspect={aspectRatio}
-          onCropChange={onCropChange}
-          onCropComplete={onCropCompleteInternal}
-          onZoomChange={onZoomChange}
-        />
-      </div>
-      <div className="bg-white p-6 flex flex-col gap-4 items-center">
-        <div className="w-full max-w-md">
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 text-center">Zoom</label>
-          <input
-            type="range"
-            value={zoom}
-            min={1}
-            max={3}
-            step={0.1}
-            aria-labelledby="Zoom"
-            onChange={(e) => setZoom(Number(e.target.value))}
-            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-lt-blue"
+    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white rounded-2xl overflow-hidden shadow-2xl w-full max-w-xl flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+        <div className="flex-grow relative min-h-[250px] sm:min-h-[350px] bg-slate-100">
+          <Cropper
+            image={image}
+            crop={crop}
+            zoom={zoom}
+            aspect={aspectRatio}
+            onCropChange={onCropChange}
+            onCropComplete={onCropCompleteInternal}
+            onZoomChange={onZoomChange}
           />
         </div>
-        <div className="flex gap-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleCrop}
-            className="px-8 py-2 bg-lt-blue text-white rounded-xl font-bold shadow-lg shadow-lt-blue/20 hover:bg-lt-moss transition-all"
-          >
-            Apply Crop
-          </button>
+        <div className="bg-white p-3 sm:p-5 space-y-3 sm:space-y-4 border-t border-slate-100">
+          <div className="flex items-center gap-3">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Zoom Level</span>
+            <input
+              type="range"
+              value={zoom}
+              min={1}
+              max={3}
+              step={0.1}
+              aria-labelledby="Zoom"
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="flex-grow h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-lt-blue"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 rounded-xl text-[11px] font-bold text-slate-400 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleCrop}
+              className="px-6 py-2 bg-lt-blue text-white rounded-xl text-[11px] font-bold shadow-lg shadow-lt-blue/10 hover:bg-lt-moss transition-all"
+            >
+              Set Image
+            </button>
+          </div>
         </div>
       </div>
     </div>

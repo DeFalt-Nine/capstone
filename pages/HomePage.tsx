@@ -29,6 +29,7 @@ const HomePage: React.FC = () => {
     const navigate = useNavigate();
     const [heroImages, setHeroImages] = useState(DEFAULT_HERO_IMAGES);
     const [heroWelcomeText, setHeroWelcomeText] = useState("Welcome to the Valley of Colors");
+    const [heroTitle, setHeroTitle] = useState("Limitless La Trinidad");
     const [heroSubtitle, setHeroSubtitle] = useState("Experience the Philippines' Strawberry Capital. A highland haven of culture, nature, and fresh flavors.");
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [wordIndex, setWordIndex] = useState(0);
@@ -42,6 +43,7 @@ const HomePage: React.FC = () => {
                 const settings = await fetchSiteSettings();
                 if (settings && settings.home) {
                     setHeroWelcomeText(settings.home.heroWelcomeText);
+                    setHeroTitle(settings.home.heroTitle || "Limitless La Trinidad");
                     setHeroSubtitle(settings.home.heroSubtitle);
                     if (settings.home.heroImages && settings.home.heroImages.length > 0) {
                         setHeroImages(settings.home.heroImages);
@@ -144,7 +146,7 @@ const HomePage: React.FC = () => {
                                 {MORPHING_WORDS[wordIndex]}
                             </span>
                             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-lt-orange to-lt-yellow text-center">
-                                Limitless La Trinidad
+                                {heroTitle}
                             </span>
                         </h1>
                     </div>

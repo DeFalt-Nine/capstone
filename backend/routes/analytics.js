@@ -1,11 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import ChatLog from '../models/ChatLog.js';
-import AnalyticsEvent from '../models/AnalyticsEvent.js';
-import TouristSpot from '../models/TouristSpot.js';
-import DiningSpot from '../models/DiningSpot.js';
-import BlogPost from '../models/BlogPost.js';
-import mongoose from 'mongoose';
+import { supabase } from '../config/supabase.js';
 import { verifyAdmin } from '../middleware/auth.js';
 
 // @desc    Log a chat interaction (used for frontend intents)
@@ -19,12 +14,15 @@ router.post('/chat', async (req, res) => {
       return res.status(400).json({ message: 'Missing message data' });
     }
 
-    await ChatLog.create({
-      userMessage,
-      botResponse,
-      isIntent: isIntent || true
-    });
+    const { error } = await supabase
+      .from('chat_logs')
+      .insert([{
+        user_message: userMessage,
+        bot_response: botResponse,
+        is_intent: isIntent || true
+      }]);
 
+    if (error) throw error;
     res.status(201).json({ success: true });
   } catch (error) {
     console.error("Error logging chat interaction:", error);
@@ -37,56 +35,54 @@ router.post('/chat', async (req, res) => {
 // @access  Public
 router.post('/log', async (req, res) => {
     try {
-        const { eventType, targetId, page, metadata } = req.body;
+        const { eventType, targetId, page, metadata, duration } = req.body;
         console.log(`[Analytics] Incoming event: ${eventType}, target: ${targetId}, page: ${page}`);
 
         if (!eventType || !page) {
             return res.status(400).json({ message: 'Event type and page are required' });
         }
 
-        const { duration } = req.body;
+        // Fire and forget - insert event
+        const { error: insertError } = await supabase
+            .from('analytics_events')
+            .insert([{
+                event_type: eventType,
+                target_id: targetId,
+                page,
+                duration,
+                metadata
+            }]);
 
-        // Fire and forget - usually fast enough, but we await to catch errors
-        await AnalyticsEvent.create({
-            eventType,
-            targetId,
-            page,
-            duration,
-            metadata
-        });
+        if (insertError) console.error("[Analytics] Log Error:", insertError);
 
-        // If it's a 'view' event, increment the view count in the respective model
+        // If it's a 'view' event and targetId exists
         if (eventType === 'view' && targetId) {
             console.log(`[Analytics] View event received for ${targetId} on page ${page}`);
-            
-            // Validate if targetId is a valid MongoDB ObjectId
-            if (!mongoose.Types.ObjectId.isValid(targetId)) {
-                console.warn(`[Analytics] Invalid targetId format: ${targetId}. Skipping view increment.`);
-            } else {
-                try {
-                    let result = null;
-                    if (page.includes('/tourist-spots')) {
-                        result = await TouristSpot.findByIdAndUpdate(targetId, { $inc: { views: 1 } }, { new: true });
-                        console.log(`[Analytics] TouristSpot update for ${targetId}: ${result ? 'Success (Views: ' + result.views + ')' : 'Not Found'}`);
-                    } else if (page.includes('/dining-spots')) {
-                        result = await DiningSpot.findByIdAndUpdate(targetId, { $inc: { views: 1 } }, { new: true });
-                        console.log(`[Analytics] DiningSpot update for ${targetId}: ${result ? 'Success (Views: ' + result.views + ')' : 'Not Found'}`);
-                    } else if (page.includes('/blog')) {
-                        result = await BlogPost.findByIdAndUpdate(targetId, { $inc: { views: 1 } }, { new: true });
-                        console.log(`[Analytics] BlogPost update for ${targetId}: ${result ? 'Success (Views: ' + result.views + ')' : 'Not Found'}`);
-                    } else {
-                        console.log(`[Analytics] Page ${page} did not match any category for view increment.`);
-                    }
-                } catch (err) {
-                    console.error("[Analytics] Error incrementing view count:", err);
+            try {
+                if (page.includes('/tourist-spots')) {
+                    await supabase.rpc('increment_view_count', { 
+                        row_id: targetId, 
+                        table_name: 'tourist_spots' 
+                    });
+                } else if (page.includes('/dining-spots')) {
+                    await supabase.rpc('increment_view_count', { 
+                        row_id: targetId, 
+                        table_name: 'dining_spots' 
+                    });
+                } else if (page.includes('/blog')) {
+                    await supabase.rpc('increment_view_count', { 
+                        row_id: targetId, 
+                        table_name: 'blog_posts' 
+                    });
                 }
+            } catch (err) {
+                console.error("[Analytics] Error incrementing view via RPC:", err);
             }
         }
 
         res.status(201).json({ success: true });
     } catch (error) {
         console.error("Error logging analytics event:", error);
-        // Don't block the frontend if analytics fails
         res.status(500).json({ message: 'Error logging event' });
     }
 });
@@ -96,8 +92,14 @@ router.post('/log', async (req, res) => {
 // @access  Admin
 router.get('/debug', verifyAdmin, async (req, res) => {
     try {
-        const events = await AnalyticsEvent.find().sort({ timestamp: -1 }).limit(20);
-        res.json(events);
+        const { data, error } = await supabase
+            .from('analytics_events')
+            .select('*')
+            .order('timestamp', { ascending: false })
+            .limit(20);
+        
+        if (error) throw error;
+        res.json(data);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching debug data' });
     }
@@ -108,64 +110,57 @@ router.get('/debug', verifyAdmin, async (req, res) => {
 // @access  Admin
 router.get('/summary', verifyAdmin, async (req, res) => {
     try {
-        // 1. Total views per category (Tourist Spots vs Dining vs Blog Posts)
-        const touristSpotViews = await TouristSpot.aggregate([
-            { $group: { _id: null, total: { $sum: "$views" } } }
-        ]);
-        const diningSpotViews = await DiningSpot.aggregate([
-            { $group: { _id: null, total: { $sum: "$views" } } }
-        ]);
-        const blogPostViews = await BlogPost.aggregate([
-            { $group: { _id: null, total: { $sum: "$views" } } }
-        ]);
+        // 1. Total views per category
+        const { data: tsViews } = await supabase.from('tourist_spots').select('views');
+        const { data: dsViews } = await supabase.from('dining_spots').select('views');
+        const { data: bpViews } = await supabase.from('blog_posts').select('views');
+
+        const totalTS = tsViews?.reduce((acc, v) => acc + (v.views || 0), 0) || 0;
+        const totalDS = dsViews?.reduce((acc, v) => acc + (v.views || 0), 0) || 0;
+        const totalBP = bpViews?.reduce((acc, v) => acc + (v.views || 0), 0) || 0;
 
         // 2. Top 5 Most Viewed Tourist Spots
-        const topTouristSpots = await TouristSpot.find()
-            .sort({ views: -1 })
-            .limit(5)
-            .select('name views image');
+        const { data: topTouristSpots } = await supabase
+            .from('tourist_spots')
+            .select('id, name, views, image')
+            .order('views', { ascending: false })
+            .limit(5);
 
-        // 2b. Top 5 Most Viewed Dining Spots
-        const topDiningSpots = await DiningSpot.find()
-            .sort({ views: -1 })
-            .limit(5)
-            .select('name views image');
+        // 3. Top 5 Most Viewed Dining Spots
+        const { data: topDiningSpots } = await supabase
+            .from('dining_spots')
+            .select('id, name, views, image')
+            .order('views', { ascending: false })
+            .limit(5);
 
-        // 3. Top 5 Most Viewed Blog Posts
-        const topBlogPosts = await BlogPost.find()
-            .sort({ views: -1 })
-            .limit(5)
-            .select('title views image');
+        // 4. Top 5 Most Viewed Blog Posts
+        const { data: topBlogPosts } = await supabase
+            .from('blog_posts')
+            .select('id, title, views, image')
+            .order('views', { ascending: false })
+            .limit(5);
 
-        // 4. Average Dwell Time (from AnalyticsEvent)
-        const avgDwellTime = await AnalyticsEvent.aggregate([
-            { $match: { eventType: 'dwell', duration: { $exists: true, $gt: 0 } } },
-            {
-                $group: {
-                    _id: "$page",
-                    avgDuration: { $avg: "$duration" },
-                    totalEvents: { $count: {} }
-                }
-            },
-            { $sort: { avgDuration: -1 } }
-        ]);
+        // Aggregating Dwell Time might be complex via query, returning legacy format or empty for now
+        // Usually handled by a view or more complex RPC in Supabase
 
-        // 5. Recent Activity (last 10 events)
-        const recentActivity = await AnalyticsEvent.find()
-            .sort({ timestamp: -1 })
+        // 5. Recent Activity
+        const { data: recentActivity } = await supabase
+            .from('analytics_events')
+            .select('*')
+            .order('timestamp', { ascending: false })
             .limit(10);
 
         res.json({
             summary: {
-                totalTouristSpotViews: touristSpotViews[0]?.total || 0,
-                totalDiningSpotViews: diningSpotViews[0]?.total || 0,
-                totalBlogPostViews: blogPostViews[0]?.total || 0,
+                totalTouristSpotViews: totalTS,
+                totalDiningSpotViews: totalDS,
+                totalBlogPostViews: totalBP,
             },
-            topTouristSpots,
-            topDiningSpots,
-            topBlogPosts,
-            avgDwellTime,
-            recentActivity
+            topTouristSpots: topTouristSpots?.map(s => ({ ...s, _id: s.id })),
+            topDiningSpots: topDiningSpots?.map(s => ({ ...s, _id: s.id })),
+            topBlogPosts: topBlogPosts?.map(s => ({ ...s, _id: s.id })),
+            avgDwellTime: [], // Placeholder for now
+            recentActivity: recentActivity?.map(a => ({ ...a, _id: a.id }))
         });
     } catch (error) {
         console.error("Error fetching analytics summary:", error);
