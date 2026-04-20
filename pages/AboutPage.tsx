@@ -216,71 +216,50 @@ const AboutPage: React.FC = () => {
 
             {/* Government Section */}
             <AnimatedElement delay={400}>
-                <div className="relative rounded-3xl overflow-hidden bg-lt-blue text-white shadow-2xl shadow-lt-blue/30">
-                    <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                    <div className="relative z-10 grid md:grid-cols-2 gap-0">
-                        <div className="p-10 md:p-16 flex flex-col justify-center order-2 md:order-1">
-                            <div className="flex items-center gap-3 mb-4 text-lt-yellow">
-                                <i className="fas fa-landmark text-2xl"></i>
-                                <span className="uppercase tracking-widest font-bold text-sm">The Local Government</span>
+                <div className="relative rounded-3xl overflow-hidden bg-lt-blue text-white shadow-xl shadow-lt-blue/20">
+                    <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                    <div className="relative z-10 grid md:grid-cols-3 gap-0">
+                        <div className="md:col-span-2 p-8 md:p-12 flex flex-col justify-center order-2 md:order-1 border-r border-white/5">
+                            <div className="flex items-center gap-2 mb-3 text-lt-yellow">
+                                <i className="fas fa-landmark text-lg"></i>
+                                <span className="uppercase tracking-widest font-black text-[10px]">The Local Government</span>
                             </div>
-                            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">{govSettings?.title || "Capital of Benguet"}</h2>
-                            <div className="prose prose-invert prose-lg text-white/90 leading-relaxed mb-8">
-                                {(govSettings?.content || "As the capital municipality of Benguet province, La Trinidad serves as the political, educational, and commercial hub of the Cordillera Administrative Region.\n\nThe Municipal Government, led by the Mayor and the Sangguniang Bayan, works tirelessly to balance rapid urbanization with the preservation of its rich Ibaloi culture and fragile mountain ecosystem.").split('\n\n').map((para: string, i: number) => (
-                                    <p key={i} className="mb-4">{para}</p>
+                            <h2 className="text-2xl md:text-3xl font-extrabold mb-4 text-white uppercase tracking-tight">{govSettings?.title || "Capital of Benguet"}</h2>
+                            <div className="prose prose-invert prose-sm text-white/80 leading-relaxed mb-6 max-w-none">
+                                {(govSettings?.content || "As the capital municipality of Benguet province, La Trinidad serves as the political, educational, and commercial hub of the Cordillera Administrative Region.").split('\n\n').map((para: string, i: number) => (
+                                    <p key={i} className="mb-3">{para}</p>
                                 ))}
                             </div>
                             
-                            {govSettings?.officials && govSettings.officials.length > 0 ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
+                            {govSettings?.officials && govSettings.officials.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
                                     {govSettings.officials.map((official: any, idx: number) => (
                                         <div key={idx} className="text-center group">
-                                            <div className="w-16 h-16 mx-auto rounded-full overflow-hidden border-2 border-white/20 mb-2 group-hover:border-lt-yellow transition-colors">
+                                            <div className="w-12 h-12 mx-auto rounded-full overflow-hidden border-2 border-white/10 mb-1.5 group-hover:border-lt-yellow transition-all duration-300">
                                                 <img src={official.image || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=200&auto=format&fit=crop"} alt={official.name} className="w-full h-full object-cover" />
                                             </div>
-                                            <p className="text-xs font-bold text-white truncate">{official.name}</p>
-                                            <p className="text-[10px] text-white/60 truncate">{official.position}</p>
+                                            <p className="text-[10px] font-bold text-white truncate leading-tight">{official.name}</p>
+                                            <p className="text-[8px] text-white/50 truncate leading-tight uppercase tracking-tighter">{official.position}</p>
                                         </div>
                                     ))}
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lt-yellow border border-white/20">
-                                            <i className="fas fa-flag"></i>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-white">Public Service</h4>
-                                            <p className="text-sm text-white/70">Committed to transparency, efficiency, and good governance.</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lt-yellow border border-white/20">
-                                            <i className="fas fa-leaf"></i>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-white">Sustainable Vision</h4>
-                                            <p className="text-sm text-white/70">Pioneering organic agriculture and eco-tourism initiatives.</p>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
                         </div>
                         
                         {/* Right Column: Visual with Official Logo */}
-                        <div className="relative min-h-[300px] md:min-h-full group order-1 md:order-2 bg-gradient-to-br from-slate-700 to-lt-blue flex items-center justify-center p-10">
-                            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/woven.png')]"></div>
+                        <div className="relative min-h-[250px] md:min-h-full group order-1 md:order-2 bg-white flex items-center justify-center p-8 border-l border-slate-200/50 md:border-y md:border-r md:rounded-r-3xl">
+                            <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/white-diamond.png')]"></div>
                             
-                            {/* Official LGU Logo */}
+                            {/* Official LGU Logo - Scaled down for better proportion */}
                             <img 
                                 src={govSettings?.image || "https://ltdrrmo.ph/wp-content/uploads/2021/05/lt-lg-logo.png"} 
                                 alt="La Trinidad Municipal Logo" 
-                                className="w-64 h-64 object-contain drop-shadow-2xl relative z-10 filter hover:brightness-110 transition-all duration-300 transform group-hover:scale-105"
+                                className="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-xl relative z-10 filter hover:brightness-110 transition-all duration-500 transform group-hover:scale-105 group-hover:-rotate-2"
                             />
 
-                            <div className="absolute bottom-0 left-0 p-8 bg-gradient-to-t from-black/40 to-transparent w-full z-20">
-                                <p className="font-bold text-white text-lg">Municipal Hall</p>
-                                <p className="text-lt-yellow text-sm">Km. 5, La Trinidad, Benguet</p>
+                            <div className="absolute bottom-4 left-0 px-6 w-full z-20 text-center md:text-left">
+                                <p className="font-black text-slate-800 text-xs uppercase tracking-widest leading-none">Municipal Hall</p>
+                                <p className="text-slate-400 text-[10px] font-medium opacity-80">Km. 5, La Trinidad, Benguet</p>
                             </div>
                         </div>
                     </div>

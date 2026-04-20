@@ -18,6 +18,7 @@ export interface Review {
   comment?: string;
   images?: string[]; 
   createdAt?: string;
+  created_at?: string;
   isSeen?: boolean;
   isResolved?: boolean;
   isDeleted?: boolean;
@@ -39,7 +40,6 @@ export interface TouristSpot {
   bestTimeToVisit: string;
   category: string;
   tags: string[];
-  // Added transportation fields
   jeepneyFare?: string;
   taxiFare?: string;
   terminalLocation?: string;
@@ -51,6 +51,7 @@ export interface TouristSpot {
   mapEmbedUrl: string;
   reviews: Review[];
   averageRating?: number;
+  created_at?: string;
 }
 
 export interface EmergencyContact {
@@ -96,6 +97,9 @@ export interface BlogPost {
   isSeen?: boolean;
   userId?: string;
   userAvatar?: string;
+  created_at?: string;
+  createdAt?: string;
+  views?: number;
 }
 
 export interface HistoryEvent {
@@ -115,6 +119,7 @@ export interface LocalEvent {
   location: string;
   badge: string;
   gallery?: string[];
+  created_at?: string;
 }
 
 export enum MessageAuthor {
@@ -138,6 +143,7 @@ export interface Report {
   description: string;
   status: 'pending' | 'resolved';
   createdAt?: string;
+  created_at?: string;
   isSeen?: boolean;
 }
 
@@ -156,6 +162,7 @@ export interface AdminLog {
   targetId?: string;
   targetName?: string;
   details?: string;
+  created_at?: string;
   timestamp: string;
 }
 
