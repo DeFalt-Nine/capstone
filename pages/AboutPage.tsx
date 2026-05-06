@@ -247,15 +247,17 @@ const AboutPage: React.FC = () => {
                         </div>
                         
                         {/* Right Column: Visual with Official Logo */}
-                        <div className="relative min-h-[250px] md:min-h-full group order-1 md:order-2 bg-white flex items-center justify-center p-8 border-l border-slate-200/50 md:border-y md:border-r md:rounded-r-3xl">
+                        <div className="relative min-h-[250px] md:min-h-full group order-1 md:order-2 bg-white flex items-center justify-center p-8 border-l border-slate-200/50 md:border-y md:border-r md:rounded-r-3xl shadow-[inset_0_2px_15px_rgba(0,0,0,0.05)]">
                             <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/white-diamond.png')]"></div>
                             
-                            {/* Official LGU Logo - Scaled down for better proportion */}
-                            <img 
-                                src={govSettings?.image || "https://ltdrrmo.ph/wp-content/uploads/2021/05/lt-lg-logo.png"} 
-                                alt="La Trinidad Municipal Logo" 
-                                className="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-xl relative z-10 filter hover:brightness-110 transition-all duration-500 transform group-hover:scale-105 group-hover:-rotate-2"
-                            />
+                            <div className="relative z-10 w-full h-full flex items-center justify-center">
+                                {/* Official LGU Logo - Scaled down for better proportion */}
+                                <img 
+                                    src={govSettings?.image || "https://ltdrrmo.ph/wp-content/uploads/2021/05/lt-lg-logo.png"} 
+                                    alt="La Trinidad Municipal Logo" 
+                                    className="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-2xl filter hover:brightness-110 transition-all duration-500 transform group-hover:scale-105 group-hover:-rotate-2"
+                                />
+                            </div>
 
                             <div className="absolute bottom-4 left-0 px-6 w-full z-20 text-center md:text-left">
                                 <p className="font-black text-slate-800 text-xs uppercase tracking-widest leading-none">Municipal Hall</p>

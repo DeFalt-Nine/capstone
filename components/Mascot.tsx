@@ -63,7 +63,9 @@ export default function Mascot() {
     const [upcomingEvent, setUpcomingEvent] = useState<LocalEvent | null>(null);
     const [eventStatus, setEventStatus] = useState<{ type: 'now' | 'upcoming', days?: number } | null>(null);
     const [isVisible, setIsVisible] = useState(false);
-    const [isBubbleVisible, setIsBubbleVisible] = useState(true);
+    const [isBubbleVisible, setIsBubbleVisible] = useState(() => {
+        return localStorage.getItem('isMascotVisible') !== 'false';
+    });
     const [currentVibe, setCurrentVibe] = useState(VIBES[0]);
     const [recommendations, setRecommendations] = useState<TouristSpot[]>([]);
     const [showOverlay, setShowOverlay] = useState(false);
@@ -200,6 +202,8 @@ export default function Mascot() {
 
     useEffect(() => {
         if (!mascotRef.current) return;
+
+        localStorage.setItem('isMascotVisible', isBubbleVisible.toString());
 
         if (isBubbleVisible) {
             gsap.to(mascotRef.current, { x: 0, duration: 0.5, ease: 'power2.out' });
@@ -504,8 +508,8 @@ export default function Mascot() {
             >
                 {/* Pop-out Arrow (Visible when tucked) */}
                 {!isBubbleVisible && (
-                    <div className="absolute -right-12 top-1/2 -translate-y-1/2 text-green-500 hover:text-green-400 transition-colors animate-pulse p-4">
-                        <i className="fas fa-chevron-right text-2xl drop-shadow-sm"></i>
+                    <div className="absolute -right-20 top-1/2 -translate-y-1/2 text-[#4ade80] hover:text-[#22c55e] transition-colors animate-pulse p-6 cursor-pointer">
+                        <i className="fas fa-chevron-right text-3xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"></i>
                     </div>
                 )}
                 <div className="w-full h-full drop-shadow-xl flex items-center justify-center">

@@ -1,12 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { JEEPNEY_ROUTES } from '../constants';
+import { fetchJeepneyRoutes } from '../services/apiService';
 import { JeepneyRoute } from '../types';
 import AnimatedElement from './AnimatedElement';
 
 const JeepneyRouteNavigator: React.FC = () => {
+    const [routes, setRoutes] = useState<JeepneyRoute[]>(JEEPNEY_ROUTES);
     const [selectedRoute, setSelectedRoute] = useState<JeepneyRoute>(JEEPNEY_ROUTES[0]);
     const [mapView, setMapView] = useState<'terminal' | 'route'>('route');
     const [isReversed, setIsReversed] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadRoutes = async () => {
+            try {
+                const apiRoutes = await fetchJeepneyRoutes();
+                if (apiRoutes && apiRoutes.length > 0) {
+                    setRoutes(apiRoutes);
+                    setSelectedRoute(apiRoutes[0]);
+                }
+            } catch (err) {
+                console.error("Failed to load jeepney routes", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadRoutes();
+    }, []);
 
     const handleRouteSelect = (route: JeepneyRoute) => {
         setSelectedRoute(route);
@@ -59,11 +79,11 @@ const JeepneyRouteNavigator: React.FC = () => {
                 <div className="w-full lg:w-1/3 border-r border-slate-200 bg-slate-50 flex flex-col overflow-hidden">
                     <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Select Route</p>
-                        <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{JEEPNEY_ROUTES.length} Routes</span>
+                        <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{routes.length} Routes</span>
                     </div>
                     
                     <div className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-3 max-h-[400px] lg:max-h-none bg-slate-50/50 shadow-inner">
-                        {JEEPNEY_ROUTES.map((route) => {
+                        {routes.map((route) => {
                             const isActive = selectedRoute.name === route.name;
                             const buttonBase = "w-full text-left p-4 rounded-2xl transition-all border-2 flex items-center gap-4 group relative overflow-hidden";
                             const buttonActive = isActive 
@@ -168,7 +188,10 @@ const JeepneyRouteNavigator: React.FC = () => {
                                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Fare (Min)</p>
                                     <p className="text-xl font-black text-slate-900">₱{selectedRoute.fare.minimum}</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Full: ₱{selectedRoute.fare.fullRoute}</p>
+                                    <div className="flex flex-wrap gap-2 mt-1">
+                                        <p className="text-[10px] text-slate-500">Student/Senior: <span className="font-bold text-lt-blue">₱{selectedRoute.fare.studentSenior}</span></p>
+                                        <p className="text-[10px] text-slate-500">Full: <span className="font-bold text-slate-700">₱{selectedRoute.fare.fullRoute}</span></p>
+                                    </div>
                                 </div>
                             </div>
 

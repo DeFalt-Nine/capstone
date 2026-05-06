@@ -22,6 +22,7 @@ import reportsRoutes from './backend/routes/reports.js';
 import siteSettingsRoutes from './backend/routes/siteSettings.js';
 import adminLogsRoutes from './backend/routes/adminLogs.js';
 import aiRoutes from './backend/routes/ai.js';
+import jeepneyRoutes from './backend/routes/jeepneyRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -62,6 +63,7 @@ async function startServer() {
   app.use('/api/reports', ensureDbConnection, reportsRoutes);
   app.use('/api/site-settings', ensureDbConnection, siteSettingsRoutes);
   app.use('/api/admin-logs', ensureDbConnection, adminLogsRoutes);
+  app.use('/api/jeepney-routes', ensureDbConnection, jeepneyRoutes);
   app.use('/api/ai', aiRoutes);
   
   // 404 for API routes

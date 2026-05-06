@@ -611,9 +611,9 @@ const VisitorInfoPage: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Jeepney Route Navigator */}
-                                    <JeepneyRouteNavigator />
-                                </div>
+                                     {/* Jeepney Route Navigator */}
+                                     <JeepneyRouteNavigator />
+                                  </div>
 
                                 {/* Smart Estimator Tool - Col 3 */}
                                 <div className="lg:col-span-1">

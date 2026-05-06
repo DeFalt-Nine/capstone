@@ -237,6 +237,71 @@ const HomePage: React.FC = () => {
                 </div>
             </section>
 
+            {/* --- Blog Teaser Section --- */}
+            <section className="py-24 bg-white">
+                <div className="container mx-auto px-4">
+                    <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
+                        <div className="max-w-2xl">
+                            <span className="text-lt-orange font-black uppercase tracking-widest text-[10px]">Travel Stories</span>
+                            <h2 className="text-4xl font-bold text-slate-900 mt-2">Tales from the Valley</h2>
+                            <p className="text-slate-500 mt-4 leading-relaxed">Discover personal experiences and local secrets from those who explored La Trinidad.</p>
+                        </div>
+                        <button 
+                            onClick={() => navigate('/blog')}
+                            className="text-lt-orange font-bold flex items-center gap-2 hover:text-lt-red transition-all group pb-1 border-b-2 border-slate-100 hover:border-lt-red"
+                        >
+                            View More Archive <i className="fas fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {[
+                            {
+                                title: "Choosing Your Strawberry Picking Basket",
+                                description: "A guide to getting the most out of your farm visit this season.",
+                                image: "https://images.unsplash.com/photo-1594270433722-5b18f50b4a48?q=80&w=800",
+                                author: "Local Guide",
+                                date: "Feb 12, 2024"
+                            },
+                            {
+                                title: "Hidden Coffee Spots of Puguis",
+                                description: "Escape the crowds and find peace in these mountain-view cafes.",
+                                image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=800",
+                                author: "Coffee Lover",
+                                date: "Jan 28, 2024"
+                            },
+                            {
+                                title: "The Colors of Stobosa: A Photo Journey",
+                                description: "Capturing the world's first and largest community mural project.",
+                                image: "https://images.unsplash.com/photo-1627346850259-33b6833eb882?q=80&w=800",
+                                author: "Art Enthusiast",
+                                date: "Jan 15, 2024"
+                            }
+                        ].map((post, i) => (
+                            <AnimatedElement key={i} delay={i * 100} direction="up">
+                                <div 
+                                    className="group cursor-pointer"
+                                    onClick={() => navigate('/blog')}
+                                >
+                                    <div className="relative aspect-[4/3] rounded-3xl overflow-hidden mb-4 shadow-lg border border-slate-100">
+                                        <img src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    </div>
+                                    <div className="px-2">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{post.date}</span>
+                                            <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                            <span className="text-[10px] font-black text-lt-orange uppercase tracking-widest">{post.author}</span>
+                                        </div>
+                                        <h3 className="text-xl font-bold text-slate-800 line-clamp-2 group-hover:text-lt-orange transition-colors">{post.title}</h3>
+                                    </div>
+                                </div>
+                            </AnimatedElement>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
             {/* --- CTA Section --- */}
             <section className="py-20 bg-white overflow-hidden">
                 <div className="container mx-auto px-4">

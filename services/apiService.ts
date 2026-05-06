@@ -60,7 +60,7 @@ const safeFetch = async (url: string, options?: RequestInit) => {
         return handleResponse(response);
     } catch (error: any) {
         if (error.message.includes('Failed to fetch')) {
-            throw new Error("Cannot connect to backend. Please ensure the backend server is running on port 5000.");
+            throw new Error("Cannot connect to backend. Please ensure the server is running.");
         }
         throw error;
     }
@@ -305,6 +305,10 @@ export const fetchAdminLogs = async (): Promise<AdminLog[]> => {
     return safeFetch(`${API_BASE}/api/admin-logs`, {
         headers: getHeaders()
     });
+};
+
+export const fetchJeepneyRoutes = async (): Promise<any[]> => {
+    return safeFetch(`${API_BASE}/api/jeepney-routes`);
 };
 
 export const fetchSiteSettings = async () => {

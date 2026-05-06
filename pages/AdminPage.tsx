@@ -12,7 +12,8 @@ import {
     markReviewAsSeen,
     markReviewAsResolved,
     markReportAsSeen,
-    markBlogPostAsSeen
+    markBlogPostAsSeen,
+    fetchJeepneyRoutes
 } from '../services/apiService';
 import AlertModal from '../components/AlertModal';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -27,6 +28,7 @@ const TABS = [
     { id: 'events', label: 'Events', icon: 'fa-calendar-alt' },
     { id: 'reports', label: 'Reports', icon: 'fa-flag', badge: 'reports' },
     { id: 'site-settings', label: 'Home/About', icon: 'fa-cog' },
+    { id: 'jeepney-routes', label: 'Jeepney Routes', icon: 'fa-bus' },
     { id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' },
     { id: 'activity-log', label: 'Activity Log', icon: 'fa-history' }
 ];
@@ -257,6 +259,7 @@ const AdminPage: React.FC = () => {
             else if (tab === 'blog-posts') result = await fetchBlogPosts('admin');
             else if (tab === 'events') result = await fetchLocalEvents();
             else if (tab === 'reports') result = await fetchReports();
+            else if (tab === 'jeepney-routes') result = await fetchJeepneyRoutes();
             else if (tab === 'analytics') {
                 result = await fetchAnalyticsSummary();
                 setAnalyticsSummary(result);
@@ -407,7 +410,17 @@ const formatDateRange = (start: string, end: string): string => {
     // ─── Unified entry point: everything opens the full-screen detail panel ───
    const openDetailPanel = (item: any | null, subView: 'info' | 'reviews' | 'edit') => {
     setEditItem(item || null);
-    setFormData(item ? { ...item } : {});
+    const initialData = item ? { ...item } : {};
+    
+    // Ensure nested structures exist for jeepney-routes
+    if (activeTab === 'jeepney-routes') {
+        if (!initialData.signboard) initialData.signboard = { text: '', color: '', backgroundColor: '' };
+        if (!initialData.terminal) initialData.terminal = { name: '', location: '' };
+        if (!initialData.fare) initialData.fare = { minimum: 14, studentSenior: 11, fullRoute: 20 };
+        if (!initialData.path) initialData.path = [];
+    }
+
+    setFormData(initialData);
     setFormError(null);
     setDetailItem(item);
     setDetailSubView(subView);
@@ -557,8 +570,10 @@ const formatDateRange = (start: string, end: string): string => {
         setFormError(null);
         try {
             const payload = { ...formData };
-            if (typeof payload.tags === 'string') payload.tags = payload.tags.split(',').map((t: string) => t.trim());
-            if (typeof payload.gallery === 'string') payload.gallery = payload.gallery.split(',').map((t: string) => t.trim());
+            if (activeTab === 'tourist-spots' || activeTab === 'dining-spots' || activeTab === 'blog-posts') {
+                if (typeof payload.tags === 'string') payload.tags = payload.tags.split(',').map((t: string) => t.trim());
+                if (typeof payload.gallery === 'string') payload.gallery = payload.gallery.split(',').map((t: string) => t.trim());
+            }
 
             if (editItem) {
                 const updated = await updateItem(activeTab, editItem._id, payload);
@@ -1377,28 +1392,174 @@ const formatDateRange = (start: string, end: string): string => {
         );
     };
 
-    const renderInput = (key: string, label: string, type: string = 'text', placeholder: string = ''): React.ReactElement => (
-        <div className="mb-4">
-            <label className="block text-sm font-bold text-slate-700 mb-1">{label}</label>
-            {type === 'textarea' ? (
-                <textarea 
-                    value={formData[key] || ''} 
-                    onChange={e => setFormData({...formData, [key]: e.target.value})}
-                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-lt-blue outline-none"
-                    rows={4}
-                    placeholder={placeholder}
-                />
-            ) : (
-                <input 
-                    type={type} 
-                    value={formData[key] || ''} 
-                    onChange={e => setFormData({...formData, [key]: e.target.value})}
-                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-lt-blue outline-none"
-                    placeholder={placeholder}
-                />
-            )}
-        </div>
-    );
+    const renderJeepneyPathEditor = () => {
+        const path = (formData.path as any[]) || [];
+
+        const addStop = () => {
+            const newPath = [...path, { stop: '', isLandmark: false, landmarkIcon: 'fas fa-map-marker-alt' }];
+            setFormData({ ...formData, path: newPath });
+        };
+
+        const removeStop = (index: number) => {
+            const newPath = path.filter((_, i) => i !== index);
+            setFormData({ ...formData, path: newPath });
+        };
+
+        const updateStop = (index: number, field: string, value: any) => {
+            const newPath = [...path];
+            newPath[index] = { ...newPath[index], [field]: value };
+            setFormData({ ...formData, path: newPath });
+        };
+
+        const moveStop = (index: number, direction: 'up' | 'down') => {
+            if (direction === 'up' && index === 0) return;
+            if (direction === 'down' && index === path.length - 1) return;
+            
+            const newPath = [...path];
+            const targetIndex = direction === 'up' ? index - 1 : index + 1;
+            const temp = newPath[index];
+            newPath[index] = newPath[targetIndex];
+            newPath[targetIndex] = temp;
+            setFormData({ ...formData, path: newPath });
+        };
+
+        return (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                <div className="flex justify-between items-center mb-2">
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Route Path & Stops</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Define the sequence of stops and highlight major landmarks.</p>
+                    </div>
+                    <button 
+                        type="button"
+                        onClick={addStop}
+                        className="bg-lt-blue text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-lt-blue/90 flex items-center gap-2 transition-all active:scale-95"
+                    >
+                        <i className="fas fa-plus-circle"></i>
+                        Add Stop
+                    </button>
+                </div>
+
+                <div className="space-y-3">
+                    {path.length === 0 && (
+                        <div className="py-10 text-center border-2 border-dashed border-slate-100 rounded-2xl">
+                            <i className="fas fa-route text-slate-200 text-3xl mb-2"></i>
+                            <p className="text-xs text-slate-400">No stops added yet. Click "Add Stop" to begin.</p>
+                        </div>
+                    )}
+                    
+                    {path.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 group animate-in slide-in-from-left-2 duration-300">
+                            {/* Reorder Buttons */}
+                            <div className="flex flex-col gap-1">
+                                <button type="button" onClick={() => moveStop(idx, 'up')} className="text-slate-400 hover:text-lt-blue disabled:opacity-20" disabled={idx === 0}>
+                                    <i className="fas fa-chevron-up text-[10px]"></i>
+                                </button>
+                                <button type="button" onClick={() => moveStop(idx, 'down')} className="text-slate-400 hover:text-lt-blue disabled:opacity-20" disabled={idx === path.length - 1}>
+                                    <i className="fas fa-chevron-down text-[10px]"></i>
+                                </button>
+                            </div>
+
+                            <div className="flex-grow grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
+                                <div className="md:col-span-2">
+                                    <input 
+                                        type="text" 
+                                        value={item.stop} 
+                                        onChange={(e) => updateStop(idx, 'stop', e.target.value)}
+                                        placeholder="Stop Name (e.g. Km. 4 Tiong San)"
+                                        className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-lt-blue outline-none"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="checkbox" 
+                                        id={`landmark-${idx}`}
+                                        checked={item.isLandmark} 
+                                        onChange={(e) => updateStop(idx, 'isLandmark', e.target.checked)}
+                                        className="w-4 h-4 text-lt-blue border-slate-300 rounded focus:ring-lt-blue"
+                                    />
+                                    <label htmlFor={`landmark-${idx}`} className="text-xs font-bold text-slate-600 cursor-pointer">Landmark?</label>
+                                </div>
+                                {item.isLandmark && (
+                                    <div className="relative">
+                                        <i className={`absolute left-3 top-1/2 -translate-y-1/2 ${item.landmarkIcon || 'fas fa-star'} text-[10px] text-lt-blue`}></i>
+                                        <input 
+                                            type="text" 
+                                            value={item.landmarkIcon} 
+                                            onChange={(e) => updateStop(idx, 'landmarkIcon', e.target.value)}
+                                            placeholder="fa-icon"
+                                            className="w-full p-2 pl-8 bg-white border border-slate-200 rounded-lg text-[10px] font-mono focus:ring-2 focus:ring-lt-blue outline-none"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <button 
+                                type="button"
+                                onClick={() => removeStop(idx)}
+                                className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                            >
+                                <i className="fas fa-trash-alt text-[10px]"></i>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const renderInput = (key: string, label: string, type: string = 'text', placeholder: string = ''): React.ReactElement => {
+        // Support nested property access like 'signboard.text'
+        const getValue = (obj: any, path: string) => {
+            return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+        };
+
+        const updateValue = (obj: any, path: string, value: any) => {
+            const keys = path.split('.');
+            const newObj = { ...obj };
+            let current = newObj;
+            for (let i = 0; i < keys.length - 1; i++) {
+                current[keys[i]] = { ...current[keys[i]] };
+                current = current[keys[i]];
+            }
+            current[keys[keys.length - 1]] = value;
+            return newObj;
+        };
+
+        const value = getValue(formData, key) || '';
+        
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+            const val = e.target.value;
+            if (key.includes('.')) {
+                setFormData(updateValue(formData, key, val));
+            } else {
+                setFormData({ ...formData, [key]: val });
+            }
+        };
+
+        return (
+            <div className="mb-4">
+                <label className="block text-sm font-bold text-slate-700 mb-1 tracking-tight">{label}</label>
+                {type === 'textarea' ? (
+                    <textarea 
+                        value={value} 
+                        onChange={handleChange}
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-lt-blue focus:bg-white outline-none transition-all text-sm"
+                        rows={4}
+                        placeholder={placeholder}
+                    />
+                ) : (
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={handleChange}
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-lt-blue focus:bg-white outline-none transition-all text-sm"
+                        placeholder={placeholder}
+                    />
+                )}
+            </div>
+        );
+    };
 
     const renderGalleryInput = (label: string): React.ReactElement => {
         const gallery = formData.gallery || [];
@@ -1759,6 +1920,71 @@ const formatDateRange = (start: string, end: string): string => {
                                             {renderInput('openingHours', 'Business Hours', 'text', 'e.g., 8:00 AM - 5:00 PM')}
                                         </div>
                                         {renderInput('bestTimeToVisit', 'Best Visit Time', 'text', 'e.g., November to April')}
+                                    </div>
+                                )}
+
+                                {activeTab === 'jeepney-routes' && (
+                                    <div className="space-y-6">
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Signboard Style</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                {renderInput('signboard.text', 'Signboard Text', 'text', 'e.g. KM. 4 - KM. 5')}
+                                                {renderInput('signboard.backgroundColor', 'Background Color', 'text', 'e.g. bg-white or hex')}
+                                                {renderInput('signboard.color', 'Text Color', 'text', 'e.g. text-red-600 or hex')}
+                                            </div>
+                                            <div className="p-4 bg-slate-50 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase mb-3">Live Signboard Preview</p>
+                                                <div 
+                                                    className="px-6 py-3 rounded-xl border-4 border-slate-800 shadow-2xl transform -rotate-1 min-w-[200px] flex items-center justify-center"
+                                                    style={{ 
+                                                        backgroundColor: (formData.signboard as any)?.backgroundColor?.startsWith('bg-') ? '' : (formData.signboard as any)?.backgroundColor || '#fff'
+                                                    }}
+                                                >
+                                                    <h3 
+                                                        className={`text-xl font-black tracking-tighter text-center ${(formData.signboard as any)?.color?.startsWith('text-') ? (formData.signboard as any)?.color : ''}`}
+                                                        style={{
+                                                            color: (formData.signboard as any)?.color?.startsWith('text-') ? '' : (formData.signboard as any)?.color || '#000'
+                                                        }}
+                                                    >
+                                                        {(formData.signboard as any)?.text || 'SIGNBOARD PREVIEW'}
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Terminal & Route Info</p>
+                                                <span className="text-[9px] font-bold text-lt-blue px-2 py-0.5 bg-lt-blue/10 rounded-full italic">Required for navigator displays</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {renderInput('terminal.name', 'Terminal Name', 'text', 'e.g. Magsaysay Terminal')}
+                                                {renderInput('terminal.location', 'Terminal Location (Text)', 'text', 'e.g. Near Baguio Center Mall')}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {renderInput('terminal.mapUrl', 'Terminal Map Embed URL', 'text', 'https://maps.google.com/...')}
+                                                {renderInput('routeMapUrl', 'Full Route Embed/Link URL', 'text', 'https://maps.google.com/...')}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {renderInput('operatingHours', 'Operating Hours', 'text', 'e.g. 5:00 AM - 9:00 PM')}
+                                                {renderInput('frequency', 'Frequency', 'text', 'e.g. Every 10-15 mins')}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Fare Configuration</p>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                {renderInput('fare.minimum', 'Minimum Fare (Normal)', 'number', '14')}
+                                                {renderInput('fare.studentSenior', 'Student/Senior Fare', 'number', '11')}
+                                                {renderInput('fare.fullRoute', 'Full Route Fare', 'number', '25')}
+                                            </div>
+                                            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center gap-3">
+                                                <i className="fas fa-info-circle text-blue-500"></i>
+                                                <p className="text-[10px] text-blue-800 font-medium">Fares are strictly follow LTFRB regulations. Enter numeric values only.</p>
+                                            </div>
+                                        </div>
+
+                                        {renderJeepneyPathEditor()}
                                     </div>
                                 )}
 
@@ -2180,14 +2406,26 @@ const formatDateRange = (start: string, end: string): string => {
                                                                     className="hover:bg-lt-blue/[0.02] transition-colors group cursor-pointer"
                                                                     onClick={() => handleOpenDetailModal(item)}
                                                                 >
-                                                                {activeTab !== 'reports' && (
+                                                                 {activeTab !== 'reports' && (
                                                                     <td className="p-4" onClick={e => e.stopPropagation()}>
-                                                                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-sm relative group/thumb">
-                                                                            <img src={item.image} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                                                                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white text-xs">
-                                                                                <i className="fas fa-expand"></i>
+                                                                        {activeTab === 'jeepney-routes' ? (
+                                                                            <div 
+                                                                                className="w-16 h-10 rounded-lg flex items-center justify-center text-[8px] font-black uppercase text-center p-1 shadow-sm border border-slate-200"
+                                                                                style={{ 
+                                                                                    backgroundColor: item.signboard?.backgroundColor || '#000',
+                                                                                    color: item.signboard?.color || '#fff'
+                                                                                }}
+                                                                            >
+                                                                                {item.signboard?.text}
                                                                             </div>
-                                                                        </div>
+                                                                        ) : (
+                                                                            <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-sm relative group/thumb">
+                                                                                <img src={item.image} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                                                                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white text-xs">
+                                                                                    <i className="fas fa-expand"></i>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
                                                                     </td>
                                                                 )}
                                                                 
@@ -2225,9 +2463,15 @@ const formatDateRange = (start: string, end: string): string => {
                                                                                 <div className="font-black text-slate-900 text-sm group-hover:text-lt-blue transition-colors truncate tracking-tight">{item.name || item.title}</div>
                                                                                 <div className="flex items-center gap-2 mt-1">
                                                                                     <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 text-slate-500 rounded-md border border-slate-100 text-[10px] font-bold">
-                                                                                        <i className="fas fa-map-marker-alt text-[8px] opacity-70"></i>
-                                                                                        {item.location || item.date || 'No meta provided'}
+                                                                                        <i className={`fas ${activeTab === 'jeepney-routes' ? 'fa-bus' : 'fa-map-marker-alt'} text-[8px] opacity-70`}></i>
+                                                                                        {activeTab === 'jeepney-routes' ? `Terminal: ${item.terminal?.name}` : (item.location || item.date || 'No meta provided')}
                                                                                     </div>
+                                                                                    {activeTab === 'jeepney-routes' && (
+                                                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-100 text-[10px] font-bold">
+                                                                                            <i className="fas fa-money-bill-wave text-[8px] opacity-70"></i>
+                                                                                            ₱{item.fare?.minimum} / ₱{item.fare?.fullRoute}
+                                                                                        </div>
+                                                                                    )}
                                                                                 </div>
                                                                             </div>
                                                                         </div>
