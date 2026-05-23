@@ -5,7 +5,6 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { createServer as createViteServer } from 'vite';
 
 // Backend logic imports - Pointing into the backend folder
 import authRoutes from './backend/routes/auth.js';
@@ -79,13 +78,17 @@ app.use('/uploads', express.static(uploadDir));
 
 // Vite middleware for development
 if (process.env.NODE_ENV !== 'production') {
-  createViteServer({
-    server: { middlewareMode: true },
-    appType: 'spa',
-  }).then((vite) => {
-    app.use(vite.middlewares);
+  import('vite').then(({ createServer }) => {
+    createServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    }).then((vite) => {
+      app.use(vite.middlewares);
+    }).catch((err) => {
+      console.error('Failed to create Vite server middleware:', err);
+    });
   }).catch((err) => {
-    console.error('Failed to create Vite server middleware:', err);
+    console.error('Failed to import Vite:', err);
   });
 } else {
   // Production: serve static files from dist
