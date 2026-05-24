@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchUserBlogPosts, fetchUserReviews } from '../services/apiService';
 import { BlogPost, Review } from '../types';
@@ -15,11 +17,21 @@ interface UserReview extends Review {
 
 const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
   const { user, getDisplayName } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'blogs' | 'reviews' | 'notifications'>('blogs');
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Lock body scroll when dashboard is open
+  useEffect(() => {
+    const originalStyle = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -69,59 +81,61 @@ const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
       status: blog.status
     }));
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 bg-slate-900/60 z-[99999] flex items-center justify-center p-2 sm:p-4 backdrop-blur-sm animate-fade-in overflow-y-auto" onClick={onClose}>
       <div 
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col animate-slide-up border border-slate-200 overflow-hidden" 
+        className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-4xl h-[90vh] sm:h-[85vh] max-h-[850px] flex flex-col animate-slide-up border border-slate-200 overflow-hidden my-auto" 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-lt-blue px-8 py-6 flex justify-between items-center text-white flex-shrink-0">
-          <div className="flex items-center gap-4">
+        <div className="bg-lt-blue px-4 py-4 sm:px-8 sm:py-6 flex justify-between items-center text-white flex-shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4">
             <img 
               src={user?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName())}`} 
               alt="" 
-              className="w-12 h-12 rounded-full border-2 border-white/30 shadow-lg"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white/30 shadow-lg object-cover"
             />
             <div>
-              <h2 className="font-bold text-2xl tracking-tight">My Dashboard</h2>
-              <p className="text-white/70 text-sm font-medium">Welcome back, {getDisplayName()}</p>
+              <h2 className="font-bold text-lg sm:text-2xl tracking-tight">My Dashboard</h2>
+              <p className="text-white/70 text-xs sm:text-sm font-medium truncate max-w-[200px] sm:max-w-none">Welcome back, {getDisplayName()}</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors border border-white/10">
-            <i className="fas fa-times"></i>
+          <button 
+            onClick={onClose} 
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 active:bg-white/35 transition-all border border-white/20 text-white shadow-sm"
+            aria-label="Close"
+          >
+            <i className="fas fa-times text-lg"></i>
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="bg-slate-50 px-8 border-b border-slate-200 flex-shrink-0">
-          <div className="flex gap-8">
-            <button 
-              onClick={() => setActiveTab('blogs')}
-              className={`py-4 text-sm font-bold transition-all relative ${activeTab === 'blogs' ? 'text-lt-blue' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              My Blogs ({blogs.length})
-              {activeTab === 'blogs' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-lt-blue rounded-t-full"></div>}
-            </button>
-            <button 
-              onClick={() => setActiveTab('reviews')}
-              className={`py-4 text-sm font-bold transition-all relative ${activeTab === 'reviews' ? 'text-lt-blue' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              My Reviews ({reviews.length})
-              {activeTab === 'reviews' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-lt-blue rounded-t-full"></div>}
-            </button>
-            <button 
-              onClick={() => setActiveTab('notifications')}
-              className={`py-4 text-sm font-bold transition-all relative ${activeTab === 'notifications' ? 'text-lt-blue' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              Notifications {notifications.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-lt-red text-white text-[10px] rounded-full">{notifications.length}</span>}
-              {activeTab === 'notifications' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-lt-blue rounded-t-full"></div>}
-            </button>
-          </div>
+        <div className="bg-slate-50 px-4 sm:px-8 border-b border-slate-200 flex-shrink-0 overflow-x-auto whitespace-nowrap scrollbar-none flex gap-6 sm:gap-8">
+          <button 
+            onClick={() => setActiveTab('blogs')}
+            className={`py-3 sm:py-4 text-xs sm:text-sm font-bold transition-all relative ${activeTab === 'blogs' ? 'text-lt-blue font-extrabold' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            My Stories & Blogs ({blogs.length})
+            {activeTab === 'blogs' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-lt-blue rounded-t-full"></div>}
+          </button>
+          <button 
+            onClick={() => setActiveTab('reviews')}
+            className={`py-3 sm:py-4 text-xs sm:text-sm font-bold transition-all relative ${activeTab === 'reviews' ? 'text-lt-blue font-extrabold' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            My Comments & Reviews ({reviews.length})
+            {activeTab === 'reviews' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-lt-blue rounded-t-full"></div>}
+          </button>
+          <button 
+            onClick={() => setActiveTab('notifications')}
+            className={`py-3 sm:py-4 text-xs sm:text-sm font-bold transition-all relative ${activeTab === 'notifications' ? 'text-lt-blue font-extrabold' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Notifications {notifications.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-lt-red text-white text-[10px] rounded-full">{notifications.length}</span>}
+            {activeTab === 'notifications' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-lt-blue rounded-t-full"></div>}
+          </button>
         </div>
 
         {/* Content */}
-        <div className="flex-grow overflow-y-auto p-8 bg-white custom-scrollbar">
+        <div className="flex-grow overflow-y-auto p-4 sm:p-8 bg-white custom-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-4">
               <i className="fas fa-circle-notch fa-spin text-4xl text-lt-blue"></i>
@@ -138,16 +152,41 @@ const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
               {activeTab === 'blogs' && (
                 <div className="space-y-6">
                   {blogs.length === 0 ? (
-                    <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-                      <i className="fas fa-feather-alt text-4xl text-slate-200 mb-4"></i>
-                      <p className="text-slate-500 font-medium">You haven't shared any stories yet.</p>
+                    <div className="text-center py-10 px-4 sm:py-16 bg-slate-50 rounded-2xl sm:rounded-3xl border border-dashed border-slate-200">
+                      <div className="w-16 h-16 bg-blue-50 text-lt-blue rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <i className="fas fa-feather-alt text-2xl"></i>
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-base sm:text-lg mb-1">No stories shared yet</h4>
+                      <p className="text-slate-500 max-w-md mx-auto text-xs sm:text-sm mb-6 leading-relaxed">
+                        You have not posted any community stories or blogs yet. Share your unique experiences, travel journals, and adventures in La Trinidad!
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                        <button 
+                          onClick={() => {
+                            onClose();
+                            navigate('/blog#write-story');
+                            setTimeout(() => {
+                              window.dispatchEvent(new CustomEvent('open-blog-submission'));
+                            }, 100);
+                          }}
+                          className="px-5 py-2.5 bg-lt-blue hover:bg-lt-blue/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-lt-blue/20 flex items-center gap-2"
+                        >
+                          <i className="fas fa-plus"></i> Write a Story / Blog Post
+                        </button>
+                        <button 
+                          onClick={onClose}
+                          className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                        >
+                          Close Dashboard
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {blogs.map(blog => (
                         <div key={blog._id} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col">
                           <div className="h-40 relative overflow-hidden">
-                            <img src={blog.image} alt={blog.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                            <img src={blog.image} alt={blog.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
                             <div className="absolute top-3 right-3">
                               {getStatusBadge(blog.status)}
                             </div>
@@ -177,16 +216,38 @@ const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
               {activeTab === 'reviews' && (
                 <div className="space-y-4">
                   {reviews.length === 0 ? (
-                    <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-                      <i className="fas fa-star text-4xl text-slate-200 mb-4"></i>
-                      <p className="text-slate-500 font-medium">You haven't posted any reviews yet.</p>
+                    <div className="text-center py-10 px-4 sm:py-16 bg-slate-50 rounded-2xl sm:rounded-3xl border border-dashed border-slate-200">
+                      <div className="w-16 h-16 bg-orange-50 text-lt-orange rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <i className="fas fa-comment shadow-sm text-2xl"></i>
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-base sm:text-lg mb-1">No comments or reviews yet</h4>
+                      <p className="text-slate-500 max-w-md mx-auto text-xs sm:text-sm mb-6 leading-relaxed">
+                        You have not posted any comments, ratings, or feedback on any spots yet. Explore our tourist attractions and dining spots to share your thoughts!
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                        <button 
+                          onClick={() => {
+                            onClose();
+                            navigate('/tourist-spots');
+                          }}
+                          className="px-5 py-2.5 bg-lt-orange hover:bg-lt-orange/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-lt-orange/20 flex items-center gap-2"
+                        >
+                          <i className="fas fa-search"></i> Explore Spots to Review
+                        </button>
+                        <button 
+                          onClick={onClose}
+                          className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                        >
+                          Close Dashboard
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     reviews.map(review => (
-                      <div key={review._id} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-lt-blue/30 transition-colors shadow-sm">
+                      <div key={review._id} className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 hover:border-lt-blue/30 transition-colors shadow-sm">
                         <div className="flex justify-between items-start mb-4">
                           <div>
-                            <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                            <h4 className="font-bold text-slate-800 flex items-center gap-2 text-sm sm:text-base">
                               <i className={`fas ${review.spotType === 'tourist' ? 'fa-mountain text-lt-blue' : 'fa-utensils text-lt-orange'} text-xs`}></i>
                               {review.spotName}
                             </h4>
@@ -200,9 +261,9 @@ const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
                         </div>
                         <p className="text-sm text-slate-600 italic leading-relaxed">"{review.comment}"</p>
                         {review.images && review.images.length > 0 && (
-                          <div className="flex gap-2 mt-4">
+                          <div className="flex gap-2 mt-4 overflow-x-auto py-1">
                             {review.images.map((img, i) => (
-                              <img key={i} src={img} alt="" className="w-12 h-12 rounded-lg object-cover border border-slate-100" />
+                              <img key={i} src={img} alt="" className="w-12 h-12 rounded-lg object-cover border border-slate-100 flex-shrink-0" referrerPolicy="no-referrer" />
                             ))}
                           </div>
                         )}
@@ -215,19 +276,30 @@ const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
               {activeTab === 'notifications' && (
                 <div className="space-y-4">
                   {notifications.length === 0 ? (
-                    <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-                      <i className="fas fa-bell-slash text-4xl text-slate-200 mb-4"></i>
-                      <p className="text-slate-500 font-medium">No new notifications.</p>
+                    <div className="text-center py-10 px-4 sm:py-16 bg-slate-50 rounded-2xl sm:rounded-3xl border border-dashed border-slate-200">
+                      <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <i className="fas fa-bell-slash text-2xl"></i>
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-base sm:text-lg mb-1">No updates or notifications</h4>
+                      <p className="text-slate-500 max-w-md mx-auto text-xs sm:text-sm mb-6 leading-relaxed">
+                        You're all caught up! Once you submit blog posts or stories, updates about approval or admin reviews will appear here.
+                      </p>
+                      <button 
+                        onClick={onClose}
+                        className="px-5 py-2.5 bg-slate-2200 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                      >
+                        Close Dashboard
+                      </button>
                     </div>
                   ) : (
                     notifications.map((notif, idx) => (
-                      <div key={idx} className={`p-6 rounded-2xl border flex gap-4 items-start ${notif.status === 'approved' ? 'bg-green-50 border-green-100' : notif.status === 'rejected' ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'}`}>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${notif.status === 'approved' ? 'bg-white text-green-500' : notif.status === 'rejected' ? 'bg-white text-red-500' : 'bg-white text-blue-500'}`}>
-                          <i className={`fas ${notif.status === 'approved' ? 'fa-check' : notif.status === 'rejected' ? 'fa-times' : 'fa-info'}`}></i>
+                      <div key={idx} className={`p-4 sm:p-6 rounded-2xl border flex gap-3 sm:gap-4 items-start ${notif.status === 'approved' ? 'bg-green-50/70 border-green-100' : notif.status === 'rejected' ? 'bg-red-50/70 border-red-100' : 'bg-blue-50/70 border-blue-100'}`}>
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${notif.status === 'approved' ? 'bg-white text-green-500' : notif.status === 'rejected' ? 'bg-white text-red-500' : 'bg-white text-blue-500'}`}>
+                          <i className={`fas ${notif.status === 'approved' ? 'fa-check' : notif.status === 'rejected' ? 'fa-times' : 'fa-info'} text-xs sm:text-sm`}></i>
                         </div>
                         <div>
-                          <h4 className="font-bold text-slate-800 text-sm mb-1">{notif.title}</h4>
-                          <p className="text-xs text-slate-600 leading-relaxed">{notif.message}</p>
+                          <h4 className="font-bold text-slate-800 text-xs sm:text-sm mb-1">{notif.title}</h4>
+                          <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">{notif.message}</p>
                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-3">{notif.date}</p>
                         </div>
                       </div>
@@ -239,7 +311,8 @@ const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

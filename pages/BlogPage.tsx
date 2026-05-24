@@ -17,6 +17,25 @@ const BlogPage: React.FC = () => {
   const postsPerPage = 9;
 
   useEffect(() => {
+    const handleOpenSubmission = () => {
+      setIsSubmissionOpen(true);
+    };
+
+    window.addEventListener('open-blog-submission', handleOpenSubmission);
+
+    // Initial check for hash or event instruction
+    if (window.location.hash === '#write-story') {
+      setIsSubmissionOpen(true);
+      // Clean up hash so it doesn't trigger repeatedly on reload
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    return () => {
+      window.removeEventListener('open-blog-submission', handleOpenSubmission);
+    };
+  }, []);
+
+  useEffect(() => {
     const getPosts = async () => {
       try {
         const data = await fetchBlogPosts();
