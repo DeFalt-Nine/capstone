@@ -77,7 +77,7 @@ const BlogPostModal: React.FC<BlogPostModalProps> = ({ post, onClose }) => {
                         {post.author}
                     </span>
                     <span>&bull;</span>
-                    <span>{post.date}</span>
+                    <span>{post.date || new Date(post.created_at || '').toLocaleDateString()}</span>
                  </div>
              </div>
         </div>

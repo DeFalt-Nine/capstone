@@ -1,0 +1,477 @@
+{
+  "anonymous": {
+    "itinerary": {
+      "title": "La Trinidad: Strawberry Fields, Mountain Views & Garden Retreats (7-Day Budget Escape)",
+      "description": "Discover the 'Strawberry Capital of the Philippines' on this 7-day adventure. Immerse yourself in the vibrant culture, breathtaking nature, and delicious local flavors of La Trinidad, from blooming rose gardens to scenic mountain hikes, all while staying within a comfortable budget.",
+      "estimatedTotalCost": 6165,
+      "days": [
+        {
+          "dayNumber": 1,
+          "theme": "Cultural Immersion & Valley Flavors",
+          "activities": [
+            {
+              "time": "08:00 AM",
+              "activity": "Enjoy local breakfast",
+              "location": "Local Carinderia near accommodation",
+              "cost": 100,
+              "notes": "Start your day with a hearty Filipino breakfast like tapsilog or longsilog. Expect to pay around ₱100-₱120."
+            },
+            {
+              "time": "09:00 AM",
+              "activity": "Travel to Bell Church",
+              "location": "Bell Church (Km 3)",
+              "cost": 15,
+              "notes": "Take a jeepney from Km 5 (town proper) going towards Baguio (e.g., 'Plaza', 'Camp 7', 'Aurora Hill' routes) and alight at Bell Church. Fare is ₱15."
+            },
+            {
+              "time": "09:30 AM",
+              "activity": "Explore the serene Bell Church complex",
+              "location": "Bell Church",
+              "cost": 50,
+              "notes": "Wander through the beautifully intricate Taoist temple, admire the pagodas, and enjoy the tranquil gardens. Entry is free, but a small donation of ₱50 is welcome."
+            },
+            {
+              "time": "11:30 AM",
+              "activity": "Walk to Stobosa Mural",
+              "location": "Colors of Stobosa (Km 3)",
+              "cost": 0,
+              "notes": "From Bell Church, it's a short 5-10 minute walk to the 'Colors of Stobosa' mural art project. Enjoy the vibrant houses overlooking the valley."
+            },
+            {
+              "time": "12:30 PM",
+              "activity": "Lunch at a local eatery",
+              "location": "Local eatery near Stobosa/Km 3",
+              "cost": 180,
+              "notes": "Find a local carinderia or 'turo-turo' (point-point) restaurant for an affordable and authentic Filipino meal. Budget around ₱180 per meal."
+            },
+            {
+              "time": "02:00 PM",
+              "activity": "Travel back to Km 5 area",
+              "location": "La Trinidad Town Proper (Km 5)",
+              "cost": 15,
+              "notes": "Take a jeepney from Km 3 back to Km 5. Fare is ₱15."
+            },
+            {
+              "time": "02:30 PM",
+              "activity": "Browse local shops and enjoy a coffee break",
+              "location": "Km 5 Commercial District",
+              "cost": 120,
+              "notes": "Explore the commercial area. Grab a coffee or a local snack like 'palitaw' or 'kutsinta' from a street vendor or small café. Budget ₱120 for coffee/snack."
+            },
+            {
+              "time": "06:00 PM",
+              "activity": "Dinner at Sizzling Plate",
+              "location": "Sizzling Plate - Km 5",
+              "cost": 250,
+              "notes": "Indulge in their famous sizzling sisig or an affordable steak. A hearty meal will cost around ₱250."
+            },
+            {
+              "time": "07:30 PM",
+              "activity": "Return to accommodation",
+              "location": "Accommodation",
+              "cost": 15,
+              "notes": "A short jeepney ride if your accommodation is a bit further from Km 5. Fare is ₱15."
+            }
+          ]
+        },
+        {
+          "dayNumber": 2,
+          "theme": "Strawberry Sweetness & Town Exploration",
+          "activities": [
+            {
+              "time": "08:00 AM",
+              "activity": "Breakfast at a local eatery",
+              "location": "Local Carinderia",
+              "cost": 100,
+              "notes": "Another local breakfast to fuel your day. Budget ₱100."
+            },
+            {
+              "time": "09:00 AM",
+              "activity": "Travel to La Trinidad Strawberry Farm",
+              "location": "La Trinidad Strawberry Farm (Km 5)",
+              "cost": 15,
+              "notes": "From Km 5, take a short jeepney ride (e.g., 'Betag' route) or walk if your accommodation is nearby. Fare is ₱15."
+            },
+            {
+              "time": "09:30 AM",
+              "activity": "Explore the Strawberry Farm and try local treats",
+              "location": "La Trinidad Strawberry Farm",
+              "cost": 100,
+              "notes": "Walk through the strawberry fields, buy fresh produce, and don't miss trying strawberry taho or strawberry ice cream. Expect to spend around ₱100 for treats. Strawberry picking is an option (₱450-₱500/kg) if desired, but not included in this budget."
+            },
+            {
+              "time": "12:00 PM",
+              "activity": "Lunch at McDonald's",
+              "location": "McDonald's - Km. 5",
+              "cost": 200,
+              "notes": "Enjoy a familiar meal at the world-famous fast-food chain, conveniently located in the heart of the commercial district. Budget around ₱200 for a meal."
+            },
+            {
+              "time": "01:30 PM",
+              "activity": "Visit La Trinidad Public Market",
+              "location": "La Trinidad Public Market",
+              "cost": 200,
+              "notes": "Experience the bustling local market. Browse for fresh fruits, vegetables, and local delicacies. Budget ₱200 for small purchases/pasalubong."
+            },
+            {
+              "time": "03:30 PM",
+              "activity": "Relax at a local park or cafe",
+              "location": "La Trinidad Town Proper",
+              "cost": 120,
+              "notes": "Unwind after market shopping. Find a quiet spot or a cafe for some downtime. Budget ₱120 for a drink or light snack."
+            },
+            {
+              "time": "06:00 PM",
+              "activity": "Dinner at a local eatery",
+              "location": "Local eatery in Km 5",
+              "cost": 250,
+              "notes": "Try another local specialty. Many eateries offer affordable and delicious Filipino dishes. Budget ₱250 for dinner."
+            },
+            {
+              "time": "07:30 PM",
+              "activity": "Return to accommodation",
+              "location": "Accommodation",
+              "cost": 15,
+              "notes": "A quick jeepney ride if needed. Fare is ₱15."
+            }
+          ]
+        },
+        {
+          "dayNumber": 3,
+          "theme": "Bahong's Blooming Beauties",
+          "activities": [
+            {
+              "time": "08:00 AM",
+              "activity": "Breakfast at a local eatery",
+              "location": "Local Carinderia",
+              "cost": 100,
+              "notes": "Start your day with a budget-friendly breakfast, ₱100."
+            },
+            {
+              "time": "09:00 AM",
+              "activity": "Travel to Bahong Rose Gardens",
+              "location": "Barangay Bahong",
+              "cost": 25,
+              "notes": "Take a jeepney from La Trinidad Public Market specifically going to 'Bahong'. Fare is ₱25."
+            },
+            {
+              "time": "09:45 AM",
+              "activity": "Explore the 'Rose Capital of the Philippines'",
+              "location": "Bahong Rose Gardens",
+              "cost": 50,
+              "notes": "Walk through vast terraces of blooming roses, chrysanthemums, and anthuriums. A minimal environmental fee or donation of ₱50 may be requested."
+            },
+            {
+              "time": "12:00 PM",
+              "activity": "Lunch at a simple eatery in Bahong",
+              "location": "Local eatery in Bahong",
+              "cost": 150,
+              "notes": "Enjoy a simple and fresh meal in Bahong. Options might be limited, but you'll find carinderias offering home-cooked dishes. Budget ₱150."
+            },
+            {
+              "time": "01:30 PM",
+              "activity": "Travel back to La Trinidad town proper",
+              "location": "La Trinidad Town Proper (Km 5)",
+              "cost": 25,
+              "notes": "Take a jeepney from Bahong back to Km 5. Fare is ₱25."
+            },
+            {
+              "time": "02:30 PM",
+              "activity": "Visit Benguet State University",
+              "location": "Benguet State University (BSU)",
+              "cost": 50,
+              "notes": "Take a short walk around the BSU campus. You can visit their museum or gardens (if open) for a minimal fee of ₱50, or simply enjoy the academic atmosphere."
+            },
+            {
+              "time": "04:00 PM",
+              "activity": "Snack and refresh",
+              "location": "Km 5 Commercial District",
+              "cost": 80,
+              "notes": "Grab a light snack or cold drink from a convenience store or street vendor. Budget ₱80."
+            },
+            {
+              "time": "06:00 PM",
+              "activity": "Dinner at a local restaurant",
+              "location": "Local restaurant in La Trinidad",
+              "cost": 180,
+              "notes": "Explore more local dining options. Try a different carinderia or a 'silog' (rice and egg) place for dinner. Budget ₱180."
+            },
+            {
+              "time": "07:30 PM",
+              "activity": "Return to accommodation",
+              "location": "Accommodation",
+              "cost": 15,
+              "notes": "Short jeepney ride, ₱15."
+            }
+          ]
+        },
+        {
+          "dayNumber": 4,
+          "theme": "Mountaintop Views & Coffee Retreat",
+          "activities": [
+            {
+              "time": "06:30 AM",
+              "activity": "Early breakfast",
+              "location": "Local bakery or packed meal",
+              "cost": 80,
+              "notes": "Have a quick and early breakfast to prepare for your hike. Buy some pandesal and coffee, or grab a packed meal. Budget ₱80."
+            },
+            {
+              "time": "07:00 AM",
+              "activity": "Travel to Mount Kalugong jump-off point",
+              "location": "Puguis, La Trinidad",
+              "cost": 20,
+              "notes": "Take a jeepney from Km 5 heading towards 'Puguis'. Alight at the Puguis junction. Fare is ₱20."
+            },
+            {
+              "time": "07:30 AM",
+              "activity": "Tricycle ride to Mount Kalugong entrance",
+              "location": "Mount Kalugong Eco-Park",
+              "cost": 60,
+              "notes": "From Puguis junction, take a tricycle to the entrance of Mount Kalugong Eco-Park. Negotiate fare, around ₱60 (can be split if with others)."
+            },
+            {
+              "time": "07:45 AM",
+              "activity": "Hike and explore Mount Kalugong",
+              "location": "Mount Kalugong Eco-Park",
+              "cost": 100,
+              "notes": "Enjoy the scenic hike up to the peak and explore the unique rock formations. Entrance fee is ₱100."
+            },
+            {
+              "time": "10:15 AM",
+              "activity": "Coffee and snack with a view",
+              "location": "Mount Kalugong Kape-an",
+              "cost": 200,
+              "notes": "Reward yourself with freshly brewed Benguet Arabica coffee and a slice of carrot cake while enjoying panoramic views of La Trinidad Valley. Budget ₱200."
+            },
+            {
+              "time": "11:30 AM",
+              "activity": "Descend Mount Kalugong and travel back to town",
+              "location": "La Trinidad Town Proper (Km 5)",
+              "cost": 80,
+              "notes": "Walk back down to the main road. Take a tricycle (₱60) back to Puguis junction, then a jeepney (₱20) to Km 5."
+            },
+            {
+              "time": "01:00 PM",
+              "activity": "Late Lunch",
+              "location": "Local eatery in Km 5",
+              "cost": 200,
+              "notes": "A satisfying late lunch after your morning hike. Budget ₱200."
+            },
+            {
+              "time": "02:30 PM",
+              "activity": "Relax and unwind",
+              "location": "Accommodation or a quiet park",
+              "cost": 0,
+              "notes": "Take some free time to rest after the physical activity or simply relax at a park."
+            },
+            {
+              "time": "06:30 PM",
+              "activity": "Dinner at a budget-friendly spot",
+              "location": "Local restaurant",
+              "cost": 220,
+              "notes": "Find another local spot for dinner, perhaps trying a different type of cuisine like a mami/pares house. Budget ₱220."
+            },
+            {
+              "time": "08:00 PM",
+              "activity": "Return to accommodation",
+              "location": "Accommodation",
+              "cost": 15,
+              "notes": "Short jeepney ride home, ₱15."
+            }
+          ]
+        },
+        {
+          "dayNumber": 5,
+          "theme": "Gardens of the Cordilleras",
+          "activities": [
+            {
+              "time": "08:00 AM",
+              "activity": "Breakfast at a local eatery",
+              "location": "Local Carinderia",
+              "cost": 100,
+              "notes": "Quick and affordable local breakfast, ₱100."
+            },
+            {
+              "time": "09:00 AM",
+              "activity": "Travel to Mount Costa",
+              "location": "Mount Costa, Lamtang Road",
+              "cost": 40,
+              "notes": "Take a jeepney from Km 5 with the route 'Puguis-Buyagan-Longlong-Lamtang'. Ask the driver to drop you off at Mount Costa. Fare is ₱40."
+            },
+            {
+              "time": "10:00 AM",
+              "activity": "Explore the enchanting gardens of Mount Costa",
+              "location": "Mount Costa",
+              "cost": 350,
+              "notes": "Spend hours wandering through 24 beautifully landscaped gardens, including the Mirror Garden and Zen Garden. Entrance fee is ₱350 per adult."
+            },
+            {
+              "time": "01:00 PM",
+              "activity": "Lunch at Mount Costa Cafe",
+              "location": "Mount Costa Cafe",
+              "cost": 250,
+              "notes": "Enjoy a light and refreshing lunch at the cafe within Mount Costa. Budget around ₱250 for a meal and a drink."
+            },
+            {
+              "time": "03:00 PM",
+              "activity": "Continue enjoying the gardens or relax",
+              "location": "Mount Costa",
+              "cost": 0,
+              "notes": "Revisit your favorite garden or find a quiet spot to simply relax and enjoy the serene environment."
+            },
+            {
+              "time": "04:30 PM",
+              "activity": "Travel back to La Trinidad town",
+              "location": "La Trinidad Town Proper (Km 5)",
+              "cost": 40,
+              "notes": "Take a jeepney from Mount Costa back to Km 5. Fare is ₱40."
+            },
+            {
+              "time": "06:00 PM",
+              "activity": "Dinner in town",
+              "location": "Local eatery in La Trinidad",
+              "cost": 200,
+              "notes": "Dine at one of the many local eateries offering various Filipino dishes. Budget ₱200."
+            },
+            {
+              "time": "07:30 PM",
+              "activity": "Return to accommodation",
+              "location": "Accommodation",
+              "cost": 15,
+              "notes": "A final jeepney ride for the day, ₱15."
+            }
+          ]
+        },
+        {
+          "dayNumber": 6,
+          "theme": "Organic Farm Experience & Wellness",
+          "activities": [
+            {
+              "time": "08:00 AM",
+              "activity": "Breakfast at a local eatery",
+              "location": "Local Carinderia",
+              "cost": 100,
+              "notes": "Enjoy another budget-friendly breakfast, ₱100."
+            },
+            {
+              "time": "09:00 AM",
+              "activity": "Travel to Lily of the Valley Organic Farms",
+              "location": "Wangal, La Trinidad",
+              "cost": 20,
+              "notes": "Take a jeepney from Km 5 going towards 'Wangal'. Alight at the Wangal main road. Fare is ₱20."
+            },
+            {
+              "time": "09:30 AM",
+              "activity": "Tricycle ride to the farm",
+              "location": "Lily of the Valley Organic Farms",
+              "cost": 60,
+              "notes": "From Wangal main road, take a tricycle to the organic farm. Negotiate fare, around ₱60."
+            },
+            {
+              "time": "10:00 AM",
+              "activity": "Farm tour and learning about organic farming",
+              "location": "Lily of the Valley Organic Farms",
+              "cost": 150,
+              "notes": "Take a guided tour to learn about sustainable agriculture and organic farming practices. Entrance/tour fee is around ₱150."
+            },
+            {
+              "time": "12:00 PM",
+              "activity": "Enjoy a farm-to-table lunch",
+              "location": "Lily of the Valley Organic Farms",
+              "cost": 300,
+              "notes": "Savor fresh, healthy, and organic produce directly from the farm. Budget ₱300 for a satisfying meal."
+            },
+            {
+              "time": "01:30 PM",
+              "activity": "Relax and enjoy the farm surroundings",
+              "location": "Lily of the Valley Organic Farms",
+              "cost": 0,
+              "notes": "Spend some time enjoying the peaceful ambiance, perhaps try some fresh juices or browse their farm store."
+            },
+            {
+              "time": "03:30 PM",
+              "activity": "Travel back to La Trinidad town",
+              "location": "La Trinidad Town Proper (Km 5)",
+              "cost": 80,
+              "notes": "Take a tricycle (₱60) from the farm back to Wangal main road, then a jeepney (₱20) to Km 5."
+            },
+            {
+              "time": "04:30 PM",
+              "activity": "Souvenir shopping or free time",
+              "location": "Km 5 Commercial District",
+              "cost": 0,
+              "notes": "Use this time for last-minute souvenir shopping or simply unwind."
+            },
+            {
+              "time": "06:30 PM",
+              "activity": "Farewell dinner",
+              "location": "Local eatery",
+              "cost": 200,
+              "notes": "Enjoy a final dinner, perhaps revisiting your favorite local eatery or trying something new. Budget ₱200."
+            },
+            {
+              "time": "08:00 PM",
+              "activity": "Return to accommodation",
+              "location": "Accommodation",
+              "cost": 15,
+              "notes": "Short jeepney ride home, ₱15."
+            }
+          ]
+        },
+        {
+          "dayNumber": 7,
+          "theme": "Departure & Last-Minute Finds",
+          "activities": [
+            {
+              "time": "08:00 AM",
+              "activity": "Breakfast at a favorite local spot",
+              "location": "Local eatery",
+              "cost": 120,
+              "notes": "Enjoy a leisurely breakfast at your favorite carinderia or cafe. Budget ₱120."
+            },
+            {
+              "time": "09:00 AM",
+              "activity": "Last-minute souvenir shopping",
+              "location": "La Trinidad Public Market / Pasalubong Center",
+              "cost": 500,
+              "notes": "Stock up on souvenirs like strawberry jams, ube jam, peanut brittle, and local handicrafts. Budget ₱500 for various items."
+            },
+            {
+              "time": "11:00 AM",
+              "activity": "Relax and pack up",
+              "location": "Accommodation",
+              "cost": 0,
+              "notes": "Use this time to finalize packing and prepare for departure."
+            },
+            {
+              "time": "12:00 PM",
+              "activity": "Early Lunch / Brunch",
+              "location": "Local eatery",
+              "cost": 200,
+              "notes": "Have a satisfying last meal in La Trinidad. Budget ₱200."
+            },
+            {
+              "time": "01:30 PM",
+              "activity": "Travel to terminal for departure",
+              "location": "Bus terminal (La Trinidad or Baguio)",
+              "cost": 30,
+              "notes": "Take a jeepney or taxi to your departure terminal. If heading to Baguio's main terminal, a jeepney from Km 5 is about ₱15-₱20, or a taxi around ₱80-₱120. Budget ₱30 for a jeepney to the main La Trinidad jeepney terminal if connecting elsewhere."
+            }
+          ]
+        }
+      ],
+      "localTips": [
+        "Always opt for jeepneys for inter-town travel. They are the cheapest and most authentic way to get around La Trinidad. Don't hesitate to ask locals or drivers for directions; they are generally very helpful.",
+        "While the Strawberry Farm is iconic, explore the La Trinidad Public Market for more budget-friendly strawberry products, local vegetables, and other 'pasalubong' (souvenirs/gifts).",
+        "Dress in layers. La Trinidad, like Baguio, has cool weather, especially in the mornings and evenings. A light jacket or sweater is advisable.",
+        "Bargaining is generally not common in established shops and jeepney fares are fixed, but if buying handicrafts or fresh produce in markets, a little friendly negotiation might be possible."
+      ]
+    },
+    "updatedAt": "2026-06-28T08:16:44.106Z"
+  },
+  "alforick8@gmail.com": {
+    "itineraries": [],
+    "updatedAt": "2026-06-28T08:56:05.542Z"
+  }
+}

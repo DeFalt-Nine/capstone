@@ -6,13 +6,17 @@ import { fetchTouristSpots, fetchDiningSpots, trackEvent } from '../services/api
 import TouristSpotModal from '../components/TouristSpotModal';
 import StarRating from '../components/StarRating';
 import AnimatedElement from '../components/AnimatedElement';
+import AIItineraryPlanner from '../components/AIItineraryPlanner';
 
 const TOURIST_CATEGORIES = ['All', 'Nature', 'Culture', 'Agri-tourism', 'Art', 'Shopping'];
 const DINING_CATEGORIES = ['All', 'Local Favorite', 'Fast Food', 'Cafe'];
 
 const TouristSpotsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [viewMode, setViewMode] = useState<'tourist' | 'dining'>('tourist');
+  const [viewMode, setViewMode] = useState<'tourist' | 'dining'>(() => {
+    const tab = searchParams.get('tab');
+    return (tab === 'dining') ? 'dining' : 'tourist';
+  });
   const [selectedSpot, setSelectedSpot] = useState<TouristSpot | null>(null);
   const [items, setItems] = useState<TouristSpot[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -20,8 +24,21 @@ const TouristSpotsPage: React.FC = () => {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [isPlannerOpen, setIsPlannerOpen] = useState(false);
 
   const categories = viewMode === 'tourist' ? TOURIST_CATEGORIES : DINING_CATEGORIES;
+
+  // Sync viewMode if search tab parameter changes
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'itinerary') {
+      setIsPlannerOpen(true);
+    } else if (tab === 'dining') {
+      setViewMode('dining');
+    } else {
+      setViewMode('tourist');
+    }
+  }, [searchParams]);
 
   // Handle URL deep linking and search query
   useEffect(() => {
@@ -79,7 +96,24 @@ const TouristSpotsPage: React.FC = () => {
   const handleModeToggle = (mode: 'tourist' | 'dining') => {
       if (viewMode === mode) return;
       setViewMode(mode);
+      setSearchParams({ tab: mode }, { replace: true });
       trackEvent('click', 'mode_toggle', '/tourist-spots', { mode });
+  };
+
+  const handleOpenPlanner = () => {
+    setIsPlannerOpen(true);
+    setSearchParams({ tab: 'itinerary' }, { replace: true });
+    trackEvent('click', 'launch_planner_button', '/tourist-spots');
+  };
+
+  const handleClosePlanner = () => {
+    setIsPlannerOpen(false);
+    if (searchParams.get('tab') === 'itinerary') {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('tab');
+      setSearchParams(newParams, { replace: true });
+    }
+    trackEvent('click', 'close_planner_button', '/tourist-spots');
   };
 
   const filteredItems = items.filter(item => {
@@ -166,7 +200,7 @@ const TouristSpotsPage: React.FC = () => {
 
   return (
     <>
-      <section className="min-h-screen bg-slate-50 py-20 md:py-32 overflow-hidden">
+      <section className="min-h-screen bg-slate-50 py-20 md:py-32 overflow-hidden print:hidden">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedElement>
             <div className="text-center mb-10">
@@ -179,6 +213,29 @@ const TouristSpotsPage: React.FC = () => {
                     : "Satisfy your cravings. From world-famous fast food to authentic Cordilleran dishes."
                 }
               </p>
+            </div>
+          </AnimatedElement>
+
+          <AnimatedElement delay={50}>
+            <div className="max-w-4xl mx-auto mb-10 bg-gradient-to-r from-lt-blue via-indigo-600 to-lt-moss rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden border border-white/10 group">
+              <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white/10 rounded-full blur-3xl transition-transform duration-1000 group-hover:scale-110"></div>
+              <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="max-w-xl text-left">
+                  <span className="inline-flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-3">
+                    <i className="fas fa-sparkles text-lt-yellow animate-pulse"></i> Smart Tour Planner
+                  </span>
+                  <h3 className="text-2xl font-black tracking-tight">Smart Trip Planner</h3>
+                  <p className="text-white/80 text-xs sm:text-sm mt-1.5 leading-relaxed">
+                    Don't know where to start? Let our smart system customize an hour-by-hour itinerary based on your favorite attractions, dining tastes, budget, and trip length!
+                  </p>
+                </div>
+                <button 
+                  onClick={handleOpenPlanner} 
+                  className="w-full md:w-auto bg-white text-lt-blue hover:bg-slate-100 px-6 py-3 rounded-2xl font-black text-sm transition-all shadow-lg hover:scale-105 active:scale-95 shrink-0 flex items-center justify-center gap-2"
+                >
+                  <i className="fas fa-magic text-lt-orange"></i> Launch Smart Planner
+                </button>
+              </div>
             </div>
           </AnimatedElement>
 
@@ -234,6 +291,83 @@ const TouristSpotsPage: React.FC = () => {
           }}
           onReviewSubmitted={handleReviewSubmitted}
         />
+      )}
+
+      {isPlannerOpen && (
+        <div id="ai-planner-drawer" className="fixed inset-0 z-50 overflow-hidden flex justify-end">
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes slideInRight {
+              from { transform: translateX(100%); }
+              to { transform: translateX(0); }
+            }
+            .animate-slide-in-right {
+              animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+            @media print {
+              #ai-planner-backdrop, #ai-planner-header {
+                display: none !important;
+              }
+              #ai-planner-drawer {
+                position: relative !important;
+                display: block !important;
+                overflow: visible !important;
+                height: auto !important;
+                z-index: auto !important;
+              }
+              #ai-planner-panel {
+                position: relative !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+                background: white !important;
+                box-shadow: none !important;
+                border: none !important;
+                transform: none !important;
+                animation: none !important;
+              }
+              body, html {
+                overflow: visible !important;
+                height: auto !important;
+              }
+            }
+          `}} />
+          {/* Backdrop Blur */}
+          <div 
+            id="ai-planner-backdrop"
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 animate-fade-in" 
+            onClick={handleClosePlanner}
+          />
+          {/* Slide-out drawer workspace */}
+          <div id="ai-planner-panel" className="relative w-full max-w-5xl bg-slate-50 h-full shadow-2xl flex flex-col z-10 overflow-y-auto animate-slide-in-right border-l border-slate-200">
+            {/* Drawer Header */}
+            <div id="ai-planner-header" className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-slate-150 px-6 py-5 flex items-center justify-between z-20 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-lt-blue to-teal-400 flex items-center justify-center text-white shadow-md">
+                  <i className="fas fa-sparkles text-lg animate-pulse"></i>
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-950 tracking-tight">AI Travel Planner</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Design your custom hour-by-hour La Trinidad itinerary</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={handleClosePlanner}
+                className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-all flex items-center justify-center border border-slate-200 hover:scale-105 active:scale-95 shadow-sm"
+                aria-label="Close Planner"
+              >
+                <i className="fas fa-times text-lg"></i>
+              </button>
+            </div>
+
+            {/* Planner Content inside Drawer */}
+            <div className="flex-1 px-4 py-8 sm:px-8">
+              <AIItineraryPlanner />
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

@@ -6,7 +6,7 @@ import { deleteImage } from '../services/storageService.js';
 import adminLogService from '../services/adminLogService.js';
 
 /**
- * Mapping Helper: Converts Postgres snack_case to camelCase if needed,
+ * Mapping Helper: Converts Postgres snake_case to camelCase if needed,
  * but currently our frontend expects mostly what's in Mongoose.
  * Note: MongoDB _id vs Postgres id.
  */
@@ -20,6 +20,10 @@ const formatSpot = (spot) => {
     return {
         ...spot,
         _id: spot.id, // Compatibility with frontend
+        openingHours: spot.opening_hours !== undefined ? spot.opening_hours : spot.openingHours,
+        bestTimeToVisit: spot.best_time_to_visit !== undefined ? spot.best_time_to_visit : spot.bestTimeToVisit,
+        mapEmbedUrl: spot.map_embed_url !== undefined ? spot.map_embed_url : spot.mapEmbedUrl,
+        nearbyEmergency: spot.nearby_emergency !== undefined ? spot.nearby_emergency : spot.nearbyEmergency,
         averageRating: avgRating,
         reviewCount: activeReviews.length,
         reviews: activeReviews.map(r => ({
@@ -28,6 +32,41 @@ const formatSpot = (spot) => {
             createdAt: r.created_at
         }))
     };
+};
+
+/**
+ * Parsing Helper: Converts camelCase to snake_case for Supabase columns.
+ */
+const parseSpot = (spot) => {
+    if (!spot) return null;
+    const parsed = { ...spot };
+    
+    if (spot.openingHours !== undefined) {
+        parsed.opening_hours = spot.openingHours;
+        delete parsed.openingHours;
+    }
+    if (spot.bestTimeToVisit !== undefined) {
+        parsed.best_time_to_visit = spot.bestTimeToVisit;
+        delete parsed.bestTimeToVisit;
+    }
+    if (spot.mapEmbedUrl !== undefined) {
+        parsed.map_embed_url = spot.mapEmbedUrl;
+        delete parsed.mapEmbedUrl;
+    }
+    if (spot.nearbyEmergency !== undefined) {
+        parsed.nearby_emergency = spot.nearbyEmergency;
+        delete parsed.nearbyEmergency;
+    }
+    
+    delete parsed._id;
+    delete parsed.id;
+    delete parsed.reviews;
+    delete parsed.averageRating;
+    delete parsed.reviewCount;
+    delete parsed.created_at;
+    delete parsed.updated_at;
+    
+    return parsed;
 };
 
 // @desc    Fetch all tourist spots
@@ -80,7 +119,7 @@ router.get('/user/:email/reviews', async (req, res) => {
 // @route   POST /api/tourist-spots
 router.post('/', verifyAdmin, async (req, res) => {
   try {
-    const { _id, reviews, ...payload } = req.body;
+    const payload = parseSpot(req.body);
     
     const { data, error } = await supabase
       .from('tourist_spots')
@@ -99,7 +138,7 @@ router.post('/', verifyAdmin, async (req, res) => {
       details: `Created new tourist spot: ${newSpot.name}`
     });
 
-    res.status(201).json({ ...newSpot, _id: newSpot.id });
+    res.status(201).json(formatSpot(newSpot));
   } catch (error) {
     console.error("Error creating spot:", error);
     res.status(400).json({ message: error.message });
@@ -110,7 +149,7 @@ router.post('/', verifyAdmin, async (req, res) => {
 // @route   PUT /api/tourist-spots/:id
 router.put('/:id', verifyAdmin, async (req, res) => {
   try {
-    const { _id, id, reviews, created_at, updated_at, ...payload } = req.body;
+    const payload = parseSpot(req.body);
     
     const { data, error } = await supabase
       .from('tourist_spots')
@@ -132,7 +171,7 @@ router.put('/:id', verifyAdmin, async (req, res) => {
       details: `Updated tourist spot: ${updatedSpot.name}`
     });
 
-    res.json({ ...updatedSpot, _id: updatedSpot.id });
+    res.json(formatSpot(updatedSpot));
   } catch (error) {
     console.error("Error updating spot:", error);
     res.status(400).json({ message: error.message });

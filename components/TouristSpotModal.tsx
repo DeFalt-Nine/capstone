@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { TouristSpot, Review } from '../types';
 import { uploadImage, submitReview, trackEvent, updateReview, deleteUserReview } from '../services/apiService';
 import StarRating from './StarRating';
@@ -57,15 +57,6 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
   // Audio Guide State
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Map Routing State
-  const [startLocation, setStartLocation] = useState('');
-  const [isUsingGPS, setIsUsingGPS] = useState(false);
-  const [travelMode] = useState<'driving' | 'walking' | 'transit'>('driving');
-  const [iframeSrc, setIframeSrc] = useState(spot.mapEmbedUrl);
-  const [isMapExpanded] = useState(false);
-  
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
   // Modals
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
@@ -81,9 +72,6 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
     window.addEventListener('keydown', handleEsc);
     document.body.style.overflow = 'hidden';
 
-    setIframeSrc(spot.mapEmbedUrl);
-    setStartLocation('');
-    setIsUsingGPS(false);
     setReviewImages([]);
 
     if (user) {
@@ -105,16 +93,8 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
       }
     }
 
-    const handleClickOutside = (event: MouseEvent) => {
-        if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-            // Placeholder for future logic
-        }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-
     return () => {
       window.removeEventListener('keydown', handleEsc);
-      document.removeEventListener('mousedown', handleClickOutside);
       document.body.style.overflow = 'auto';
       window.speechSynthesis.cancel();
     };
@@ -153,35 +133,8 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
       }
   };
 
-  const handleDirectionsClick = () => {
-      setActiveTab('map');
-  };
-
   const handleTabChange = (tab: string) => {
       setActiveTab(tab);
-  };
-
-  const handleGPSLocation = () => {
-    if (!navigator.geolocation) return;
-    setIsUsingGPS(true);
-    setStartLocation("My Location");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => updateMapRoute(`${pos.coords.latitude},${pos.coords.longitude}`, true),
-      () => { setIsUsingGPS(false); setStartLocation(''); }
-    );
-  };
-
-  const updateMapRoute = (origin: string, isCoords: boolean) => {
-      const modeFlag = travelMode === 'walking' ? 'w' : travelMode === 'transit' ? 'r' : 'd';
-      const originParam = isCoords ? origin : encodeURIComponent(origin);
-      const destParam = encodeURIComponent(`${spot.name} ${spot.location}`);
-      setIframeSrc(`https://maps.google.com/maps?saddr=${originParam}&daddr=${destParam}&dirflg=${modeFlag}&t=m&z=12&output=embed`);
-  };
-
-  const openExternalNavigation = () => {
-      const originParam = isUsingGPS ? '' : `&origin=${encodeURIComponent(startLocation)}`; 
-      const destParam = `&destination=${encodeURIComponent(`${spot.name} ${spot.location}`)}`;
-      window.open(`https://www.google.com/maps/dir/?api=1${originParam}${destParam}&travelmode=${travelMode}`, '_blank');
   };
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
@@ -317,9 +270,7 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
   const userReview = spot.reviews?.find(r => r.email === user?.email);
 
   const getModalDimensions = () => {
-      if (activeTab === 'map' && isMapExpanded) return 'w-[95vw] h-[95vh]';
       if (activeTab === 'reviews') return 'w-full md:max-w-6xl h-[85vh]';
-      if (activeTab === 'map') return 'w-full md:max-w-5xl h-[85vh]';
       return 'w-full max-w-3xl h-[85vh]';
   };
   
@@ -330,7 +281,7 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
         
         <button onClick={onClose} className="absolute top-4 right-4 text-white bg-black/30 backdrop-blur-md rounded-full w-10 h-10 flex items-center justify-center z-20 transition-all border border-white/20 shadow-sm"><i className="fas fa-times"></i></button>
 
-        <div className={`flex-shrink-0 w-full overflow-hidden relative transition-all duration-500 ${activeTab === 'map' && isMapExpanded ? 'h-0 opacity-0' : 'h-48 md:h-64 opacity-100'}`}>
+        <div className="flex-shrink-0 w-full overflow-hidden relative transition-all duration-500 h-48 md:h-64 opacity-100">
              <img src={spot.image} alt={spot.alt} className="w-full h-full object-cover" />
              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
              <div className="absolute bottom-6 left-6 md:left-8 right-6 text-white">
@@ -346,10 +297,9 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
              </div>
         </div>
         
-        <div className={`bg-slate-50 px-6 md:px-8 py-3 flex flex-wrap gap-3 items-center border-b border-slate-200 transition-all duration-500 ${activeTab === 'map' && isMapExpanded ? 'h-0 opacity-0 py-0 border-0 overflow-hidden' : ''}`}>
+        <div className="bg-slate-50 px-6 md:px-8 py-3 flex flex-wrap gap-3 items-center border-b border-slate-200">
             <button onClick={toggleAudioGuide} className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${isSpeaking ? 'bg-red-100 text-lt-red animate-pulse border border-red-200' : 'bg-white text-lt-blue hover:bg-slate-100 border border-slate-200 shadow-sm'}`}><i className={`fas ${isSpeaking ? 'fa-stop-circle' : 'fa-headphones'}`}></i>{isSpeaking ? 'Stop Audio' : 'Audio Guide'}</button>
             <button onClick={() => setIsReportOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-white text-slate-500 hover:text-lt-red transition-colors border border-slate-200 shadow-sm"><i className="fas fa-flag"></i> Report</button>
-            <button onClick={handleDirectionsClick} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-lt-red text-white hover:bg-lt-orange transition-colors shadow-md ml-auto"><i className="fas fa-route"></i> Plan Route</button>
         </div>
         
         <div className="px-6 md:px-8 flex flex-col flex-grow overflow-hidden bg-white">
@@ -358,7 +308,6 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
               <button className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'details' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-500 hover:text-slate-800'}`} onClick={() => handleTabChange('details')}>Details</button>
               <button className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'gallery' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-500 hover:text-slate-800'}`} onClick={() => handleTabChange('gallery')}>Gallery ({spot.gallery?.length || 0})</button>
               <button className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'reviews' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-500 hover:text-slate-800'}`} onClick={() => handleTabChange('reviews')}>Reviews ({spot.reviews?.length || 0})</button>
-              <button className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'map' ? 'border-lt-orange text-lt-orange' : 'border-transparent text-slate-500 hover:text-slate-800'}`} onClick={() => handleTabChange('map')}>Map & Route</button>
             </nav>
           </div>
 
@@ -647,26 +596,6 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
                         </div>
                     ) : <p className="text-center text-slate-400 py-10 italic">No reviews yet.</p>}
                 </div>
-              </div>
-            )}
-            
-            {activeTab === 'map' && (
-              <div className="flex flex-col h-full animate-fade-in gap-4 relative">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <div className="flex gap-2 items-center relative" ref={wrapperRef}>
-                        <div className="flex-1 relative">
-                            <i className="fas fa-map-pin absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" placeholder="Start location (e.g. Center Mall)" value={startLocation} onChange={(e) => setStartLocation(e.target.value)} className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none" />
-                        </div>
-                        <button onClick={handleGPSLocation} className={`px-3 py-2 rounded-lg text-sm font-bold border transition-colors ${isUsingGPS ? 'bg-lt-blue text-white' : 'bg-white text-slate-600'}`}><i className="fas fa-crosshairs"></i></button>
-                    </div>
-                </div>
-                <div className="flex-grow rounded-xl overflow-hidden border border-slate-200 relative min-h-[300px]">
-                    <iframe src={iframeSrc} width="100%" height="100%" style={{ border: 0 }} allowFullScreen={true} loading="lazy" title={`Map of ${spot.name}`}></iframe>
-                </div>
-                <button onClick={openExternalNavigation} className="w-full bg-lt-blue text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-lt-moss transition-colors flex items-center justify-center gap-2">
-                    <i className="fas fa-external-link-alt"></i> Open Navigation in Google Maps
-                </button>
               </div>
             )}
           </div>

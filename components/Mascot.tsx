@@ -79,6 +79,7 @@ export default function Mascot() {
     const mascotRef = useRef<HTMLDivElement>(null);
     const bubbleRef = useRef<HTMLDivElement>(null);
     const overlayRef = useRef<HTMLDivElement>(null);
+    const isFirstRender = useRef(true);
 
     useEffect(() => {
         const updateMatchCount = async () => {
@@ -184,44 +185,45 @@ export default function Mascot() {
     }, []);
 
     useEffect(() => {
-        if (isVisible && mascotRef.current) {
-            // Initial Entrance - only if it hasn't happened yet
+        if (!isVisible || !mascotRef.current) return;
+
+        localStorage.setItem('isMascotVisible', isBubbleVisible.toString());
+
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            const targetX = isBubbleVisible ? 0 : -160;
+            // On first mount, animate matching the active state
             gsap.fromTo(mascotRef.current, 
                 { x: -160, opacity: 0 },
-                { x: 0, opacity: 1, duration: 1, ease: 'back.out(1.7)' }
+                { x: targetX, opacity: 1, duration: 1, ease: 'back.out(1.7)' }
             );
             
-            if (bubbleRef.current) {
+            if (isBubbleVisible && bubbleRef.current) {
                 gsap.fromTo(bubbleRef.current,
                     { scale: 0, opacity: 0 },
                     { scale: 1, opacity: 1, delay: 1, duration: 0.5, ease: 'back.out(2)' }
                 );
             }
-        }
-    }, [isVisible]); // Remove isBubbleVisible from dependency array
-
-    useEffect(() => {
-        if (!mascotRef.current) return;
-
-        localStorage.setItem('isMascotVisible', isBubbleVisible.toString());
-
-        if (isBubbleVisible) {
-            gsap.to(mascotRef.current, { x: 0, duration: 0.5, ease: 'power2.out' });
-            if (bubbleRef.current) {
-                gsap.fromTo(bubbleRef.current, 
-                    { scale: 0, opacity: 0 },
-                    { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.7)' }
-                );
-            }
         } else {
-            // Tuck away completely to the left
-            gsap.to(mascotRef.current, { x: -160, duration: 0.6, ease: 'power3.inOut' });
-            if (bubbleRef.current) {
-                gsap.to(bubbleRef.current, { scale: 0, opacity: 0, duration: 0.3 });
+            // Subsequent changes of isBubbleVisible
+            if (isBubbleVisible) {
+                gsap.to(mascotRef.current, { x: 0, duration: 0.5, ease: 'power2.out' });
+                if (bubbleRef.current) {
+                    gsap.fromTo(bubbleRef.current, 
+                        { scale: 0, opacity: 0 },
+                        { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.7)' }
+                    );
+                }
+            } else {
+                // Tuck away completely to the left
+                gsap.to(mascotRef.current, { x: -160, duration: 0.6, ease: 'power3.inOut' });
+                if (bubbleRef.current) {
+                    gsap.to(bubbleRef.current, { scale: 0, opacity: 0, duration: 0.3 });
+                }
+                setShowOverlay(false);
             }
-            setShowOverlay(false);
         }
-    }, [isBubbleVisible]);
+    }, [isVisible, isBubbleVisible]);
 
     const handleVibeClick = async () => {
         try {
@@ -367,7 +369,7 @@ export default function Mascot() {
     return (
         <div 
             ref={mascotRef}
-            className="fixed bottom-8 left-8 z-[60] flex flex-col items-start group"
+            className="fixed bottom-8 left-8 z-[60] flex flex-col items-start group print:hidden"
         >
             {/* Recommendations Overlay */}
             {showOverlay && (
@@ -405,7 +407,7 @@ export default function Mascot() {
             {/* Speech Bubble */}
             <div 
                 ref={bubbleRef}
-                className={`bg-white p-4 rounded-2xl shadow-2xl border-2 border-lt-orange mb-4 w-[260px] relative animate-float ${!isBubbleVisible ? 'pointer-events-none' : ''}`}
+                className={`bg-white p-4 rounded-2xl shadow-2xl border-2 border-lt-orange mb-4 w-[260px] relative animate-float origin-bottom-left transition-all duration-300 ${!isBubbleVisible ? 'scale-0 opacity-0 pointer-events-none' : ''}`}
             >
                 {/* Close Button */}
                 <button 

@@ -121,14 +121,14 @@ const AdminPage: React.FC = () => {
 
     useEffect(() => {
         const checkExistingAuth = async () => {
-            const token = localStorage.getItem('adminToken');
+            const token = sessionStorage.getItem('adminToken');
             if (token) {
                 try {
                     await verifyAdminToken(token);
                     setIsAuthenticated(true);
                 } catch (err) {
                     console.error('Auth verification failed', err);
-                    localStorage.removeItem('adminToken');
+                    sessionStorage.removeItem('adminToken');
                     setIsAuthenticated(false);
                 }
             }
@@ -227,7 +227,7 @@ const AdminPage: React.FC = () => {
 
         try {
             await verifyAdminToken(accessCode);
-            localStorage.setItem('adminToken', accessCode);
+            sessionStorage.setItem('adminToken', accessCode);
             setIsAuthenticated(true);
             setAccessCode('');
         } catch (error: any) {
@@ -243,7 +243,7 @@ const AdminPage: React.FC = () => {
         } catch (err) {
             console.error('Logout error', err);
         }
-        localStorage.removeItem('adminToken');
+        sessionStorage.removeItem('adminToken');
         setIsAuthenticated(false);
         setAccessCode('');
         setData([]);

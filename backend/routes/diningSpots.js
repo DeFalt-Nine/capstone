@@ -18,6 +18,10 @@ const formatDiningSpot = (spot) => {
     return {
         ...spot,
         _id: spot.id,
+        openingHours: spot.opening_hours !== undefined ? spot.opening_hours : spot.openingHours,
+        contactInfo: spot.contact_info !== undefined ? spot.contact_info : spot.contactInfo,
+        mapEmbedUrl: spot.map_embed_url !== undefined ? spot.map_embed_url : spot.mapEmbedUrl,
+        priceRange: spot.price_range !== undefined ? spot.price_range : spot.priceRange,
         averageRating: avgRating,
         reviewCount: activeReviews.length,
         reviews: activeReviews.map(r => ({
@@ -26,6 +30,41 @@ const formatDiningSpot = (spot) => {
             createdAt: r.created_at
         }))
     };
+};
+
+/**
+ * Parsing Helper: Converts camelCase to snake_case for Supabase columns.
+ */
+const parseDiningSpot = (spot) => {
+    if (!spot) return null;
+    const parsed = { ...spot };
+    
+    if (spot.openingHours !== undefined) {
+        parsed.opening_hours = spot.openingHours;
+        delete parsed.openingHours;
+    }
+    if (spot.contactInfo !== undefined) {
+        parsed.contact_info = spot.contactInfo;
+        delete parsed.contactInfo;
+    }
+    if (spot.mapEmbedUrl !== undefined) {
+        parsed.map_embed_url = spot.mapEmbedUrl;
+        delete parsed.mapEmbedUrl;
+    }
+    if (spot.priceRange !== undefined) {
+        parsed.price_range = spot.priceRange;
+        delete parsed.priceRange;
+    }
+    
+    delete parsed._id;
+    delete parsed.id;
+    delete parsed.reviews;
+    delete parsed.averageRating;
+    delete parsed.reviewCount;
+    delete parsed.created_at;
+    delete parsed.updated_at;
+    
+    return parsed;
 };
 
 // @desc    Fetch all dining spots
@@ -76,7 +115,7 @@ router.get('/user/:email/reviews', async (req, res) => {
 // @desc    Create
 router.post('/', verifyAdmin, async (req, res) => {
   try {
-    const { _id, reviews, ...payload } = req.body;
+    const payload = parseDiningSpot(req.body);
     
     const { data, error } = await supabase
       .from('dining_spots')
@@ -95,7 +134,7 @@ router.post('/', verifyAdmin, async (req, res) => {
       details: `Created new dining spot: ${newSpot.name}`
     });
 
-    res.status(201).json({ ...newSpot, _id: newSpot.id });
+    res.status(201).json(formatDiningSpot(newSpot));
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -104,7 +143,7 @@ router.post('/', verifyAdmin, async (req, res) => {
 // @desc    Update
 router.put('/:id', verifyAdmin, async (req, res) => {
   try {
-    const { _id, id, reviews, created_at, updated_at, ...payload } = req.body;
+    const payload = parseDiningSpot(req.body);
     
     const { data, error } = await supabase
       .from('dining_spots')
@@ -126,7 +165,7 @@ router.put('/:id', verifyAdmin, async (req, res) => {
       details: `Updated dining spot: ${updatedSpot.name}`
     });
 
-    res.json({ ...updatedSpot, _id: updatedSpot.id });
+    res.json(formatDiningSpot(updatedSpot));
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

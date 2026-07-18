@@ -531,7 +531,9 @@ const VisitorInfoPage: React.FC = () => {
 
   const tabClass = (tab: 'culture' | 'emergency') => {
       const isActive = activeTab === tab;
-      const activeColor = tab === 'culture' ? 'text-lt-blue border-lt-blue bg-lt-blue/10' : 'text-lt-red border-lt-red bg-lt-red/10';
+      const activeColor = tab === 'culture' 
+        ? 'text-lt-blue border-lt-blue bg-lt-blue/10' 
+        : 'text-lt-red border-lt-red bg-lt-red/10';
       return `flex-1 py-4 px-2 text-center font-bold text-sm md:text-base transition-all border-b-4 rounded-t-lg flex items-center justify-center gap-2 ${isActive ? activeColor : 'border-transparent text-slate-500 hover:bg-slate-100'}`;
   };
 

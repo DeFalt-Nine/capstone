@@ -26,7 +26,7 @@ export const generateAICover = async (prompt: string): Promise<string> => {
 };
 
 const getHeaders = () => {
-    const token = localStorage.getItem('adminToken') || '';
+    const token = sessionStorage.getItem('adminToken') || '';
     return {
         'Content-Type': 'application/json',
         'x-admin-access-token': token
@@ -96,7 +96,7 @@ export const fetchDiningSpots = async (): Promise<TouristSpot[]> => {
 
 export const fetchBlogPosts = async (mode?: string): Promise<BlogPost[]> => {
     const url = mode === 'admin' ? `${API_BASE}/api/blog-posts?mode=admin` : `${API_BASE}/api/blog-posts`;
-    const headers: HeadersInit = mode === 'admin' ? { 'x-admin-access-token': localStorage.getItem('adminToken') || '' } : {};
+    const headers: HeadersInit = mode === 'admin' ? { 'x-admin-access-token': sessionStorage.getItem('adminToken') || '' } : {};
     
     return safeFetch(url, { headers });
 };
@@ -244,7 +244,7 @@ export const updateItem = async (endpoint: string, id: string, data: any) => {
 export const uploadImage = async (file: File) => {
     const formData = new FormData();
     formData.append('image', file);
-    const token = localStorage.getItem('adminToken') || '';
+    const token = sessionStorage.getItem('adminToken') || '';
 
     try {
         const response = await fetch(`${API_BASE}/api/upload`, {
@@ -374,4 +374,33 @@ export const trackEvent = async (
     } catch (err) {
         console.error('Analytics log error', err);
     }
+};
+
+export const generateAIItinerary = async (payload: {
+    spots: { name: string; category?: string; description?: string }[];
+    dining: { name: string; description?: string }[];
+    budget: string;
+    days: number;
+}): Promise<any> => {
+    return safeFetch(`${API_BASE}/api/ai/generate-itinerary`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
+    });
+};
+
+export const saveItineraryToServer = async (email: string, itinerary: any, action?: 'delete' | 'save', id?: string): Promise<any> => {
+    return safeFetch(`${API_BASE}/api/ai/save-itinerary`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ email, itinerary, action, id })
+    });
+};
+
+export const getItineraryFromServer = async (email: string): Promise<any> => {
+    return safeFetch(`${API_BASE}/api/ai/get-itinerary`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ email })
+    });
 };

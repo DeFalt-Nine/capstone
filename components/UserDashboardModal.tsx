@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchUserBlogPosts, fetchUserReviews } from '../services/apiService';
+import { fetchUserBlogPosts, fetchUserReviews, getItineraryFromServer, saveItineraryToServer } from '../services/apiService';
 import { BlogPost, Review } from '../types';
 
 interface UserDashboardModalProps {
@@ -18,11 +18,100 @@ interface UserReview extends Review {
 const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
   const { user, getDisplayName } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'blogs' | 'reviews' | 'notifications'>('blogs');
+  const [activeTab, setActiveTab] = useState<'blogs' | 'reviews' | 'notifications' | 'itinerary'>('blogs');
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
+  const [savedItinerary, setSavedItinerary] = useState<any | null>(null);
+  const [savedItineraries, setSavedItineraries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Try local storage first
+    const saved = localStorage.getItem('savedAIItinerary');
+    const savedTime = localStorage.getItem('savedAIItineraryTimestamp');
+    let isLocalValid = true;
+
+    if (saved) {
+      if (savedTime) {
+        const elapsed = Date.now() - parseInt(savedTime, 10);
+        if (elapsed > 30 * 60 * 1000) { // 30 minutes in milliseconds
+          localStorage.removeItem('savedAIItinerary');
+          localStorage.removeItem('savedAIItineraryTimestamp');
+          isLocalValid = false;
+        }
+      } else {
+        localStorage.setItem('savedAIItineraryTimestamp', Date.now().toString());
+      }
+    }
+
+    if (saved && isLocalValid) {
+      try {
+        setSavedItinerary(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse saved itinerary from localStorage', e);
+      }
+    }
+
+    // Try server-side file database sync
+    const loadFromServer = async () => {
+      const email = user?.email || 'anonymous';
+      try {
+        const res = await getItineraryFromServer(email);
+        if (res && res.success) {
+          if (Array.isArray(res.itineraries)) {
+            setSavedItineraries(res.itineraries);
+          }
+          if (res.itinerary) {
+            setSavedItinerary(res.itinerary);
+            localStorage.setItem('savedAIItinerary', JSON.stringify(res.itinerary));
+            localStorage.setItem('savedAIItineraryTimestamp', Date.now().toString());
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load saved itinerary from server database:', err);
+      }
+    };
+
+    loadFromServer();
+  }, [user]);
+
+  const handleDeleteItinerary = async (id: string) => {
+    if (!user) return;
+    if (!window.confirm('Are you sure you want to permanently delete this itinerary?')) return;
+    try {
+      const res = await saveItineraryToServer(user.email || '', null, 'delete', id);
+      if (res && res.success) {
+        const remaining = res.itineraries || [];
+        setSavedItineraries(remaining);
+        
+        // If the deleted one was loaded, clear it
+        const saved = localStorage.getItem('savedAIItinerary');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed.id === id || (!parsed.id && remaining.length === 0)) {
+              localStorage.removeItem('savedAIItinerary');
+              localStorage.removeItem('savedAIItineraryTimestamp');
+              setSavedItinerary(null);
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete itinerary:', err);
+    }
+  };
+
+  const handleLoadItinerary = (item: any) => {
+    setSavedItinerary(item.itinerary);
+    localStorage.setItem('savedAIItinerary', JSON.stringify(item.itinerary));
+    localStorage.setItem('savedAIItineraryTimestamp', Date.now().toString());
+    onClose();
+    navigate('/tourist-spots?tab=itinerary');
+  };
 
   // Lock body scroll when dashboard is open
   useEffect(() => {
@@ -131,6 +220,13 @@ const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
           >
             Notifications {notifications.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-lt-red text-white text-[10px] rounded-full">{notifications.length}</span>}
             {activeTab === 'notifications' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-lt-blue rounded-t-full"></div>}
+          </button>
+          <button 
+            onClick={() => setActiveTab('itinerary')}
+            className={`py-3 sm:py-4 text-xs sm:text-sm font-bold transition-all relative ${activeTab === 'itinerary' ? 'text-lt-blue font-extrabold' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            My Saved Itinerary 🗓️
+            {activeTab === 'itinerary' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-lt-blue rounded-t-full"></div>}
           </button>
         </div>
 
@@ -304,6 +400,102 @@ const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'itinerary' && (
+                <div className="space-y-6">
+                  {savedItineraries.length === 0 ? (
+                    <div className="text-center py-10 px-4 sm:py-16 bg-slate-50 rounded-2xl sm:rounded-3xl border border-dashed border-slate-200 animate-fade-in">
+                      <div className="w-16 h-16 bg-blue-50 text-lt-blue rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <i className="fas fa-route text-2xl"></i>
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-base sm:text-lg mb-1">No saved itinerary yet</h4>
+                      <p className="text-slate-500 max-w-md mx-auto text-xs sm:text-sm mb-6 leading-relaxed">
+                        You have not generated or saved any custom travel plans yet. Try our new Smart Travel Planner to design your perfect trip!
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                        <button 
+                          onClick={() => {
+                            onClose();
+                            navigate('/tourist-spots?tab=itinerary');
+                          }}
+                          className="px-5 py-2.5 bg-lt-blue hover:bg-lt-blue/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-lt-blue/20 flex items-center gap-2"
+                        >
+                          <i className="fas fa-sparkles"></i> Open Smart Tour Planner
+                        </button>
+                        <button 
+                          onClick={onClose}
+                          className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                        >
+                          Close Dashboard
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 animate-fade-in">
+                      <div className="bg-amber-50/70 border border-amber-100 rounded-2xl p-4 text-xs text-amber-900 flex items-start gap-2.5 leading-relaxed shadow-sm">
+                        <i className="fas fa-clock text-amber-600 mt-0.5 shrink-0 text-sm"></i>
+                        <div>
+                          <span className="font-bold">Important Account Storage Policy:</span> Saved itineraries are stored securely on our servers for up to <span className="font-bold">30 days</span> from their creation date before being automatically deleted. Ensure you print or finalize your schedule within this time!
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
+                        {savedItineraries.map((item) => {
+                          const createdAt = new Date(item.createdAt).getTime();
+                          const elapsedDays = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
+                          const remainingDays = Math.max(0, Math.ceil(30 - elapsedDays));
+                          const isExpiringSoon = remainingDays <= 5;
+                          
+                          return (
+                            <div key={item.id || item.title} className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                              <div className="flex justify-between items-start gap-3">
+                                <div className="space-y-1">
+                                  <h3 className="font-black text-slate-800 text-sm sm:text-base leading-snug">{item.title}</h3>
+                                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{item.itinerary?.description}</p>
+                                </div>
+                                <div className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${isExpiringSoon ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-slate-100 text-slate-600'}`}>
+                                  <i className={`fas fa-hourglass-half text-[9px] ${isExpiringSoon ? 'animate-pulse text-red-500' : ''}`}></i>
+                                  {remainingDays} days left
+                                </div>
+                              </div>
+                              
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                  <div>
+                                    <span className="text-slate-400">Budget:</span> <span className="font-extrabold text-slate-700">₱{item.itinerary?.estimatedTotalCost?.toLocaleString()}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400">Duration:</span> <span className="font-extrabold text-slate-700">{item.itinerary?.days?.length} days</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400">Saved:</span> <span className="font-extrabold text-slate-700">{new Date(item.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex gap-2 self-end sm:self-auto">
+                                  <button
+                                    onClick={() => handleDeleteItinerary(item.id)}
+                                    className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all"
+                                    title="Delete Itinerary"
+                                  >
+                                    <i className="fas fa-trash-alt text-xs"></i>
+                                  </button>
+                                  <button
+                                    onClick={() => handleLoadItinerary(item)}
+                                    className="px-4 py-2 bg-lt-blue hover:bg-lt-blue/90 text-white rounded-xl font-bold transition-all flex items-center gap-1 text-xs"
+                                  >
+                                    <i className="fas fa-eye text-xs"></i> View Itinerary
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
