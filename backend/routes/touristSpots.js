@@ -66,6 +66,9 @@ const parseSpot = (spot) => {
     delete parsed.createdAt;
     delete parsed.created_at;
     delete parsed.updated_at;
+    delete parsed.jeepneyFare;
+    delete parsed.taxiFare;
+    delete parsed.terminalLocation;
     
     return parsed;
 };

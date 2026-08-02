@@ -13,6 +13,12 @@ const parseEvent = (event) => {
   delete parsed.createdAt;
   delete parsed.created_at;
   delete parsed.updated_at;
+  delete parsed.startDate;
+  delete parsed.endDate;
+  
+  if (!parsed.time) parsed.time = 'All Day';
+  if (!parsed.category) parsed.category = parsed.badge || 'General';
+  
   return parsed;
 };
 

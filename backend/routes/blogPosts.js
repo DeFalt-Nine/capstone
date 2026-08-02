@@ -16,11 +16,21 @@ const parseBlogPost = (post) => {
         parsed.video_link = parsed.videoLink;
         delete parsed.videoLink;
     }
+    if (parsed.isSeen !== undefined) {
+        parsed.is_seen = parsed.isSeen;
+        delete parsed.isSeen;
+    }
     delete parsed._id;
     delete parsed.id;
     delete parsed.createdAt;
     delete parsed.created_at;
     delete parsed.updated_at;
+    delete parsed.readTime;
+    delete parsed.date;
+    delete parsed.gallery;
+    delete parsed.adminFeedback;
+    delete parsed.userId;
+    delete parsed.userAvatar;
     return parsed;
 };
 
