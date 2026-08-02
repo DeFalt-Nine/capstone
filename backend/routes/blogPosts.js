@@ -5,6 +5,33 @@ import { verifyAdmin } from '../middleware/auth.js';
 import { deleteImage } from '../services/storageService.js';
 import adminLogService from '../services/adminLogService.js';
 
+const parseBlogPost = (post) => {
+    if (!post) return null;
+    const parsed = { ...post };
+    if (parsed.socialLink !== undefined) {
+        parsed.social_link = parsed.socialLink;
+        delete parsed.socialLink;
+    }
+    if (parsed.videoLink !== undefined) {
+        parsed.video_link = parsed.videoLink;
+        delete parsed.videoLink;
+    }
+    delete parsed._id;
+    delete parsed.id;
+    delete parsed.createdAt;
+    delete parsed.created_at;
+    delete parsed.updated_at;
+    return parsed;
+};
+
+const formatBlogPost = (p) => ({
+    ...p,
+    _id: p.id,
+    createdAt: p.created_at,
+    socialLink: p.social_link,
+    videoLink: p.video_link
+});
+
 // @desc    Fetch blog posts
 // @route   GET /api/blog-posts?mode=admin
 router.get('/', async (req, res) => {
@@ -21,7 +48,7 @@ router.get('/', async (req, res) => {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.json(data.map(p => ({ ...p, _id: p.id, createdAt: p.created_at })));
+    res.json(data.map(formatBlogPost));
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
@@ -38,7 +65,7 @@ router.get('/user/:email', async (req, res) => {
         .order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.json(data.map(p => ({ ...p, _id: p.id, createdAt: p.created_at })));
+    res.json(data.map(formatBlogPost));
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
@@ -47,7 +74,7 @@ router.get('/user/:email', async (req, res) => {
 // @desc    Create (Admin direct post)
 router.post('/', verifyAdmin, async (req, res) => {
   try {
-    const { _id, ...payload } = req.body;
+    const payload = parseBlogPost(req.body);
     const { data, error } = await supabase
         .from('blog_posts')
         .insert([{
@@ -68,7 +95,7 @@ router.post('/', verifyAdmin, async (req, res) => {
       details: `Created new blog post: ${newPost.title}`
     });
 
-    res.status(201).json({ ...newPost, _id: newPost.id });
+    res.status(201).json(formatBlogPost(newPost));
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -117,7 +144,7 @@ router.put('/:id', verifyAdmin, async (req, res) => {
     const { data: oldPost } = await supabase.from('blog_posts').select('*').eq('id', req.params.id).single();
     if (!oldPost) return res.status(404).json({ message: 'Post not found' });
 
-    const { _id, id, created_at, ...payload } = req.body;
+    const payload = parseBlogPost(req.body);
     const { data: updatedPostData, error } = await supabase
         .from('blog_posts')
         .update({ ...payload, updated_at: new Date() })
@@ -144,7 +171,7 @@ router.put('/:id', verifyAdmin, async (req, res) => {
       details
     });
 
-    res.json({ ...updatedPost, _id: updatedPost.id });
+    res.json(formatBlogPost(updatedPost));
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

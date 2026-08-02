@@ -61,6 +61,7 @@ const parseDiningSpot = (spot) => {
     delete parsed.reviews;
     delete parsed.averageRating;
     delete parsed.reviewCount;
+    delete parsed.createdAt;
     delete parsed.created_at;
     delete parsed.updated_at;
     
