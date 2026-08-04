@@ -476,22 +476,22 @@ export const JEEPNEY_ROUTES: JeepneyRoute[] = [
         },
         terminal: {
             name: 'Magsaysay Terminal',
-            location: 'Near Baguio Center Mall / Magsaysay Ave',
+            location: 'Magsaysay Avenue (near Baguio Center Mall / Bonifacio St), Baguio City',
             mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
         },
-        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Pico+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Bokawkan+Road+Baguio+to:Km+3+Bell+Church+La+Trinidad+to:Km+4+La+Trinidad+to:Pico+Road+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
         fare: {
             minimum: 13,
             studentSenior: 11,
             fullRoute: 15
         },
         path: [
-            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
-            { stop: 'Bokawkan Road', isLandmark: false },
-            { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship' },
-            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store' },
-            { stop: 'Pico Proper', isLandmark: false },
-            { stop: 'Km. 5 (Public Market)', isLandmark: true, landmarkIcon: 'fas fa-store' }
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus', coordinates: [16.4189, 120.5960] },
+            { stop: 'Bokawkan Road', isLandmark: false, coordinates: [16.4215, 120.5920] },
+            { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship', coordinates: [16.4328, 120.5980] },
+            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4385, 120.5965] },
+            { stop: 'Pico Road Junction', isLandmark: false, coordinates: [16.4420, 120.5910] },
+            { stop: 'Pico Barangay Hall', isLandmark: true, landmarkIcon: 'fas fa-building', coordinates: [16.4480, 120.5850] }
         ],
         operatingHours: '5:00 AM - 9:00 PM',
         frequency: 'Every 5-10 minutes'
@@ -508,80 +508,23 @@ export const JEEPNEY_ROUTES: JeepneyRoute[] = [
             location: 'Magsaysay Avenue, Baguio City',
             mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
         },
-        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Bokawkan+Road+Baguio+to:Km+3+La+Trinidad+to:Km+4+La+Trinidad+to:Tomay+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Bokawkan+Road+Baguio+to:Km+3+Bell+Church+La+Trinidad+to:Km+4+Tiong+San+La+Trinidad+to:Km+5+Public+Market+La+Trinidad+to:Km+6+BSU+La+Trinidad+to:Tomay+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
         fare: {
             minimum: 13,
             studentSenior: 11,
             fullRoute: 20
         },
         path: [
-            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
-            { stop: 'Bokawkan Road', isLandmark: false },
-            { stop: 'Km. 3 (Bell Church)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship' },
-            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store' },
-            { stop: 'Km. 5 (Municipal Hall)', isLandmark: true, landmarkIcon: 'fas fa-landmark' },
-            { stop: 'Km. 6 (BSU)', isLandmark: true, landmarkIcon: 'fas fa-university' },
-            { stop: 'Strawberry Farm', isLandmark: true, landmarkIcon: 'fas fa-leaf' },
-            { stop: 'Tomay', isLandmark: false }
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus', coordinates: [16.4189, 120.5960] },
+            { stop: 'Bokawkan Road', isLandmark: false, coordinates: [16.4215, 120.5920] },
+            { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship', coordinates: [16.4328, 120.5980] },
+            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4385, 120.5965] },
+            { stop: 'Km. 5 (Public Market)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4502, 120.5900] },
+            { stop: 'Km. 6 (BSU)', isLandmark: true, landmarkIcon: 'fas fa-university', coordinates: [16.4585, 120.5910] },
+            { stop: 'Tomay Proper', isLandmark: true, landmarkIcon: 'fas fa-map-marker-alt', coordinates: [16.4750, 120.5980] }
         ],
         operatingHours: '5:00 AM - 10:00 PM',
         frequency: 'Every 10-15 minutes'
-    },
-    {
-        name: 'Beckel - La Trinidad',
-        signboard: {
-            text: 'BECKEL - LA TRINIDAD',
-            color: 'text-pink-600',
-            backgroundColor: 'bg-white'
-        },
-        terminal: {
-            name: 'Magsaysay Terminal',
-            location: 'Magsaysay Avenue, Baguio City',
-            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
-        },
-        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Beckel+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
-        fare: {
-            minimum: 13,
-            studentSenior: 11,
-            fullRoute: 25
-        },
-        path: [
-            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
-            { stop: 'Bokawkan Road', isLandmark: false },
-            { stop: 'Km. 4', isLandmark: false },
-            { stop: 'Beckel Road', isLandmark: false },
-            { stop: 'Beckel Proper', isLandmark: true, landmarkIcon: 'fas fa-mountain' }
-        ],
-        operatingHours: '6:00 AM - 7:00 PM',
-        frequency: 'Every 30 minutes'
-    },
-    {
-        name: 'Ambiong - La Trinidad',
-        signboard: {
-            text: 'AMBIONG - LA TRINIDAD',
-            color: 'text-teal-600',
-            backgroundColor: 'bg-white'
-        },
-        terminal: {
-            name: 'Magsaysay Terminal',
-            location: 'Magsaysay Avenue, Baguio City',
-            mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
-        },
-        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Ambiong+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
-        fare: {
-            minimum: 13,
-            studentSenior: 11,
-            fullRoute: 18
-        },
-        path: [
-            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
-            { stop: 'Bokawkan Road', isLandmark: false },
-            { stop: 'Km. 3', isLandmark: false },
-            { stop: 'Ambiong Road', isLandmark: false },
-            { stop: 'Ambiong Proper', isLandmark: true, landmarkIcon: 'fas fa-home' }
-        ],
-        operatingHours: '6:00 AM - 8:00 PM',
-        frequency: 'Every 20 minutes'
     },
     {
         name: 'Buyagan - La Trinidad',
@@ -592,22 +535,23 @@ export const JEEPNEY_ROUTES: JeepneyRoute[] = [
         },
         terminal: {
             name: 'Magsaysay Terminal',
-            location: 'Magsaysay Avenue, Baguio City',
+            location: 'Magsaysay Avenue (near Baguio Center Mall), Baguio City',
             mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
         },
-        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Buyagan+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Bokawkan+Road+Baguio+to:Km+3+Bell+Church+La+Trinidad+to:Km+4+La+Trinidad+to:Km+5+Public+Market+La+Trinidad+to:Buyagan+Road+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
         fare: {
             minimum: 13,
             studentSenior: 11,
             fullRoute: 18
         },
         path: [
-            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
-            { stop: 'Bokawkan Road', isLandmark: false },
-            { stop: 'Km. 3', isLandmark: false },
-            { stop: 'Km. 4', isLandmark: false },
-            { stop: 'Km. 5 (Public Market)', isLandmark: true, landmarkIcon: 'fas fa-store' },
-            { stop: 'Buyagan Proper', isLandmark: false }
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus', coordinates: [16.4189, 120.5960] },
+            { stop: 'Bokawkan Road', isLandmark: false, coordinates: [16.4215, 120.5920] },
+            { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship', coordinates: [16.4328, 120.5980] },
+            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4385, 120.5965] },
+            { stop: 'Km. 5 (Public Market)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4502, 120.5900] },
+            { stop: 'Buyagan Road', isLandmark: false, coordinates: [16.4530, 120.5850] },
+            { stop: 'Buyagan Motorpool / Proper', isLandmark: true, landmarkIcon: 'fas fa-warehouse', coordinates: [16.4560, 120.5810] }
         ],
         operatingHours: '5:00 AM - 9:00 PM',
         frequency: 'Every 10 minutes'
@@ -624,19 +568,20 @@ export const JEEPNEY_ROUTES: JeepneyRoute[] = [
             location: 'Magsaysay Avenue, Baguio City',
             mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
         },
-        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Puguis+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Bokawkan+Road+Baguio+to:Km+3+Bell+Church+La+Trinidad+to:Km+4+Balili+La+Trinidad+to:Puguis+Road+La+Trinidad+to:Strawberry+Farm+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
         fare: {
             minimum: 13,
             studentSenior: 11,
             fullRoute: 15
         },
         path: [
-            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
-            { stop: 'Bokawkan Road', isLandmark: false },
-            { stop: 'Km. 3', isLandmark: false },
-            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store' },
-            { stop: 'Puguis Road', isLandmark: false },
-            { stop: 'Strawberry Farm (Puguis)', isLandmark: true, landmarkIcon: 'fas fa-leaf' }
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus', coordinates: [16.4189, 120.5960] },
+            { stop: 'Bokawkan Road', isLandmark: false, coordinates: [16.4215, 120.5920] },
+            { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship', coordinates: [16.4328, 120.5980] },
+            { stop: 'Km. 4 (Balili)', isLandmark: false, coordinates: [16.4390, 120.5950] },
+            { stop: 'Puguis Road', isLandmark: false, coordinates: [16.4480, 120.5840] },
+            { stop: 'Strawberry Farm (Puguis)', isLandmark: true, landmarkIcon: 'fas fa-leaf', coordinates: [16.4530, 120.5800] },
+            { stop: 'Puguis Barangay Hall / Motorpool', isLandmark: true, landmarkIcon: 'fas fa-warehouse', coordinates: [16.4580, 120.5780] }
         ],
         operatingHours: '5:00 AM - 8:00 PM',
         frequency: 'Every 15 minutes'
@@ -653,50 +598,115 @@ export const JEEPNEY_ROUTES: JeepneyRoute[] = [
             location: 'Magsaysay Avenue, Baguio City',
             mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
         },
-        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Wangal+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Bokawkan+Road+Baguio+to:Km+3+Bell+Church+La+Trinidad+to:Km+4+La+Trinidad+to:Km+5+Municipal+Hall+La+Trinidad+to:Wangal+Road+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
         fare: {
             minimum: 13,
             studentSenior: 11,
             fullRoute: 22
         },
         path: [
-            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
-            { stop: 'Bokawkan Road', isLandmark: false },
-            { stop: 'Km. 4', isLandmark: false },
-            { stop: 'Km. 5 (Municipal Hall)', isLandmark: true, landmarkIcon: 'fas fa-landmark' },
-            { stop: 'Wangal Road', isLandmark: false },
-            { stop: 'Benguet Sports Complex', isLandmark: true, landmarkIcon: 'fas fa-running' }
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus', coordinates: [16.4189, 120.5960] },
+            { stop: 'Bokawkan Road', isLandmark: false, coordinates: [16.4215, 120.5920] },
+            { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship', coordinates: [16.4328, 120.5980] },
+            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4385, 120.5965] },
+            { stop: 'Km. 5 (Municipal Hall)', isLandmark: true, landmarkIcon: 'fas fa-landmark', coordinates: [16.4502, 120.5900] },
+            { stop: 'Wangal Road', isLandmark: false, coordinates: [16.4550, 120.5760] },
+            { stop: 'Benguet Provincial Capitol', isLandmark: true, landmarkIcon: 'fas fa-university', coordinates: [16.4580, 120.5740] },
+            { stop: 'Wangal Sports Complex', isLandmark: true, landmarkIcon: 'fas fa-running', coordinates: [16.4600, 120.5700] }
         ],
         operatingHours: '6:00 AM - 8:00 PM',
         frequency: 'Every 20 minutes'
     },
     {
-        name: 'Shilan - La Trinidad',
+        name: 'Camp Dangwa - La Trinidad',
         signboard: {
-            text: 'SHILAN - LA TRINIDAD',
-            color: 'text-blue-800',
-            backgroundColor: 'bg-white'
+            text: 'CAMP DANGWA - LA TRINIDAD',
+            color: 'text-white',
+            backgroundColor: 'bg-emerald-700'
         },
         terminal: {
-            name: 'Magsaysay Terminal',
-            location: 'Magsaysay Avenue, Baguio City',
+            name: 'Magsaysay / Burnham Terminal',
+            location: 'Magsaysay Ave or Legarda Rd (near Burnham Park), Baguio City',
             mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
         },
-        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Shilan+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+        routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Governor+Bado+Dangwa+National+Road+Baguio+to:Km+3+Bell+Church+La+Trinidad+to:Km+4+La+Trinidad+to:Km+5+Public+Market+La+Trinidad+to:Km+6+BSU+La+Trinidad+to:Camp+Dangwa+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
         fare: {
-            minimum: 13,
-            studentSenior: 11,
-            fullRoute: 25
+            minimum: 15,
+            studentSenior: 13,
+            fullRoute: 22
         },
         path: [
-            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus' },
-            { stop: 'Bokawkan Road', isLandmark: false },
-            { stop: 'Km. 4', isLandmark: false },
-            { stop: 'Km. 5', isLandmark: false },
-            { stop: 'Km. 6 (BSU)', isLandmark: true, landmarkIcon: 'fas fa-university' },
-            { stop: 'Shilan Proper', isLandmark: true, landmarkIcon: 'fas fa-mountain' }
+            { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus', coordinates: [16.4189, 120.5960] },
+            { stop: 'Governor Bado Dangwa Rd', isLandmark: true, landmarkIcon: 'fas fa-road', coordinates: [16.4250, 120.5975] },
+            { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship', coordinates: [16.4328, 120.5980] },
+            { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4385, 120.5965] },
+            { stop: 'Km. 5 (Public Market)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4502, 120.5900] },
+            { stop: 'Km. 6 (BSU)', isLandmark: true, landmarkIcon: 'fas fa-university', coordinates: [16.4585, 120.5910] },
+            { stop: 'Camp Dangwa (PRO-COR)', isLandmark: true, landmarkIcon: 'fas fa-shield-alt', coordinates: [16.4680, 120.5930] }
         ],
-        operatingHours: '6:00 AM - 7:00 PM',
-        frequency: 'Every 30 minutes'
+        operatingHours: '5:00 AM - 9:00 PM',
+        frequency: 'Every 10-15 minutes',
+        variants: [
+            {
+                name: 'Via Magsaysay',
+                signboard: {
+                    text: 'CAMP DANGWA - MAGSAYSAY',
+                    color: 'text-white',
+                    backgroundColor: 'bg-emerald-700'
+                },
+                terminal: {
+                    name: 'Magsaysay Terminal',
+                    location: 'Magsaysay Avenue (near Baguio Center Mall), Baguio City',
+                    mapUrl: 'https://maps.google.com/maps?q=Magsaysay%20Jeepney%20Terminal%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+                },
+                routeMapUrl: 'https://maps.google.com/maps?saddr=Magsaysay+Terminal+Baguio&daddr=Governor+Bado+Dangwa+National+Road+Baguio+to:Km+3+Bell+Church+La+Trinidad+to:Km+4+La+Trinidad+to:Km+5+Public+Market+La+Trinidad+to:Km+6+BSU+La+Trinidad+to:Camp+Dangwa+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+                fare: {
+                    minimum: 15,
+                    studentSenior: 13,
+                    fullRoute: 22
+                },
+                path: [
+                    { stop: 'Magsaysay Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus', coordinates: [16.4189, 120.5960] },
+                    { stop: 'Governor Bado Dangwa Rd', isLandmark: true, landmarkIcon: 'fas fa-road', coordinates: [16.4250, 120.5975] },
+                    { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship', coordinates: [16.4328, 120.5980] },
+                    { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4385, 120.5965] },
+                    { stop: 'Km. 5 (Public Market)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4502, 120.5900] },
+                    { stop: 'Km. 6 (BSU)', isLandmark: true, landmarkIcon: 'fas fa-university', coordinates: [16.4585, 120.5910] },
+                    { stop: 'Camp Dangwa (PRO-COR)', isLandmark: true, landmarkIcon: 'fas fa-shield-alt', coordinates: [16.4680, 120.5930] }
+                ],
+                operatingHours: '5:00 AM - 9:00 PM',
+                frequency: 'Every 10-15 minutes'
+            },
+            {
+                name: 'Via Bokawkan',
+                signboard: {
+                    text: 'CAMP DANGWA - BOKAWKAN',
+                    color: 'text-white',
+                    backgroundColor: 'bg-blue-700'
+                },
+                terminal: {
+                    name: 'Legarda / Burnham Terminal',
+                    location: 'Legarda Road (near Burnham Park), Baguio City',
+                    mapUrl: 'https://maps.google.com/maps?q=Legarda%20Road%20Burnham%20Park%20Baguio&t=&z=15&ie=UTF8&iwloc=&output=embed'
+                },
+                routeMapUrl: 'https://maps.google.com/maps?saddr=Legarda+Road+Burnham+Park+Baguio&daddr=Bokawkan+Road+Baguio+to:Km+3+Bell+Church+La+Trinidad+to:Km+4+La+Trinidad+to:Km+5+Public+Market+La+Trinidad+to:Km+6+BSU+La+Trinidad+to:Camp+Dangwa+La+Trinidad+Benguet&t=&z=14&ie=UTF8&iwloc=&output=embed',
+                fare: {
+                    minimum: 15,
+                    studentSenior: 13,
+                    fullRoute: 22
+                },
+                path: [
+                    { stop: 'Legarda / Burnham Terminal', isLandmark: true, landmarkIcon: 'fas fa-bus', coordinates: [16.4110, 120.5925] },
+                    { stop: 'Bokawkan Road', isLandmark: false, coordinates: [16.4215, 120.5920] },
+                    { stop: 'Bell Church (Km. 3)', isLandmark: true, landmarkIcon: 'fas fa-place-of-worship', coordinates: [16.4328, 120.5980] },
+                    { stop: 'Km. 4 (Tiong San)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4385, 120.5965] },
+                    { stop: 'Km. 5 (Public Market)', isLandmark: true, landmarkIcon: 'fas fa-store', coordinates: [16.4502, 120.5900] },
+                    { stop: 'Km. 6 (BSU)', isLandmark: true, landmarkIcon: 'fas fa-university', coordinates: [16.4585, 120.5910] },
+                    { stop: 'Camp Dangwa (PRO-COR)', isLandmark: true, landmarkIcon: 'fas fa-shield-alt', coordinates: [16.4680, 120.5930] }
+                ],
+                operatingHours: '5:00 AM - 9:00 PM',
+                frequency: 'Every 10-15 minutes'
+            }
+        ]
     }
 ];

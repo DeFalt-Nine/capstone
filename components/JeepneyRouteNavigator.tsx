@@ -1,28 +1,97 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { JEEPNEY_ROUTES } from '../constants';
 import { fetchJeepneyRoutes } from '../services/apiService';
 import { JeepneyRoute } from '../types';
 import AnimatedElement from './AnimatedElement';
+import JeepneyAnimatedMap from './JeepneyAnimatedMap';
+import { JEEPNEY_ROUTE_DESTINATIONS, RouteDestination } from '../utils/jeepneyMapping';
+
+const EXCLUDED_KEYWORDS = ['beckel', 'shilan', 'ambiong', 'tublay'];
+
+const isExcludedRoute = (name?: string) => {
+    if (!name) return false;
+    const lower = name.toLowerCase();
+    return EXCLUDED_KEYWORDS.some(k => lower.includes(k));
+};
+
+const INITIAL_ROUTES = JEEPNEY_ROUTES.filter(r => !isExcludedRoute(r.name));
 
 const JeepneyRouteNavigator: React.FC = () => {
-    const [routes, setRoutes] = useState<JeepneyRoute[]>(JEEPNEY_ROUTES);
-    const [selectedRoute, setSelectedRoute] = useState<JeepneyRoute>(JEEPNEY_ROUTES[0]);
+    const [searchParams] = useSearchParams();
+    const [routes, setRoutes] = useState<JeepneyRoute[]>(INITIAL_ROUTES);
+    const [selectedRoute, setSelectedRoute] = useState<JeepneyRoute>(INITIAL_ROUTES[0]);
+    const [selectedVariantIndex, setSelectedVariantIndex] = useState<number>(0);
     const [mapView, setMapView] = useState<'terminal' | 'route'>('route');
     const [isReversed, setIsReversed] = useState(false);
-    const [loading, setLoading] = useState(true);
+
+    // Deep link sync from URL query param e.g. ?route=Buyagan
+    useEffect(() => {
+        const routeParam = searchParams.get('route');
+        if (routeParam && routes.length > 0) {
+            const matched = routes.find(r => 
+                r.name.toLowerCase().includes(routeParam.toLowerCase()) || 
+                r.signboard.text.toLowerCase().includes(routeParam.toLowerCase())
+            );
+            if (matched && matched.name !== selectedRoute.name) {
+                const timer = setTimeout(() => {
+                    setSelectedRoute(matched);
+                    setSelectedVariantIndex(0);
+                    setIsReversed(false);
+                    
+                    const el = document.getElementById('jeepney-navigator');
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [searchParams, routes, selectedRoute.name]);
 
     useEffect(() => {
         const loadRoutes = async () => {
             try {
                 const apiRoutes = await fetchJeepneyRoutes();
+                
+                // Merge strategy:
+                // Start with pristine local JEEPNEY_ROUTES without excluded routes.
+                const merged = [...INITIAL_ROUTES];
+                
                 if (apiRoutes && apiRoutes.length > 0) {
-                    setRoutes(apiRoutes);
-                    setSelectedRoute(apiRoutes[0]);
+                    apiRoutes.forEach(apiRoute => {
+                        if (isExcludedRoute(apiRoute.name)) return;
+
+                        const localIndex = merged.findIndex(r => r.name.toLowerCase() === apiRoute.name.toLowerCase());
+                        if (localIndex >= 0) {
+                            merged[localIndex] = {
+                                ...merged[localIndex],
+                                ...apiRoute,
+                                path: merged[localIndex].path.map((stop, sIdx) => {
+                                    const apiStop = apiRoute.path?.[sIdx];
+                                    return {
+                                        ...stop,
+                                        ...apiStop,
+                                        coordinates: stop.coordinates || apiStop?.coordinates
+                                    };
+                                })
+                            };
+                        } else if (!apiRoute.name.toLowerCase().includes('camp dangwa via')) {
+                            merged.push(apiRoute);
+                        }
+                    });
                 }
+                
+                const finalRoutes = merged.filter(r => !isExcludedRoute(r.name));
+                setRoutes(finalRoutes);
+                
+                // Use functional update to avoid dependency on selectedRoute
+                setSelectedRoute(prev => {
+                    const matched = finalRoutes.find(r => r.name.toLowerCase() === prev.name.toLowerCase());
+                    return matched || finalRoutes[0];
+                });
             } catch (err) {
                 console.error("Failed to load jeepney routes", err);
-            } finally {
-                setLoading(false);
             }
         };
         loadRoutes();
@@ -30,37 +99,32 @@ const JeepneyRouteNavigator: React.FC = () => {
 
     const handleRouteSelect = (route: JeepneyRoute) => {
         setSelectedRoute(route);
+        setSelectedVariantIndex(0);
         setIsReversed(false); // Reset to default direction when changing routes
     };
 
-    const displayPath = isReversed ? [...selectedRoute.path].reverse() : selectedRoute.path;
-    const origin = selectedRoute.path[0].stop;
-    const destination = selectedRoute.path[selectedRoute.path.length - 1].stop;
+    // Active route data (incorporates current variant if route has variants)
+    const activeVariant = selectedRoute.variants && selectedRoute.variants[selectedVariantIndex];
+    const currentRouteData: JeepneyRoute = activeVariant 
+        ? {
+            ...selectedRoute,
+            ...activeVariant,
+            // Keep main route name for consistency
+            name: `${selectedRoute.name} (${activeVariant.name})`
+          }
+        : selectedRoute;
+
+    const displayPath = isReversed ? [...currentRouteData.path].reverse() : currentRouteData.path;
+    const origin = currentRouteData.path[0].stop;
+    const destination = currentRouteData.path[currentRouteData.path.length - 1].stop;
     
     const currentOrigin = isReversed ? destination : origin;
     const currentDestination = isReversed ? origin : destination;
-    
-    // Attempt to reverse the map URL if it's a standard Google Maps saddr/daddr URL
-    const getReversedMapUrl = (url?: string) => {
-        if (!url) return url;
-        if (url.includes('saddr=') && url.includes('daddr=')) {
-            const saddrMatch = url.match(/saddr=([^&]+)/);
-            const daddrMatch = url.match(/daddr=([^&]+)/);
-            if (saddrMatch && daddrMatch) {
-                return url.replace(saddrMatch[0], `saddr=${daddrMatch[1]}`).replace(daddrMatch[0], `daddr=${saddrMatch[1]}`);
-            }
-        }
-        return url;
-    };
-
-    const displayMapUrl = mapView === 'route' 
-        ? (isReversed ? getReversedMapUrl(selectedRoute.routeMapUrl) : selectedRoute.routeMapUrl)
-        : selectedRoute.terminal.mapUrl;
 
     // Signboard logic: Show the main destination
     const displaySignboardText = isReversed 
         ? (origin.includes('Magsaysay') ? 'BAGUIO - MAGSAYSAY' : origin.toUpperCase())
-        : selectedRoute.signboard.text;
+        : currentRouteData.signboard.text;
 
     return (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full">
@@ -115,6 +179,13 @@ const JeepneyRouteNavigator: React.FC = () => {
                                             <i className={`fas fa-map-marker-alt text-[8px] ${isActive ? 'text-lt-blue/60' : 'text-slate-400'}`}></i>
                                             <p className="text-[10px] text-slate-400 truncate font-medium">via {route.terminal.name}</p>
                                         </div>
+                                        {route.variants && route.variants.length > 0 && (
+                                            <div className="mt-1 flex items-center gap-1">
+                                                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                                    {route.variants.length} Route Options
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {isActive && (
@@ -138,13 +209,44 @@ const JeepneyRouteNavigator: React.FC = () => {
 
                 {/* Route Details */}
                 <div className="w-full lg:w-2/3 p-6 overflow-y-auto custom-scrollbar bg-white">
-                    <AnimatedElement key={selectedRoute.name} direction="up" distance={20} duration={0.4}>
+                    <AnimatedElement key={`${selectedRoute.name}-${selectedVariantIndex}`} direction="up" distance={20} duration={0.4}>
                         <div className="space-y-8">
+                            {/* Variant Selector (e.g. for Tublay) */}
+                            {selectedRoute.variants && selectedRoute.variants.length > 0 && (
+                                <div className="bg-slate-100/80 p-3 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 border border-slate-200/80 shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 rounded-lg bg-lt-blue text-white flex items-center justify-center">
+                                            <i className="fas fa-directions text-xs"></i>
+                                        </div>
+                                        <div>
+                                            <span className="text-xs font-black text-slate-800 uppercase tracking-wider block">Route Option</span>
+                                            <span className="text-[10px] text-slate-500 font-medium">Choose preferred highway path</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        {selectedRoute.variants.map((variant, vIdx) => (
+                                            <button
+                                                key={variant.name}
+                                                onClick={() => setSelectedVariantIndex(vIdx)}
+                                                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                                    selectedVariantIndex === vIdx
+                                                        ? 'bg-lt-blue text-white shadow-md shadow-lt-blue/20 scale-[1.02]'
+                                                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                                                }`}
+                                            >
+                                                <i className={`fas ${vIdx === 0 ? 'fa-road' : 'fa-alt-route'} text-[10px]`}></i>
+                                                <span>{variant.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Signboard Visual */}
                             <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 relative overflow-hidden">
                                 <div className="absolute top-2 left-2 text-[8px] font-bold text-slate-300 uppercase">Look for this signboard:</div>
-                                <div className={`px-8 py-4 rounded-xl border-4 border-slate-800 shadow-2xl transform -rotate-1 ${selectedRoute.signboard.backgroundColor}`}>
-                                    <h3 className={`text-2xl md:text-3xl font-black tracking-tighter text-center ${selectedRoute.signboard.color}`}>
+                                <div className={`px-8 py-4 rounded-xl border-4 border-slate-800 shadow-2xl transform -rotate-1 ${currentRouteData.signboard.backgroundColor}`}>
+                                    <h3 className={`text-2xl md:text-3xl font-black tracking-tighter text-center ${currentRouteData.signboard.color}`}>
                                         {displaySignboardText}
                                     </h3>
                                 </div>
@@ -179,21 +281,42 @@ const JeepneyRouteNavigator: React.FC = () => {
                                         Current Terminal
                                     </p>
                                     <p className="text-xs font-bold text-slate-800">
-                                        {isReversed ? 'La Trinidad Terminal' : selectedRoute.terminal.name}
+                                        {isReversed ? 'La Trinidad Terminal' : currentRouteData.terminal.name}
                                     </p>
                                     <p className="text-[10px] text-slate-500 leading-tight mt-1">
-                                        {isReversed ? 'Various spots in La Trinidad' : selectedRoute.terminal.location}
+                                        {isReversed ? 'Various spots in La Trinidad' : currentRouteData.terminal.location}
                                     </p>
                                 </div>
                                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Fare (Min)</p>
-                                    <p className="text-xl font-black text-slate-900">₱{selectedRoute.fare.minimum}</p>
+                                    <p className="text-xl font-black text-slate-900">₱{currentRouteData.fare.minimum}</p>
                                     <div className="flex flex-wrap gap-2 mt-1">
-                                        <p className="text-[10px] text-slate-500">Student/Senior: <span className="font-bold text-lt-blue">₱{selectedRoute.fare.studentSenior}</span></p>
-                                        <p className="text-[10px] text-slate-500">Full: <span className="font-bold text-slate-700">₱{selectedRoute.fare.fullRoute}</span></p>
+                                        <p className="text-[10px] text-slate-500">Student/Senior: <span className="font-bold text-lt-blue">₱{currentRouteData.fare.studentSenior}</span></p>
+                                        <p className="text-[10px] text-slate-500">Full: <span className="font-bold text-slate-700">₱{currentRouteData.fare.fullRoute}</span></p>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Accessible Tourist Spots on this Route */}
+                            {JEEPNEY_ROUTE_DESTINATIONS[selectedRoute.name] && (
+                                <div className="bg-blue-50/70 p-4 rounded-2xl border border-blue-100/80">
+                                    <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                                        <i className="fas fa-camera text-blue-600"></i>
+                                        Popular Tourist Spots Accessible via this Route:
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {JEEPNEY_ROUTE_DESTINATIONS[selectedRoute.name].map((spot: RouteDestination, sIdx: number) => (
+                                            <span
+                                                key={sIdx}
+                                                className="inline-flex items-center gap-1.5 bg-white text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-blue-200/80 shadow-2xs hover:border-blue-400 transition-colors"
+                                            >
+                                                <i className={`${spot.icon} text-blue-600 text-xs`}></i>
+                                                {spot.spotName}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Map Section */}
                             <div className="space-y-3">
@@ -217,12 +340,11 @@ const JeepneyRouteNavigator: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="h-80 md:h-96 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 relative">
-                                    <iframe 
-                                        src={displayMapUrl}
-                                        className="w-full h-full"
-                                        title="Map View"
-                                        key={`${selectedRoute.name}-${isReversed}-${mapView}`}
-                                    ></iframe>
+                                    <JeepneyAnimatedMap 
+                                        route={currentRouteData}
+                                        isReversed={isReversed}
+                                        mapView={mapView}
+                                    />
                                 </div>
                             </div>
 
@@ -274,11 +396,11 @@ const JeepneyRouteNavigator: React.FC = () => {
                             <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-100 pt-4">
                                 <div className="flex items-center gap-2">
                                     <i className="fas fa-clock"></i>
-                                    <span>{selectedRoute.operatingHours}</span>
+                                    <span>{currentRouteData.operatingHours}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <i className="fas fa-sync-alt"></i>
-                                    <span>{selectedRoute.frequency}</span>
+                                    <span>{currentRouteData.frequency}</span>
                                 </div>
                             </div>
                         </div>

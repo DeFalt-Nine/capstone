@@ -166,8 +166,14 @@ export interface AdminLog {
   timestamp: string;
 }
 
-export interface JeepneyRoute {
-  _id?: string;
+export interface RouteStop {
+  stop: string;
+  isLandmark: boolean;
+  landmarkIcon?: string;
+  coordinates?: [number, number];
+}
+
+export interface RouteVariant {
   name: string;
   signboard: {
     text: string;
@@ -185,13 +191,35 @@ export interface JeepneyRoute {
     studentSenior?: number;
     fullRoute?: number;
   };
-  path: {
-    stop: string;
-    isLandmark: boolean;
-    landmarkIcon?: string;
-  }[];
+  path: RouteStop[];
   operatingHours: string;
   frequency: string;
+}
+
+export interface JeepneyRoute {
+  _id?: string;
+  id?: string;
+  name: string;
+  signboard: {
+    text: string;
+    color: string;
+    backgroundColor: string;
+  };
+  terminal: {
+    name: string;
+    location: string;
+    mapUrl?: string;
+  };
+  routeMapUrl?: string;
+  fare: {
+    minimum: number;
+    studentSenior?: number;
+    fullRoute?: number;
+  };
+  path: RouteStop[];
+  operatingHours: string;
+  frequency: string;
+  variants?: RouteVariant[];
 }
 
 export interface SiteSettings {

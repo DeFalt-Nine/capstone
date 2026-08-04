@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { TouristSpot, Review } from '../types';
 import { uploadImage, submitReview, trackEvent, updateReview, deleteUserReview } from '../services/apiService';
 import StarRating from './StarRating';
@@ -7,6 +8,7 @@ import ConfirmationModal from './ConfirmationModal';
 import AlertModal from './AlertModal';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useAuth } from '../contexts/AuthContext';
+import { getJeepneyInfoForSpot } from '../utils/jeepneyMapping';
 
 interface TouristSpotModalProps {
   spot: TouristSpot;
@@ -34,9 +36,12 @@ const StarRatingInput: React.FC<{ rating: number; setRating: (rating: number) =>
 
 
 const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onClose, onReviewSubmitted }) => {
+  const navigate = useNavigate();
   const { user, signInWithGoogle, signOut, getDisplayName, updateProfile, nickname, isNameMasked } = useAuth();
   useAnalytics(spot._id, spotType === 'tourist' ? '/tourist-spots' : '/dining-spots');
   const [activeTab, setActiveTab] = useState('details');
+
+  const jeepInfo = getJeepneyInfoForSpot(spot.name);
 
   // Review form state
   const [reviewNickname, setReviewNickname] = useState(nickname || '');
@@ -317,13 +322,41 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
                 
                 {/* Transpo Quick Info Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-4">
-                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-600 shadow-sm flex-shrink-0"><i className="fas fa-bus"></i></div>
-                        <div>
-                            <h4 className="font-bold text-blue-900 text-xs uppercase tracking-widest">By Jeepney</h4>
-                            <p className="text-slate-700 font-extrabold text-lg mt-1">{spot.jeepneyFare || '₱13.00'}</p>
-                            <p className="text-blue-700/70 text-[10px] mt-1 leading-tight font-medium italic"><i className="fas fa-map-pin mr-1"></i> {spot.terminalLocation || 'Baguio City Hall / Center Mall Terminal'}</p>
+                    <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 flex flex-col justify-between gap-3 shadow-sm">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-600 shadow-sm flex-shrink-0">
+                                <i className="fas fa-bus text-lg"></i>
+                            </div>
+                            <div className="flex-grow">
+                                <div className="flex items-center justify-between gap-2">
+                                    <h4 className="font-bold text-blue-950 text-xs uppercase tracking-widest">By Jeepney</h4>
+                                    <span className="bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase shadow-xs">
+                                        {jeepInfo.routeName.split(' - ')[0]}
+                                    </span>
+                                </div>
+                                <p className="text-slate-800 font-extrabold text-lg mt-0.5">{spot.jeepneyFare || '₱13.00'}</p>
+                                <p className="text-blue-900 text-[11px] mt-1 font-semibold flex items-center gap-1">
+                                    <i className="fas fa-map-pin text-blue-600 text-xs"></i>
+                                    <span>Drop-off: <strong>{jeepInfo.dropOffStop}</strong></span>
+                                </p>
+                                <p className="text-slate-600 text-[10px] mt-1 leading-tight italic">
+                                    {jeepInfo.tip}
+                                </p>
+                            </div>
                         </div>
+
+                        <button
+                            onClick={() => {
+                                trackEvent('click', 'view_jeepney_route_button', '/modal', { spot: spot.name, route: jeepInfo.routeName });
+                                onClose();
+                                navigate(`/visitor-info?tab=culture&route=${encodeURIComponent(jeepInfo.searchKeyword)}#jeepney-navigator`);
+                            }}
+                            className="w-full mt-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md cursor-pointer group"
+                        >
+                            <i className="fas fa-route group-hover:scale-110 transition-transform"></i>
+                            <span>Which Jeep to Take: <strong>{jeepInfo.routeName}</strong></span>
+                            <i className="fas fa-arrow-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
+                        </button>
                     </div>
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-4">
                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-600 shadow-sm flex-shrink-0"><i className="fas fa-taxi"></i></div>

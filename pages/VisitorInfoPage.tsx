@@ -504,7 +504,16 @@ const VisitorInfoPage: React.FC = () => {
     if (searchParams.get('event')) {
         window.location.href = `/events?id=${searchParams.get('event')}`;
     }
-  }, [searchParams]);
+    const tabParam = searchParams.get('tab');
+    const routeParam = searchParams.get('route');
+    const targetTab = (tabParam === 'culture' || tabParam === 'emergency') ? tabParam : (routeParam ? 'culture' : null);
+    if (targetTab && targetTab !== activeTab) {
+        const timer = setTimeout(() => {
+            setActiveTab(targetTab);
+        }, 0);
+        return () => clearTimeout(timer);
+    }
+  }, [searchParams, activeTab]);
 
   const handleTabChange = (tab: 'culture' | 'emergency') => {
       setActiveTab(tab);
@@ -614,7 +623,9 @@ const VisitorInfoPage: React.FC = () => {
                                     </div>
 
                                      {/* Jeepney Route Navigator */}
-                                     <JeepneyRouteNavigator />
+                                     <div id="jeepney-navigator">
+                                         <JeepneyRouteNavigator />
+                                     </div>
                                   </div>
 
                                 {/* Smart Estimator Tool - Col 3 */}
