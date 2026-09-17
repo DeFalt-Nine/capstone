@@ -259,21 +259,21 @@ const HomePage: React.FC = () => {
                             {
                                 title: "Choosing Your Strawberry Picking Basket",
                                 description: "A guide to getting the most out of your farm visit this season.",
-                                image: "https://images.unsplash.com/photo-1594270433722-5b18f50b4a48?q=80&w=800",
+                                image: "https://i.imgur.com/DQij7yA.jpeg",
                                 author: "Local Guide",
                                 date: "Feb 12, 2024"
                             },
                             {
                                 title: "Hidden Coffee Spots of Puguis",
                                 description: "Escape the crowds and find peace in these mountain-view cafes.",
-                                image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=800",
+                                image: "https://i.imgur.com/aAURbMJ.jpeg",
                                 author: "Coffee Lover",
                                 date: "Jan 28, 2024"
                             },
                             {
                                 title: "The Colors of Stobosa: A Photo Journey",
                                 description: "Capturing the world's first and largest community mural project.",
-                                image: "https://images.unsplash.com/photo-1627346850259-33b6833eb882?q=80&w=800",
+                                image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjt5Chfnwwkm0qkmnaayKJ1nAQVtoZttN49nuitgaoyzoJXGsanxhZIU5q3ch_VV4gwEWzgY8JJUx4MwTnOdzMeJy5aDmqHtzhvg4jxMi90j7pIim7XSnbNaTqUzJ9OXs3l4AIJ4-pmPpWe/w1200-h630-p-k-no-nu/welcome+to+la+trinidad.jpg",
                                 author: "Art Enthusiast",
                                 date: "Jan 15, 2024"
                             }
