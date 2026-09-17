@@ -1,23 +1,39 @@
 import express from 'express';
+import { GoogleGenAI } from '@google/genai';
 import { supabase } from '../config/supabase.js';
 
 const router = express.Router();
-// ... (rest of the system instructions and streaming logic remains same)
+
+let aiClient = null;
+function getGeminiClient() {
+  if (!aiClient) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+    aiClient = new GoogleGenAI({
+      apiKey: key,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build'
+        }
+      }
+    });
+  }
+  return aiClient;
+}
 
 router.post('/', async (req, res) => {
   try {
     const { body } = req;
     const { message, model: requestedModel, intentContext } = body;
-    const { env } = process;
-    const apiKey = env.GROQ_API_KEY;
-    const model = requestedModel || env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    if (!apiKey) {
-      return res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server.' });
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server.' });
     }
 
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -45,98 +61,64 @@ IMPORTANT RULES:
       systemInstruction += `\n\nUSE THIS FACTUAL INFORMATION TO GUIDE YOUR RESPONSE:\n${intentContext}`;
     }
 
-    const messages = [
-      { role: 'system', content: systemInstruction },
-      { role: 'user', content: message },
-    ];
-
-    const payload = {
-      model,
-      messages,
-      stream: true,
-    };
-
-    const url = 'https://api.groq.com/openai/v1/chat/completions';
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    };
-    const fetchOptions = {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    };
-
-    const apiResponse = await fetch(url, fetchOptions);
-
-    const { ok, status, statusText, body: responseStream } = apiResponse;
-
-    if (!ok) {
-      const errorText = await apiResponse.text();
-      console.error(`Error from AI API (${status}):`, errorText);
-      res.write(`Sorry, I encountered an error: ${statusText}`);
-      return res.end();
+    // Default to gemini-2.5-flash or use requested gemini model
+    let targetModel = 'gemini-2.5-flash';
+    if (requestedModel && typeof requestedModel === 'string' && requestedModel.startsWith('gemini-')) {
+      targetModel = requestedModel;
     }
 
+    const ai = getGeminiClient();
+    const streamResponse = await ai.models.generateContentStream({
+      model: targetModel,
+      contents: message,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+      }
+    });
+
     let fullBotResponse = '';
-    let buffer = '';
-    const decoder = new TextDecoder();
 
     try {
-        for await (const chunk of responseStream) {
-            buffer += decoder.decode(chunk, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-                const trimmedLine = line.trim();
-                if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
-                
-                const jsonStr = trimmedLine.slice(6);
-                if (jsonStr === '[DONE]') continue;
-
-                try {
-                    const json = JSON.parse(jsonStr);
-                    const content = json.choices?.[0]?.delta?.content;
-                    
-                    if (content) {
-                        res.write(content);
-                        fullBotResponse += content;
-                    }
-                } catch (e) {
-                    console.error('Error parsing JSON from stream:', e.message, 'Line:', jsonStr);
-                }
-            }
+      for await (const chunk of streamResponse) {
+        const text = chunk.text;
+        if (text) {
+          res.write(text);
+          fullBotResponse += text;
         }
+      }
 
-        res.end();
-        if (fullBotResponse) {
-            try {
-                if (supabase) {
-                    await supabase.from('chat_logs').insert([{
-                        user_message: message,
-                        bot_response: fullBotResponse,
-                        is_intent: false,
-                    }]);
-                }
-            } catch (dbErr) {
-                console.error('Error saving chat log to DB:', dbErr.message);
-            }
+      res.end();
+
+      if (fullBotResponse) {
+        try {
+          if (supabase) {
+            await supabase.from('chat_logs').insert([{
+              user_message: message,
+              bot_response: fullBotResponse,
+              is_intent: false,
+            }]);
+          }
+        } catch (dbErr) {
+          console.error('Error saving chat log to DB:', dbErr.message);
         }
+      }
     } catch (err) {
-        console.error('Stream error:', err);
-        if (!res.headersSent) {
-            res.status(500).end();
-        } else {
-            res.end();
-        }
+      console.error('Stream processing error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: err.message || 'Stream processing failed' });
+      } else {
+        res.write('\n\n(Stream interrupted: ' + (err.message || 'Error') + ')');
+        res.end();
+      }
     }
   } catch (error) {
     const { message: errorMessage } = error;
     console.error('Error in chatbot route:', errorMessage);
     if (!res.headersSent) {
-      res.status(500).json({ error: errorMessage || 'Failed to get response from AI model' });
+      res.status(500).json({ error: errorMessage || 'Failed to get response from Gemini AI' });
     } else {
+      res.write('\n\n(Encountered an error: ' + errorMessage + ')');
       res.end();
     }
   }
