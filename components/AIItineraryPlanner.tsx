@@ -15,8 +15,10 @@ import {
   Search,
   Compass,
   CheckCircle2,
-  BookmarkCheck
+  BookmarkCheck,
+  ExternalLink
 } from 'lucide-react';
+import TouristSpotModal from './TouristSpotModal';
 import { 
   fetchTouristSpots, 
   fetchDiningSpots, 
@@ -124,6 +126,78 @@ const AIItineraryPlanner: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [showGuestNotice, setShowGuestNotice] = useState(false);
+  const [previewSpot, setPreviewSpot] = useState<{ spot: TouristSpot; type: 'tourist' | 'dining' } | null>(null);
+
+  // Spot finder for interactive linking in generated itinerary
+  const findMatchingSpot = (locationName: string): { spot: TouristSpot; type: 'tourist' | 'dining' } | null => {
+    if (!locationName) return null;
+    const clean = locationName.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // Specific aliases commonly returned by AI for La Trinidad attractions
+    const aliasMap: Record<string, string[]> = {
+      'stobosa': ['stobosa', 'stabosa', 'stabosy', 'colors of stobosa', 'hillside homes', 'solar homes'],
+      'strawberry': ['strawberry farm', 'strawberry', 'swamp'],
+      'kalugong': ['mount kalugong', 'kalugong', 'mt kalugong', 'cultural village'],
+      'yangbew': ['mount yangbew', 'yangbew', 'mt yangbew', 'jumbo rock'],
+      'bell church': ['bell church', 'chinese temple', 'taoist temple'],
+      'costa': ['mount costa', 'costa', 'mt costa'],
+      'bahong': ['bahong', 'rose garden', 'flower garden', 'flower farm'],
+      'benguet museum': ['benguet museum', 'museum', 'provincial museum'],
+      'communal': ['communal forest', 'forest', 'alno'],
+      'calajo': ['calajo', 'calajo restaurant'],
+      'bsu': ['bsu', 'food center', 'benguet state university'],
+      'valley': ['valley bread', 'valley'],
+      'chaya': ['chaya'],
+      'jack': ['jack', 'diner']
+    };
+
+    // 1. Check direct name or alias match against tourist spots
+    for (const spot of spots) {
+      const sName = spot.name.toLowerCase();
+      if (clean === sName || clean.includes(sName) || sName.includes(clean)) {
+        return { spot, type: 'tourist' };
+      }
+      for (const [key, aliases] of Object.entries(aliasMap)) {
+        if (sName.includes(key)) {
+          if (aliases.some(a => clean.includes(a))) {
+            return { spot, type: 'tourist' };
+          }
+        }
+      }
+    }
+
+    // 2. Check dining spots
+    for (const d of dining) {
+      const dName = d.name.toLowerCase();
+      if (clean === dName || clean.includes(dName) || dName.includes(clean)) {
+        return { spot: d, type: 'dining' };
+      }
+      for (const [key, aliases] of Object.entries(aliasMap)) {
+        if (dName.includes(key)) {
+          if (aliases.some(a => clean.includes(a))) {
+            return { spot: d, type: 'dining' };
+          }
+        }
+      }
+    }
+
+    // 3. Fallback: Check significant word overlaps (length >= 4)
+    const words = clean.split(' ').filter(w => w.length >= 4 && !['near', 'area', 'from', 'view', 'park', 'road', 'street'].includes(w));
+    for (const spot of spots) {
+      const sName = spot.name.toLowerCase();
+      if (words.some(w => sName.includes(w))) {
+        return { spot, type: 'tourist' };
+      }
+    }
+    for (const d of dining) {
+      const dName = d.name.toLowerCase();
+      if (words.some(w => dName.includes(w))) {
+        return { spot: d, type: 'dining' };
+      }
+    }
+
+    return null;
+  };
 
   // Categories lists derived from loaded data
   const spotCategories = ['All', ...Array.from(new Set(spots.map(s => s.category).filter(Boolean)))];
@@ -181,7 +255,9 @@ const AIItineraryPlanner: React.FC = () => {
     }
 
     const loadFromServer = async () => {
-      const email = user?.email || 'anonymous';
+      if (!user) return; // Do not fetch from the shared server-side 'anonymous' account for guests
+      const email = user.email;
+      if (!email) return;
       try {
         const res = await getItineraryFromServer(email);
         if (res && res.success && res.itinerary) {
@@ -276,9 +352,10 @@ const AIItineraryPlanner: React.FC = () => {
       localStorage.setItem('savedAIItinerary', JSON.stringify(result));
       localStorage.setItem('savedAIItineraryTimestamp', Date.now().toString());
 
-      // Auto-save to database
-      const email = user?.email || 'anonymous';
-      await saveItineraryToServer(email, result);
+      // Auto-save to database if the user is logged in
+      if (user?.email) {
+        await saveItineraryToServer(user.email, result);
+      }
     } catch (err: any) {
       console.error('Failed to generate itinerary:', err);
       setError(err.message || 'The Smart Itinerary Service is currently unavailable. Please check that configuration is set up properly.');
@@ -333,14 +410,7 @@ const AIItineraryPlanner: React.FC = () => {
     setSavedSuccess(false);
     setShowGuestNotice(false);
 
-    try {
-      if (!user) {
-        // Only clear draft on server if the user is a guest (anonymous)
-        await saveItineraryToServer('anonymous', null);
-      }
-    } catch (err) {
-      console.error('Failed to clear guest itinerary from server:', err);
-    }
+    // Guest itinerary is purely local, no server call needed for reset
   };
 
   const handlePrint = () => {
@@ -986,7 +1056,7 @@ const AIItineraryPlanner: React.FC = () => {
 
             {/* Day Breakdown Content */}
             <div className="p-6 sm:p-12 space-y-12 bg-slate-50/40 print:p-0">
-              {generatedItinerary.days.map((day, dIdx) => (
+              {generatedItinerary.days.map((day) => (
                 <div key={day.dayNumber} className="space-y-6 relative">
                   {/* Day Header */}
                   <div className="flex items-center gap-4">
@@ -1017,10 +1087,29 @@ const AIItineraryPlanner: React.FC = () => {
                               </span>
                               <h4 className="font-extrabold text-slate-800 text-sm sm:text-base leading-snug">{act.activity}</h4>
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg self-start sm:self-auto shrink-0 border border-slate-100">
-                              <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="font-bold text-slate-700">{act.location}</span>
-                            </div>
+                            {(() => {
+                              const match = findMatchingSpot(act.location);
+                              if (match) {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewSpot(match)}
+                                    className="flex items-center gap-1.5 text-xs text-lt-blue bg-lt-blue/10 hover:bg-lt-blue hover:text-white px-2.5 py-1 rounded-lg self-start sm:self-auto shrink-0 border border-lt-blue/20 font-bold transition-all shadow-sm group/btn cursor-pointer"
+                                    title={`Click to view details, photos, and guides for ${match.spot.name}`}
+                                  >
+                                    <MapPin className="w-3.5 h-3.5 text-lt-blue group-hover/btn:text-white transition-colors shrink-0" />
+                                    <span className="underline decoration-lt-blue/30 group-hover/btn:decoration-white font-black">{act.location}</span>
+                                    <ExternalLink className="w-3 h-3 opacity-60 group-hover/btn:opacity-100 group-hover/btn:translate-x-0.5 transition-all shrink-0 ml-0.5" />
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg self-start sm:self-auto shrink-0 border border-slate-100">
+                                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                  <span className="font-bold text-slate-700">{act.location}</span>
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">{act.notes}</p>
@@ -1062,6 +1151,23 @@ const AIItineraryPlanner: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Interactive Spot Detail Modal when clicked from Itinerary */}
+      {previewSpot && (
+        <TouristSpotModal
+          spot={previewSpot.spot}
+          spotType={previewSpot.type}
+          onClose={() => setPreviewSpot(null)}
+          onReviewSubmitted={(updatedSpot) => {
+            if (previewSpot.type === 'tourist') {
+              setSpots(prev => prev.map(s => s._id === updatedSpot._id ? updatedSpot : s));
+            } else {
+              setDining(prev => prev.map(d => d._id === updatedSpot._id ? updatedSpot : d));
+            }
+            setPreviewSpot(prev => prev ? { ...prev, spot: updatedSpot } : null);
+          }}
+        />
       )}
     </div>
   );

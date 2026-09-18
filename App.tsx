@@ -40,6 +40,8 @@ const AppContent: React.FC = () => {
           <Route path="/emergency" element={<EmergencyPage />} />
           <Route path="/norms" element={<NormsPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="*" element={<HomePage />} />
         </Routes>
       </main>
       {!isAdminPage && <Footer />}

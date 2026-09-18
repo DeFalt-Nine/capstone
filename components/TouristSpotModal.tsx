@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import type { TouristSpot, Review } from '../types';
 import { uploadImage, submitReview, trackEvent, updateReview, deleteUserReview } from '../services/apiService';
@@ -279,9 +280,9 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
       return 'w-full max-w-3xl h-[85vh]';
   };
   
-  return (
+  return createPortal(
     <>
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       <div className={`bg-white rounded-2xl shadow-2xl flex flex-col relative overflow-hidden animate-slide-up border border-slate-200 transition-all duration-500 ease-in-out ${getModalDimensions()}`} onClick={(e) => e.stopPropagation()}>
         
         <button onClick={onClose} className="absolute top-4 right-4 text-white bg-black/30 backdrop-blur-md rounded-full w-10 h-10 flex items-center justify-center z-20 transition-all border border-white/20 shadow-sm"><i className="fas fa-times"></i></button>
@@ -652,7 +653,8 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
         onClose={() => setAlertModal(null)}
       />
     )}
-    </>
+    </>,
+    document.body
   );
 };
 

@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import AnimatedElement from '../components/AnimatedElement';
 
 const PrivacyPolicyPage: React.FC = () => {
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
   return (
     <section id="privacy-policy" className="py-20 md:py-32 bg-white overflow-hidden">
       <AnimatedElement>
@@ -54,8 +58,7 @@ const PrivacyPolicyPage: React.FC = () => {
 
             <h2>8. Contact Us</h2>
             <p>
-              If you have any questions about this Privacy Policy, please contact us at{' '}
-              <a href="mailto:privacy@visitlatrinidad.ph" className="text-lt-orange hover:text-lt-red hover:underline font-semibold transition-colors">privacy@visitlatrinidad.ph</a>.
+              If you have any questions about this Privacy Policy, please contact us at our socials.
             </p>
           </div>
         </div>

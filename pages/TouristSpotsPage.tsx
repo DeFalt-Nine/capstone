@@ -46,7 +46,19 @@ const TouristSpotsPage: React.FC = () => {
     const searchParam = searchParams.get('search');
 
     if (spotName && items.length > 0) {
-        const found = items.find(item => item.name.toLowerCase().includes(spotName.toLowerCase()));
+        const query = spotName.toLowerCase();
+        const found = items.find(item => {
+          const name = item.name.toLowerCase();
+          return name.includes(query) || query.includes(name) ||
+            (query.includes('stobosa') && name.includes('stobosa')) ||
+            (query.includes('stabos') && name.includes('stobosa')) ||
+            (query.includes('strawberry') && name.includes('strawberry')) ||
+            (query.includes('kalugong') && name.includes('kalugong')) ||
+            (query.includes('yangbew') && name.includes('yangbew')) ||
+            (query.includes('bell church') && name.includes('bell church')) ||
+            (query.includes('costa') && name.includes('costa')) ||
+            (query.includes('bahong') && name.includes('bahong'));
+        });
         if (found) {
             setSelectedSpot(found);
         }
