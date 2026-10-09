@@ -16,7 +16,8 @@ import {
   Compass,
   CheckCircle2,
   BookmarkCheck,
-  ExternalLink
+  ExternalLink,
+  ArrowRight
 } from 'lucide-react';
 import TouristSpotModal from './TouristSpotModal';
 import { 
@@ -52,6 +53,268 @@ interface AIItinerary {
   days: ItineraryDay[];
   localTips: string[];
 }
+
+const FALLBACK_SPOTS: TouristSpot[] = [
+  {
+    _id: 'fallback-strawberry-farm',
+    name: 'La Trinidad Strawberry Farm',
+    image: 'https://images.unsplash.com/photo-1627346850259-33b6833eb882?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Lush strawberry fields in La Trinidad',
+    description: "Famous for its vast strawberry fields where visitors can pick their own strawberries. It's the primary reason La Trinidad is known as the 'Strawberry Capital of the Philippines.'",
+    location: 'Km. 5, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '7:00 AM - 7:00 PM Daily',
+    bestTimeToVisit: 'December to February',
+    category: 'Agri-tourism',
+    tags: ['Family Friendly', 'Parking Available'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=La%20Trinidad%20Strawberry%20Farm&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-stobosa',
+    name: 'Colors of STOBOSA',
+    image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Colorful hillside houses of Stobosa',
+    description: 'A massive, vibrant hillside mural spanning hundreds of houses in Stonehill, Botiwtiw, and Sadjap (STOBOSA), created by local artists and residents.',
+    location: 'Km. 3, Balili, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: 'Always Open (Viewable 24/7)',
+    bestTimeToVisit: 'Daytime / Sunny afternoon',
+    category: 'Art',
+    tags: ['Photography', 'Free Entry'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Colors%20of%20Stobosa&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-kalugong',
+    name: 'Mount Kalugong Cultural Village',
+    image: 'https://images.unsplash.com/photo-1531932594968-e5e5e9dee95a?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Rock formations at Mount Kalugong',
+    description: 'An eco-park and cultural sanctuary atop Mount Kalugong featuring remarkable limestone rock formations resembling traditional hats, pine forests, and native cultural huts.',
+    location: 'Barangay Tawang / Cruz, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '6:00 AM - 6:00 PM Daily',
+    bestTimeToVisit: 'Sunrise or Sunset',
+    category: 'Nature',
+    tags: ['Hiking', 'Eco-Park'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Mount%20Kalugong&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-yangbew',
+    name: 'Mount Yangbew',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Grassland peak of Mount Yangbew',
+    description: 'Known as the "Little Mt. Pulag" of La Trinidad, offering a rolling grassland summit, sweeping 360-degree views of the valley, and horseback riding.',
+    location: 'Barangay Tawang, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '5:00 AM - 6:00 PM Daily',
+    bestTimeToVisit: 'Early morning for sunrise and sea of clouds',
+    category: 'Nature',
+    tags: ['Hiking', 'Sunrise', 'Horseback Riding'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Mount%20Yangbew&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-bell-church',
+    name: 'Bell Church',
+    image: 'https://images.unsplash.com/photo-1644304677708-54b673678082?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Ornate Bell Church temple',
+    description: 'A serene Taoist and Buddhist temple complex showcasing traditional Chinese architecture, vibrant pagodas, dragon sculptures, and lotus ponds.',
+    location: 'Barangay Balili, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '8:00 AM - 5:00 PM Daily',
+    bestTimeToVisit: 'Morning to early afternoon',
+    category: 'Culture',
+    tags: ['Religious Site', 'Photography', 'Free Entry'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Bell%20Church%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-bahong',
+    name: 'Bahong Rose Gardens',
+    image: 'https://images.unsplash.com/photo-1605895370326-e96b9d52e3f5?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Terraced rose fields in Bahong',
+    description: 'The epicenter of the Philippine cut-flower capital, featuring terraced hillsides teeming with colorful roses, chrysanthemums, and exotic highland blooms.',
+    location: 'Barangay Bahong, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '7:00 AM - 5:00 PM Daily',
+    bestTimeToVisit: 'Early morning for fresh dew',
+    category: 'Agri-tourism',
+    tags: ['Flowers', 'Photography'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Bahong%20Rose%20Gardens&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-costa',
+    name: 'Mount Costa',
+    image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Landscaped garden at Mount Costa',
+    description: 'A scenic stroll garden featuring 24 curated themed living spaces including mirror gardens, labyrinth paths, and panoramic view decks along Lamtang Road.',
+    location: 'Lamtang, Puguis, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '7:00 AM - 5:00 PM Daily',
+    bestTimeToVisit: 'Sunny mornings',
+    category: 'Nature',
+    tags: ['Themed Gardens', 'Relaxing'],
+    jeepneyFare: '₱18.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Mount%20Costa&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-museum',
+    name: 'Benguet Museum',
+    image: 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Benguet Provincial Museum artifacts',
+    description: 'Home to archaeological artifacts, traditional Ibaloi, Kankana-ey, and Kalanguya cultural items, antique textiles, and Benguet history displays.',
+    location: 'Capitol Compound, Km. 6, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '8:00 AM - 5:00 PM (Mon-Fri)',
+    bestTimeToVisit: 'Weekdays',
+    category: 'Culture',
+    tags: ['Museum', 'History', 'Educational'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Benguet%20Museum%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-bsu-marketing',
+    name: 'BSU Agri-Tourism & Marketing Center',
+    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1080&auto=format&fit=crop',
+    alt: 'BSU Marketing Center produce',
+    description: 'The agro-tourism market outlet of Benguet State University featuring fresh organic harvest, strawberry preserves, highland coffee, and pasalubong.',
+    location: 'Km. 6, BSU Compound, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '8:00 AM - 5:00 PM (Mon-Sat)',
+    bestTimeToVisit: 'Morning',
+    category: 'Agri-tourism',
+    tags: ['Organic Produce', 'Pasalubong'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Benguet%20State%20University%20Marketing%20Center&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-sports-complex',
+    name: 'Benguet Sports Complex',
+    image: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Benguet Sports Complex rubber track oval',
+    description: 'Modern provincial sports park in Wangal with all-weather tartan track oval and swimming facilities set against pine-clad mountain peaks.',
+    location: 'Wangal, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '5:00 AM - 7:00 PM Daily',
+    bestTimeToVisit: 'Early morning or late afternoon',
+    category: 'Recreation',
+    tags: ['Running Oval', 'Sports Tourism'],
+    jeepneyFare: '₱15.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Benguet%20Sports%20Complex%20Wangal%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-tayawan',
+    name: 'Tayawan View Deck & Agri-Park',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Tayawan View Deck limestone formations',
+    description: 'Eco-adventure viewpoint in Tawang featuring stone footbridges, rock formations, and wide scenic views across La Trinidad valley.',
+    location: 'Sitio Tayawan, Barangay Tawang, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '6:00 AM - 6:00 PM Daily',
+    bestTimeToVisit: 'Sunrise or sunset',
+    category: 'Nature',
+    tags: ['View Deck', 'Hiking', 'Valley View'],
+    jeepneyFare: '₱14.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Tayawan%20View%20Deck%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-binanga',
+    name: 'Binanga Falls',
+    image: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Binanga Falls natural pool in Shilan',
+    description: 'A serene hidden waterfall in Barangay Shilan dropping into a natural plunge pool amidst highland vegetable terraces.',
+    location: 'Barangay Shilan, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '6:00 AM - 5:00 PM Daily',
+    bestTimeToVisit: 'Morning',
+    category: 'Nature',
+    tags: ['Waterfall', 'Eco-Trek', 'Hidden Gem'],
+    jeepneyFare: '₱20.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Binanga%20Falls%20Shilan%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-darjane',
+    name: "DarJane's Garden & Cafe",
+    image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?q=80&w=1080&auto=format&fit=crop',
+    alt: "DarJane's Garden terraces and rooftop cafe",
+    description: 'Agri-tourism farm in Shilan featuring flower terraces, organic vegetable greenhouses, and a rooftop café overlooking the misty valley.',
+    location: 'Km. 12, Barangay Shilan, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '7:00 AM - 7:00 PM Daily',
+    bestTimeToVisit: 'Morning for coffee and sunrise views',
+    category: 'Agri-tourism',
+    tags: ['Flower Garden', 'Rooftop Cafe', 'Scenic View'],
+    jeepneyFare: '₱20.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Shilan%20La%20Trinidad%20Benguet&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  }
+];
+
+const FALLBACK_DINING: TouristSpot[] = [
+  {
+    _id: 'fallback-calajo',
+    name: 'Calajo Restaurant',
+    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Authentic Cordilleran dishes at Calajo',
+    description: 'A beloved local institution celebrating genuine Cordilleran cuisine, famed for authentic smoked pinikpikan, watwat, and fresh farm-to-table vegetable plates.',
+    location: 'Km. 6, Betag, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '7:00 AM - 8:30 PM Daily',
+    bestTimeToVisit: 'Lunch and Dinner',
+    category: 'Local Favorite',
+    tags: ['Pinikpikan', 'Authentic Cordilleran'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Calajo%20Restaurant%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-jacks',
+    name: "Jack's Restaurant",
+    image: 'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1080&auto=format&fit=crop',
+    alt: "Jack's Restaurant dining",
+    description: 'Famous home of the hearty "Jack\'s Rice" loaded with chicken, pork, egg, and highland vegetables, serving large family-friendly portions.',
+    location: 'Km. 4, Balili, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '8:00 AM - 9:00 PM Daily',
+    bestTimeToVisit: 'Lunch or Dinner',
+    category: 'Local Favorite',
+    tags: ['Jacks Rice', 'Comfort Food'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Jacks%20Restaurant%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  },
+  {
+    _id: 'fallback-kalugong-cafe',
+    name: 'Mount Kalugong Kape-an',
+    image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Highland coffee at Mount Kalugong Kape-an',
+    description: 'A rustic wooden cafe perched atop Mount Kalugong, pouring rich local Benguet Arabica coffee paired with fresh pastries alongside panoramic valley views.',
+    location: 'Mount Kalugong Summit, Tawang, La Trinidad, Benguet',
+    gallery: [],
+    openingHours: '7:00 AM - 6:00 PM Daily',
+    bestTimeToVisit: 'Morning coffee after sunrise hike',
+    category: 'Cafe',
+    tags: ['Benguet Coffee', 'Scenic Views'],
+    jeepneyFare: '₱13.00',
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Mount%20Kalugong%20Kape-an&t=&z=15&ie=UTF8&iwloc=&output=embed',
+    reviews: []
+  }
+];
 
 const AIItineraryPlanner: React.FC = () => {
   const { user, signInWithGoogle } = useAuth();
@@ -129,67 +392,71 @@ const AIItineraryPlanner: React.FC = () => {
   const [previewSpot, setPreviewSpot] = useState<{ spot: TouristSpot; type: 'tourist' | 'dining' } | null>(null);
 
   // Spot finder for interactive linking in generated itinerary
-  const findMatchingSpot = (locationName: string): { spot: TouristSpot; type: 'tourist' | 'dining' } | null => {
-    if (!locationName) return null;
-    const clean = locationName.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const findMatchingSpot = (locationName?: string, activityText?: string, notesText?: string): { spot: TouristSpot; type: 'tourist' | 'dining' } | null => {
+    const locClean = (locationName || '').toLowerCase();
+    const actClean = (activityText || '').toLowerCase();
+    const notesClean = (notesText || '').toLowerCase();
+    const fullText = `${locClean} ${actClean} ${notesClean}`.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!fullText) return null;
 
-    // Specific aliases commonly returned by AI for La Trinidad attractions
+    const allSpots = spots.length > 0 ? spots : FALLBACK_SPOTS;
+    const allDining = dining.length > 0 ? dining : FALLBACK_DINING;
+
+    // Specific aliases commonly returned by AI or user prompts for La Trinidad attractions
     const aliasMap: Record<string, string[]> = {
-      'stobosa': ['stobosa', 'stabosa', 'stabosy', 'colors of stobosa', 'hillside homes', 'solar homes'],
-      'strawberry': ['strawberry farm', 'strawberry', 'swamp'],
-      'kalugong': ['mount kalugong', 'kalugong', 'mt kalugong', 'cultural village'],
-      'yangbew': ['mount yangbew', 'yangbew', 'mt yangbew', 'jumbo rock'],
-      'bell church': ['bell church', 'chinese temple', 'taoist temple'],
-      'costa': ['mount costa', 'costa', 'mt costa'],
-      'bahong': ['bahong', 'rose garden', 'flower garden', 'flower farm'],
-      'benguet museum': ['benguet museum', 'museum', 'provincial museum'],
+      'stobosa': ['stobosa', 'stabosa', 'stabos', 'stabosy', 'colors of stobosa', 'hillside homes', 'solar homes', 'balili mural', 'stonehill', 'botiwtiw', 'sadjap'],
+      'strawberry': ['strawberry', 'betag', 'strawberry farm', 'swamp', 'picking strawberries', 'strawberry picking'],
+      'kalugong': ['kalugong', 'kape-an', 'kapean', 'cultural village', 'hat rock', 'mt kalugong'],
+      'yangbew': ['yangbew', 'jumbo rock', 'tawang peak', 'little mt pulag', 'mt yangbew'],
+      'bell church': ['bell church', 'taoist', 'pagoda', 'chinese temple'],
+      'costa': ['mount costa', 'costa', 'lamtang', 'mt costa'],
+      'bahong': ['bahong', 'rose', 'cut-flower', 'flower garden', 'flower farm', 'roses'],
+      'benguet museum': ['benguet museum', 'museum', 'provincial museum', 'capitol compound'],
       'communal': ['communal forest', 'forest', 'alno'],
-      'calajo': ['calajo', 'calajo restaurant'],
-      'bsu': ['bsu', 'food center', 'benguet state university'],
-      'valley': ['valley bread', 'valley'],
+      'calajo': ['calajo', 'calajo restaurant', 'pinikpikan'],
+      'bsu': ['bsu', 'food center', 'benguet state university', 'bsu organic'],
+      'valley': ['valley bread'],
       'chaya': ['chaya'],
-      'jack': ['jack', 'diner']
+      'jack': ['jack', "jack's", 'diner'],
+      'jollibee': ['jollibee'],
+      'mcdonald': ['mcdonald', 'mcdo'],
+      'sizzling': ['sizzling plate', 'sizzling']
     };
 
-    // 1. Check direct name or alias match against tourist spots
-    for (const spot of spots) {
+    // 1. Direct name match in location or full text
+    for (const spot of allSpots) {
       const sName = spot.name.toLowerCase();
-      if (clean === sName || clean.includes(sName) || sName.includes(clean)) {
+      if (locClean.includes(sName) || fullText.includes(sName)) {
         return { spot, type: 'tourist' };
       }
-      for (const [key, aliases] of Object.entries(aliasMap)) {
-        if (sName.includes(key)) {
-          if (aliases.some(a => clean.includes(a))) {
-            return { spot, type: 'tourist' };
-          }
-        }
-      }
     }
-
-    // 2. Check dining spots
-    for (const d of dining) {
+    for (const d of allDining) {
       const dName = d.name.toLowerCase();
-      if (clean === dName || clean.includes(dName) || dName.includes(clean)) {
+      if (locClean.includes(dName) || fullText.includes(dName)) {
         return { spot: d, type: 'dining' };
       }
-      for (const [key, aliases] of Object.entries(aliasMap)) {
-        if (dName.includes(key)) {
-          if (aliases.some(a => clean.includes(a))) {
-            return { spot: d, type: 'dining' };
-          }
-        }
+    }
+
+    // 2. Alias mapping checks
+    for (const [key, aliases] of Object.entries(aliasMap)) {
+      if (aliases.some(a => fullText.includes(a))) {
+        const sMatch = allSpots.find(s => s.name.toLowerCase().includes(key));
+        if (sMatch) return { spot: sMatch, type: 'tourist' };
+        const dMatch = allDining.find(d => d.name.toLowerCase().includes(key));
+        if (dMatch) return { spot: dMatch, type: 'dining' };
       }
     }
 
-    // 3. Fallback: Check significant word overlaps (length >= 4)
-    const words = clean.split(' ').filter(w => w.length >= 4 && !['near', 'area', 'from', 'view', 'park', 'road', 'street'].includes(w));
-    for (const spot of spots) {
+    // 3. Significant word intersection
+    const stopWords = new Set(['near', 'area', 'from', 'view', 'park', 'road', 'street', 'visit', 'tour', 'explore', 'walk', 'ride', 'take', 'lunch', 'dinner', 'breakfast', 'snack', 'morning', 'afternoon', 'evening', 'trinidad', 'benguet', 'valley']);
+    const words = (locClean + ' ' + actClean).split(/\s+/).filter(w => w.length >= 4 && !stopWords.has(w));
+    for (const spot of allSpots) {
       const sName = spot.name.toLowerCase();
       if (words.some(w => sName.includes(w))) {
         return { spot, type: 'tourist' };
       }
     }
-    for (const d of dining) {
+    for (const d of allDining) {
       const dName = d.name.toLowerCase();
       if (words.some(w => dName.includes(w))) {
         return { spot: d, type: 'dining' };
@@ -1079,52 +1346,87 @@ const AIItineraryPlanner: React.FC = () => {
                         </div>
 
                         {/* Activity Card */}
-                        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all space-y-3 relative">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-50 pb-3">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xs font-black text-lt-blue tracking-wide bg-lt-blue/5 px-2.5 py-1 rounded-lg shrink-0">
-                                {act.time}
-                              </span>
-                              <h4 className="font-extrabold text-slate-800 text-sm sm:text-base leading-snug">{act.activity}</h4>
-                            </div>
-                            {(() => {
-                              const match = findMatchingSpot(act.location);
-                              if (match) {
-                                return (
+                        {(() => {
+                          const match = findMatchingSpot(act.location, act.activity, act.notes);
+                          return (
+                            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all space-y-3 relative">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-50 pb-3">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs font-black text-lt-blue tracking-wide bg-lt-blue/5 px-2.5 py-1 rounded-lg shrink-0">
+                                    {act.time}
+                                  </span>
+                                  {match ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPreviewSpot(match);
+                                      }}
+                                      className="text-left font-extrabold text-slate-800 hover:text-lt-blue text-sm sm:text-base leading-snug transition-colors group/title cursor-pointer flex items-center gap-1.5"
+                                      title={`Click to open full destination guide, photos, and transportation for ${match.spot.name}`}
+                                    >
+                                      <span>{act.activity}</span>
+                                      <ExternalLink className="w-3.5 h-3.5 opacity-40 group-hover/title:opacity-100 text-lt-blue transition-opacity shrink-0" />
+                                    </button>
+                                  ) : (
+                                    <h4 className="font-extrabold text-slate-800 text-sm sm:text-base leading-snug">{act.activity}</h4>
+                                  )}
+                                </div>
+                                {match ? (
                                   <button
                                     type="button"
-                                    onClick={() => setPreviewSpot(match)}
-                                    className="flex items-center gap-1.5 text-xs text-lt-blue bg-lt-blue/10 hover:bg-lt-blue hover:text-white px-2.5 py-1 rounded-lg self-start sm:self-auto shrink-0 border border-lt-blue/20 font-bold transition-all shadow-sm group/btn cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPreviewSpot(match);
+                                    }}
+                                    className="flex items-center gap-1.5 text-xs text-lt-blue bg-blue-50/90 hover:bg-lt-blue hover:text-white px-3 py-1.5 rounded-xl self-start sm:self-auto shrink-0 border border-blue-200/80 font-bold transition-all shadow-xs group/btn cursor-pointer"
                                     title={`Click to view details, photos, and guides for ${match.spot.name}`}
                                   >
                                     <MapPin className="w-3.5 h-3.5 text-lt-blue group-hover/btn:text-white transition-colors shrink-0" />
-                                    <span className="underline decoration-lt-blue/30 group-hover/btn:decoration-white font-black">{act.location}</span>
-                                    <ExternalLink className="w-3 h-3 opacity-60 group-hover/btn:opacity-100 group-hover/btn:translate-x-0.5 transition-all shrink-0 ml-0.5" />
+                                    <span className="font-extrabold">{act.location}</span>
+                                    <span className="text-[10px] bg-white/90 group-hover/btn:bg-white/20 text-lt-blue group-hover/btn:text-white px-1.5 py-0.5 rounded font-bold ml-1 transition-colors flex items-center gap-1 border border-blue-100 group-hover/btn:border-transparent">
+                                      Open Spot <ExternalLink className="w-2.5 h-2.5" />
+                                    </span>
                                   </button>
-                                );
-                              }
-                              return (
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg self-start sm:self-auto shrink-0 border border-slate-100">
-                                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                                  <span className="font-bold text-slate-700">{act.location}</span>
-                                </div>
-                              );
-                            })()}
-                          </div>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg self-start sm:self-auto shrink-0 border border-slate-100">
+                                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                    <span className="font-bold text-slate-700">{act.location}</span>
+                                  </div>
+                                )}
+                              </div>
 
-                          <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">{act.notes}</p>
+                              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">{act.notes}</p>
 
-                          <div className="flex items-center justify-between pt-3 border-t border-slate-50 text-xs">
-                            <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Estimated Expense</span>
-                            <span className="font-extrabold text-slate-800 text-xs sm:text-sm">
-                              {act.cost === 0 ? (
-                                <span className="text-green-600 font-extrabold uppercase text-[10px] bg-green-50 px-2.5 py-0.5 rounded-lg border border-green-200">Free Entrance</span>
-                              ) : (
-                                `₱${act.cost.toLocaleString()}`
-                              )}
-                            </span>
-                          </div>
-                        </div>
+                              <div className="flex items-center justify-between pt-3 border-t border-slate-50 text-xs">
+                                {match ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPreviewSpot(match);
+                                    }}
+                                    className="text-[11px] font-bold text-lt-blue hover:text-blue-700 flex items-center gap-1 transition-colors hover:underline cursor-pointer"
+                                    title={`Open ${match.spot.name} information`}
+                                  >
+                                    <i className="fas fa-info-circle text-[11px]"></i>
+                                    <span>Spot Details: {match.spot.name}</span>
+                                    <ArrowRight className="w-3 h-3 ml-0.5" />
+                                  </button>
+                                ) : (
+                                  <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Estimated Expense</span>
+                                )}
+                                <span className="font-extrabold text-slate-800 text-xs sm:text-sm">
+                                  {act.cost === 0 ? (
+                                    <span className="text-green-600 font-extrabold uppercase text-[10px] bg-green-50 px-2.5 py-0.5 rounded-lg border border-green-200">Free Entrance</span>
+                                  ) : (
+                                    `₱${act.cost.toLocaleString()}`
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>

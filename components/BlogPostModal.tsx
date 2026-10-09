@@ -126,9 +126,9 @@ const BlogPostModal: React.FC<BlogPostModalProps> = ({ post, onClose }) => {
       </div>
     </div>
     
-    {isReportOpen && post._id && (
+    {isReportOpen && (
         <ReportModal 
-            targetId={post._id}
+            targetId={post._id || (post as any).id || post.title}
             targetName={post.title}
             targetType="BlogPost"
             onClose={() => setIsReportOpen(false)}

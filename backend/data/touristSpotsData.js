@@ -362,6 +362,171 @@ const touristSpots = [
       }
     ],
     mapEmbedUrl: 'https://maps.google.com/maps?q=Avong%20nen%20Romy&t=&z=15&ie=UTF8&iwloc=&output=embed'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1080&auto=format&fit=crop',
+    alt: 'BSU Agri-Tourism and Marketing Center showcasing highland university produce.',
+    name: 'BSU Agri-Tourism & Marketing Center',
+    description: 'The premier agro-eco-educational showcase of Benguet State University. Visitors can buy organic vegetables, freshly baked BSU strawberry bread, Benguet coffee, highland fruit wines, and authentic local pasalubong produced by the university experimental farms.',
+    location: 'Km. 6, BSU Compound, La Trinidad, Benguet',
+    history: 'Benguet State University pioneered highland organic agriculture in the Philippines. The Marketing Center was established near Gate 2 to make certified university agricultural products and Cordilleran innovations directly accessible to the public.',
+    gallery: [
+      'https://images.unsplash.com/photo-1509358271058-acd22cc93898?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1488459716781-31db52582fe9?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1573809616382-0e9c8fbb07e6?q=80&w=1080&auto=format&fit=crop'
+    ],
+    openingHours: '8:00 AM - 5:00 PM (Mon-Sat)',
+    bestTimeToVisit: 'Morning for freshest university harvest and fresh strawberry preserves.',
+    category: 'Agri-tourism',
+    tags: ['Organic Produce', 'Pasalubong', 'University Farm', 'Benguet Coffee'],
+    jeepneyFare: '₱13.00',
+    taxiFare: '₱160.00',
+    terminalLocation: 'Baguio City Hall / Magsaysay Ave Terminal',
+    nearbyEmergency: [
+      {
+        type: 'Hospital',
+        name: 'Benguet General Hospital',
+        distance: 'Approx. 5 min drive'
+      },
+      {
+        type: 'Police',
+        name: 'La Trinidad Municipal Police Station',
+        distance: 'Approx. 5 min drive'
+      }
+    ],
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Benguet%20State%20University%20Marketing%20Center&t=&z=15&ie=UTF8&iwloc=&output=embed'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Benguet Sports Complex all-weather rubber track oval and mountain backdrop in Wangal.',
+    name: 'Benguet Sports Complex',
+    description: 'The primary sports tourism and athletic hub in Benguet featuring a modern all-weather rubber tartan track oval, Olympic-sized aquatic center, and multi-purpose gymnasium surrounded by pine-covered hills. A popular spot for early-morning joggers and the grand venue for the Benguet Adivay and Strawberry Festival events.',
+    location: 'Wangal, La Trinidad, Benguet',
+    history: 'Formerly known as the Wangal Stockfarm, it was transformed into a premier provincial sports complex through modern international-standard rehabilitation to cultivate Cordilleran athletic excellence and host regional tourism celebrations.',
+    gallery: [
+      'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1526676037777-05a232554f77?q=80&w=1080&auto=format&fit=crop'
+    ],
+    openingHours: '5:00 AM - 7:00 PM Daily',
+    bestTimeToVisit: 'Early morning (5:30 AM - 8:00 AM) or sunset for jogging and mountain views.',
+    category: 'Recreation',
+    tags: ['Running Oval', 'Sports Tourism', 'Free Entry', 'Family Friendly'],
+    jeepneyFare: '₱15.00',
+    taxiFare: '₱180.00',
+    terminalLocation: 'Baguio City Hall / Wangal Terminal',
+    nearbyEmergency: [
+      {
+        type: 'Hospital',
+        name: 'Benguet General Hospital',
+        distance: 'Approx. 8-10 min drive'
+      },
+      {
+        type: 'Police',
+        name: 'La Trinidad Municipal Police Station',
+        distance: 'Approx. 8-10 min drive'
+      }
+    ],
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Benguet%20Sports%20Complex%20Wangal%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Tayawan View Deck and stone bridges overlooking the scenic La Trinidad valley.',
+    name: 'Tayawan View Deck & Agri-Park',
+    description: 'An elevated eco-adventure park in Sitio Tayawan featuring limestone cliff formations, traditional stone structures, footbridges, and panoramic sweeping vistas of the La Trinidad valley. Situated along the ridge between Mt. Kalugong and Mt. Yangbew.',
+    location: 'Sitio Tayawan, Barangay Tawang, La Trinidad, Benguet',
+    history: 'The name Tayawan is rooted in the ancestral Ibaloi ritual dance "Tayao" performed in high sacred places. The area was developed into an agri-tourist park with medicinal herbal gardens and highland rock walk trails.',
+    gallery: [
+      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1519923884842-9971932c5e5f?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1533240332313-0dbdd312e65b?q=80&w=1080&auto=format&fit=crop'
+    ],
+    openingHours: '6:00 AM - 6:00 PM Daily',
+    bestTimeToVisit: 'Early morning for clear mountain visibility or late afternoon for sunset.',
+    category: 'Nature',
+    tags: ['View Deck', 'Hiking', 'Rock Formations', 'Valley View'],
+    jeepneyFare: '₱14.00',
+    taxiFare: '₱200.00',
+    terminalLocation: 'Baguio City Hall / Center Mall Terminal',
+    nearbyEmergency: [
+      {
+        type: 'Hospital',
+        name: 'Benguet General Hospital',
+        distance: 'Approx. 15-20 min drive'
+      },
+      {
+        type: 'Police',
+        name: 'La Trinidad Municipal Police Station',
+        distance: 'Approx. 15-20 min drive'
+      }
+    ],
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Tayawan%20View%20Deck%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?q=80&w=1080&auto=format&fit=crop',
+    alt: 'Binanga Falls cascading into a deep natural pool amidst highland greens in Shilan.',
+    name: 'Binanga Falls',
+    description: 'A serene hidden waterfall tucked within the terraced agricultural slopes of Barangay Shilan. Cascading into a natural pot-shaped plunge pool ("banga"), this peaceful waterfall offers an off-the-beaten-path eco-trek away from the crowded valley center.',
+    location: 'Barangay Shilan, La Trinidad, Benguet',
+    history: 'Named after the Ibaloi term "banga" (pot) describing its distinct round deep pool basin, Binanga Falls was introduced to community eco-trekking in 2010 through local stewardship in Shilan.',
+    gallery: [
+      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1511497584788-87676104235f?q=80&w=1080&auto=format&fit=crop'
+    ],
+    openingHours: '6:00 AM - 5:00 PM Daily (Coordinate with Barangay Shilan)',
+    bestTimeToVisit: 'Morning during dry weather for safe trail conditions and crystal-clear water.',
+    category: 'Nature',
+    tags: ['Waterfall', 'Eco-Trek', 'Hidden Gem', 'Nature Pool'],
+    jeepneyFare: '₱20.00',
+    taxiFare: '₱250.00',
+    terminalLocation: 'Magsaysay Ave Terminal (Acop / Shilan Bound)',
+    nearbyEmergency: [
+      {
+        type: 'Hospital',
+        name: 'Benguet General Hospital',
+        distance: 'Approx. 20-25 min drive'
+      },
+      {
+        type: 'Police',
+        name: 'La Trinidad Municipal Police Station',
+        distance: 'Approx. 20-25 min drive'
+      }
+    ],
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Binanga%20Falls%20Shilan%20La%20Trinidad&t=&z=15&ie=UTF8&iwloc=&output=embed'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?q=80&w=1080&auto=format&fit=crop',
+    alt: 'DarJane Garden terraces and panoramic rooftop cafe in Shilan.',
+    name: "DarJane's Garden & Cafe",
+    description: 'A charming agro-tourism garden retreat nestled along Kilometer 12 in Shilan. Features multi-level flower terraces, organic GAP-certified vegetable greenhouses, and an overlooking rooftop café serving locally sourced highland coffee and fresh delicacies with sunrise valley views.',
+    location: 'Km. 12, Barangay Shilan, La Trinidad, Benguet',
+    history: 'Created by local farmers Dario and Jane Montes to showcase Good Agricultural Practices (GAP) and provide a tranquil mountain-view garden getaway promoting local organic highland agriculture.',
+    gallery: [
+      'https://images.unsplash.com/photo-1558686596-21825f23df0d?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1496857239036-1fb137683000?q=80&w=1080&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1596241913227-2355d88336c0?q=80&w=1080&auto=format&fit=crop'
+    ],
+    openingHours: '7:00 AM - 7:00 PM Daily',
+    bestTimeToVisit: 'Sunrise or early morning for misty mountain views and fresh brewed coffee.',
+    category: 'Agri-tourism',
+    tags: ['Flower Garden', 'Rooftop Cafe', 'Scenic View', 'Organic Farm'],
+    jeepneyFare: '₱20.00',
+    taxiFare: '₱250.00',
+    terminalLocation: 'Magsaysay Ave Terminal (Shilan / Acop Bound)',
+    nearbyEmergency: [
+      {
+        type: 'Hospital',
+        name: 'Benguet General Hospital',
+        distance: 'Approx. 20 min drive'
+      },
+      {
+        type: 'Police',
+        name: 'La Trinidad Municipal Police Station',
+        distance: 'Approx. 20 min drive'
+      }
+    ],
+    mapEmbedUrl: 'https://maps.google.com/maps?q=Shilan%20La%20Trinidad%20Benguet&t=&z=15&ie=UTF8&iwloc=&output=embed'
   }
 ];
 

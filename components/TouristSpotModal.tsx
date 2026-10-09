@@ -636,7 +636,14 @@ const TouristSpotModal: React.FC<TouristSpotModalProps> = ({ spot, spotType, onC
         </div>
       </div>
     </div>
-    {isReportOpen && spot._id && <ReportModal targetId={spot._id} targetName={spot.name} targetType={spotType === 'dining' ? 'DiningSpot' : 'TouristSpot'} onClose={() => setIsReportOpen(false)} />}
+    {isReportOpen && (
+      <ReportModal 
+        targetId={spot._id || (spot as any).id || spot.name} 
+        targetName={spot.name} 
+        targetType={spotType === 'dining' ? 'DiningSpot' : 'TouristSpot'} 
+        onClose={() => setIsReportOpen(false)} 
+      />
+    )}
     {confirmModal?.isOpen && (
       <ConfirmationModal 
         title={confirmModal.title}

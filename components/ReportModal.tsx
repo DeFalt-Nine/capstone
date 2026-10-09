@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { submitReport } from '../services/apiService';
 
 interface ReportModalProps {
@@ -41,14 +42,14 @@ const ReportModal: React.FC<ReportModalProps> = ({ targetId, targetName, targetT
         });
         setSuccess(true);
         setTimeout(onClose, 2000);
-    } catch (err) {
+    } catch {
         setError('Failed to submit report. Please try again.');
         setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 bg-slate-900/60 z-[10001] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-slide-up border border-slate-200" onClick={e => e.stopPropagation()}>
             {success ? (
                 <div className="p-8 text-center">
@@ -110,7 +111,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ targetId, targetName, targetT
                 </>
             )}
         </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
