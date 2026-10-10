@@ -33,6 +33,53 @@ const TABS = [
     { id: 'activity-log', label: 'Activity Log', icon: 'fa-history' }
 ];
 
+const SPOT_CATEGORY_PRESETS = [
+    'Agri-tourism',
+    'Nature & Parks',
+    'Cultural & Heritage',
+    'Local Produce',
+    'Ecotourism',
+    'Adventure & Hiking',
+    'Sightseeing'
+];
+
+const DINING_CATEGORY_PRESETS = [
+    'Cordilleran & Filipino',
+    'Cafe & Bakery',
+    'Farm-to-Table',
+    'Strawberry Treats',
+    'Casual Dining',
+    'Buffet'
+];
+
+const HOURS_PRESETS = [
+    '6:00 AM - 5:00 PM Daily',
+    '7:00 AM - 6:00 PM Daily',
+    '8:00 AM - 5:00 PM Daily',
+    '8:00 AM - 5:00 PM (Mon-Sat)',
+    'Sunrise to Sunset',
+    'Open 24 Hours'
+];
+
+const SPOT_TAG_PRESETS = [
+    '🍓 Strawberry Picking',
+    '🌸 Flower Gardens',
+    '⛰️ Mountain View',
+    '📸 Photography Spot',
+    '👨‍👩‍👧 Family Friendly',
+    '🚶 Guided Eco-Tour',
+    '🛍️ Fresh Market',
+    '☕ Mountain Cafe'
+];
+
+const EMERGENCY_FACILITY_PRESETS: { type: 'Hospital' | 'Police'; name: string; distance: string }[] = [
+    { type: 'Hospital', name: 'Benguet General Hospital', distance: 'Km. 5, Poblacion (Approx. 5-10 min drive)' },
+    { type: 'Hospital', name: 'Valley Emergency Clinic', distance: 'Poblacion, La Trinidad (Approx. 5 min drive)' },
+    { type: 'Police', name: 'La Trinidad Municipal Police Station', distance: 'Km. 5, Poblacion (Approx. 5 min drive)' },
+    { type: 'Police', name: 'Puguis Police Sub-Station', distance: 'Brgy. Puguis (Approx. 8 min drive)' },
+    { type: 'Police', name: 'Pico Police Sub-Station', distance: 'Brgy. Pico (Approx. 5 min drive)' }
+];
+
 const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isVerifying, setIsVerifying] = useState(true);
@@ -87,6 +134,7 @@ const AdminPage: React.FC = () => {
     
     const [detailSubView, setDetailSubView] = useState<'info' | 'reviews' | 'edit'>('info');
     const [detailItem, setDetailItem] = useState<any | null>(null);
+    const [spotEditorTab, setSpotEditorTab] = useState<'basic' | 'media' | 'location' | 'safety'>('basic');
     const [formError, setFormError] = useState<string | null>(null);
 
     const setActiveTab = (tab: string) => {
@@ -424,6 +472,7 @@ const formatDateRange = (start: string, end: string): string => {
     setFormError(null);
     setDetailItem(item);
     setDetailSubView(subView);
+    setSpotEditorTab('basic');
     
     if (item?._id) {
         setSearchParams({ tab: activeTab, id: item._id });
@@ -478,6 +527,7 @@ const formatDateRange = (start: string, end: string): string => {
 };
 
     const handleOpenModal      = (item?: any)  => openDetailPanel(item || null, item ? 'info' : 'edit');
+    const handleEdit           = (item: any)   => openDetailPanel(item, 'edit');
     const handleOpenReviewModal = (item: any)  => openDetailPanel(item, 'reviews');
     const handleOpenDetailModal = (item: any)  => openDetailPanel(item, 'info');
 
@@ -1482,14 +1532,19 @@ const formatDateRange = (start: string, end: string): string => {
                                 </div>
                                 {item.isLandmark && (
                                     <div className="relative">
-                                        <i className={`absolute left-3 top-1/2 -translate-y-1/2 ${item.landmarkIcon || 'fas fa-star'} text-[10px] text-lt-blue`}></i>
-                                        <input 
-                                            type="text" 
-                                            value={item.landmarkIcon} 
+                                        <select 
+                                            value={item.landmarkIcon || 'fas fa-star'} 
                                             onChange={(e) => updateStop(idx, 'landmarkIcon', e.target.value)}
-                                            placeholder="fa-icon"
-                                            className="w-full p-2 pl-8 bg-white border border-slate-200 rounded-lg text-[10px] font-mono focus:ring-2 focus:ring-lt-blue outline-none"
-                                        />
+                                            className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-lt-blue outline-none"
+                                        >
+                                            <option value="fas fa-star">⭐ Major Landmark</option>
+                                            <option value="fas fa-shopping-bag">🛍️ Market / Mall</option>
+                                            <option value="fas fa-hospital">🏥 Hospital / Clinic</option>
+                                            <option value="fas fa-graduation-cap">🎓 School / University</option>
+                                            <option value="fas fa-church">⛪ Church / Chapel</option>
+                                            <option value="fas fa-tree">🌲 Park / Viewpoint</option>
+                                            <option value="fas fa-utensils">🍽️ Food Hub</option>
+                                        </select>
                                     </div>
                                 )}
                             </div>
@@ -1621,106 +1676,185 @@ const formatDateRange = (start: string, end: string): string => {
         const isNew = !detailItem && detailSubView === 'edit';
         const item = detailItem || {};
         
-        const fields = Object.entries(item).filter(([key]) => !['_id', '__v', 'updatedAt', 'reviews', 'image', 'gallery'].includes(key));
+        const fields = Object.entries(item).filter(([key]) => ![
+            '_id', 'id', '__v', 'updatedAt', 'updated_at', 'createdAt', 'created_at',
+            'reviews', 'image', 'gallery', 'targetId', 'is_seen', 'isSeen',
+            'mapEmbedUrl', 'map_embed_url', 'views'
+        ].includes(key));
 
         const renderValue = (key: string, value: any) => {
+            if (value === undefined || value === null || value === '') {
+                return <span className="text-slate-400 italic text-xs">Not specified</span>;
+            }
+            if (key === 'tags') {
+                const tagList = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [];
+                return (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                        {tagList.map((tag: any, idx: number) => (
+                            <span key={idx} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold">
+                                {String(tag).trim()}
+                            </span>
+                        ))}
+                    </div>
+                );
+            }
+            if (key === 'location') {
+                return (
+                    <div className="flex items-center gap-2 text-slate-800 font-medium">
+                        <i className="fas fa-map-marker-alt text-lt-blue text-sm"></i>
+                        <span>{String(value)}</span>
+                    </div>
+                );
+            }
+            if (key === 'nearbyEmergency' && Array.isArray(value)) {
+                return (
+                    <div className="grid grid-cols-1 gap-2 mt-1">
+                        {value.map((em: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${em.type === 'Hospital' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                                    <i className={`fas ${em.type === 'Hospital' ? 'fa-hospital' : 'fa-shield-alt'}`}></i>
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold text-slate-800 leading-tight">{em.name}</p>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">{em.distance || em.type}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+            if (key === 'terminal' && typeof value === 'object') {
+                return (
+                    <div className="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                        <i className="fas fa-map-marker-alt text-lt-blue text-sm"></i>
+                        <div>
+                            <p className="text-xs font-bold text-slate-800">{value.name || 'Terminal'}</p>
+                            {value.location && <p className="text-[10px] text-slate-500">{value.location}</p>}
+                        </div>
+                    </div>
+                );
+            }
+            if (key === 'signboard' && typeof value === 'object') {
+                return (
+                    <div 
+                        className="inline-flex px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-black uppercase shadow-xs tracking-tight"
+                        style={{ backgroundColor: value.backgroundColor || '#000', color: value.color || '#fff' }}
+                    >
+                        {value.text || 'Signboard'}
+                    </div>
+                );
+            }
+            if (key === 'fare' && typeof value === 'object') {
+                return (
+                    <div className="flex gap-2">
+                        <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold">Min: ₱{value.minimum}</span>
+                        <span className="px-2.5 py-1 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold">Full: ₱{value.fullRoute}</span>
+                    </div>
+                );
+            }
             if (Array.isArray(value)) {
                 return (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                         {value.map((item, i) => (
-                            <span key={i} className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold border border-slate-200">
-                                {String(item)}
+                            <span key={i} className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200">
+                                {typeof item === 'object' ? (item.stop || item.name || 'Item') : String(item)}
                             </span>
                         ))}
                     </div>
                 );
             }
             if (typeof value === 'object' && value !== null) {
-                return <pre className="text-[10px] bg-slate-900 text-slate-300 p-3 rounded-xl overflow-x-auto">{JSON.stringify(value, null, 2)}</pre>;
+                return (
+                    <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+                        {Object.entries(value).map(([subK, subV]) => (
+                            <div key={subK} className="flex justify-between gap-2 border-b border-slate-100 last:border-none pb-1 last:pb-0">
+                                <span className="font-semibold text-slate-500 capitalize">{subK.replace(/([A-Z])/g, ' $1')}:</span>
+                                <span className="text-slate-800 font-bold">{String(subV)}</span>
+                            </div>
+                        ))}
+                    </div>
+                );
             }
             if (key.toLowerCase().includes('date') || key === 'createdAt') {
-    const parsed = new Date(value);
-    // If it's a valid ISO date (createdAt, updatedAt) format it, otherwise show raw string
-    return (
-        <span className="text-slate-700 font-medium">
-            {!isNaN(parsed.getTime()) && key !== 'date' 
-                ? parsed.toLocaleString() 
-                : value}
-        </span>
-    );
-}
-            if (key === 'status') {
-                const colors: any = { approved: 'bg-green-100 text-green-600', pending: 'bg-amber-100 text-amber-600', rejected: 'bg-red-100 text-red-600' };
-                return <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${colors[value] || 'bg-slate-100 text-slate-600'}`}>{value}</span>;
+                const parsed = new Date(value);
+                return (
+                    <span className="text-slate-700 font-medium">
+                        {!isNaN(parsed.getTime()) && key !== 'date' 
+                            ? parsed.toLocaleString() 
+                            : value}
+                    </span>
+                );
             }
-            return <span className="text-slate-700 leading-relaxed">{String(value)}</span>;
+            if (key === 'status') {
+                const colors: any = { approved: 'bg-emerald-100 text-emerald-700', pending: 'bg-amber-100 text-amber-700', rejected: 'bg-red-100 text-red-700' };
+                return <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${colors[value] || 'bg-slate-100 text-slate-600'}`}>{value}</span>;
+            }
+            return <span className="text-slate-700 leading-relaxed text-sm font-medium">{String(value)}</span>;
         };
 
         return (
-            <div className="h-full flex flex-col bg-slate-50 animate-in slide-in-from-right duration-300">
-                {/* ── Sticky header ─────────────────────────────────────── */}
-                <div className="sticky top-0 z-30 bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-5">
-                        {/* Back button with breadcrumb */}
+            <div className="h-full flex flex-col bg-slate-50">
+                {/* ── Slide-over header ──────────────────────────────────── */}
+                <div className="sticky top-0 z-30 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-4 min-w-0">
+                        {/* Close button */}
                         <button 
                             onClick={() => setIsDetailView(false)}
-                            className="flex items-center gap-2 text-slate-500 hover:text-lt-blue transition-colors group"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0"
+                            title="Close Panel"
                         >
-                            <span className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 group-hover:bg-lt-blue/10 transition-colors">
-                                <i className="fas fa-arrow-left text-sm"></i>
-                            </span>
-                            <span className="text-xs font-bold hidden sm:block">
-                                Back to {TABS.find(t => t.id === activeTab)?.label}
-                            </span>
+                            <i className="fas fa-times text-sm"></i>
                         </button>
 
-                        <i className="fas fa-chevron-right text-slate-300 text-xs hidden sm:block"></i>
-
-                        <div>
-                            <h3 className="font-bold text-slate-900 text-lg leading-none">
-                                {isNew ? `New ${TABS.find(t => t.id === activeTab)?.label.replace(/s$/, '')}` : (item.name || item.title || item.key)}
+                        <div className="min-w-0">
+                            <h3 className="font-bold text-slate-900 text-base leading-tight truncate">
+                                {isNew 
+                                    ? `New ${TABS.find(t => t.id === activeTab)?.label.replace(/s$/, '')}` 
+                                    : (item.name || item.title || item.targetName || item.key || 'Record Details')}
                             </h3>
                             {!isNew && (
-                                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                                    ID: {item._id} &nbsp;·&nbsp; Updated: {new Date(item.updatedAt || Date.now()).toLocaleString()}
+                                <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">
+                                    ID: {item._id} &nbsp;·&nbsp; {item.updatedAt || item.createdAt ? new Date(item.updatedAt || item.createdAt).toLocaleDateString() : 'Active'}
                                 </p>
                             )}
                         </div>
                     </div>
                     
-                    <div className="flex items-center gap-3">
-                        {/* Sub-view tabs */}
-                        <nav className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                            {!isNew && (
-                                <>
-                                    <button 
-                                        onClick={() => setDetailSubView('info')}
-                                        className={`px-4 py-1.5 text-xs rounded-lg font-bold transition-all ${detailSubView === 'info' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
-                                    >
-                                        Details
-                                    </button>
-                                    {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* Sub-view tabs (only for non-reports) */}
+                        {activeTab !== 'reports' && (
+                            <nav className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                                {!isNew && (
+                                    <>
                                         <button 
-                                            onClick={() => setDetailSubView('reviews')}
-                                            className={`px-4 py-1.5 text-xs rounded-lg font-bold transition-all ${detailSubView === 'reviews' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
+                                            onClick={() => setDetailSubView('info')}
+                                            className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all ${detailSubView === 'info' ? 'bg-white text-lt-blue shadow-xs' : 'text-slate-500 hover:bg-slate-200/50'}`}
                                         >
-                                            Reviews ({item.reviews?.length || 0})
+                                            Details
                                         </button>
-                                    )}
-                                </>
-                            )}
-                            <button 
-                                onClick={() => setDetailSubView('edit')}
-                                className={`px-4 py-1.5 text-xs rounded-lg font-bold transition-all ${detailSubView === 'edit' ? 'bg-white text-lt-blue shadow-sm' : 'text-slate-500 hover:bg-slate-200/50'}`}
-                            >
-                                {isNew ? 'Create' : 'Edit'}
-                            </button>
-                        </nav>
+                                        {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
+                                            <button 
+                                                onClick={() => setDetailSubView('reviews')}
+                                                className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all ${detailSubView === 'reviews' ? 'bg-white text-lt-blue shadow-xs' : 'text-slate-500 hover:bg-slate-200/50'}`}
+                                            >
+                                                Reviews ({item.reviews?.length || 0})
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                                <button 
+                                    onClick={() => setDetailSubView('edit')}
+                                    className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all ${detailSubView === 'edit' ? 'bg-white text-lt-blue shadow-xs' : 'text-slate-500 hover:bg-slate-200/50'}`}
+                                >
+                                    {isNew ? 'Create' : 'Edit'}
+                                </button>
+                            </nav>
+                        )}
                         
                         {!isNew && (
                             <button 
                                 onClick={() => handleDelete(item._id)}
-                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all"
+                                className="w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all"
                                 title="Delete Record"
                             >
                                 <i className="fas fa-trash-alt text-xs"></i>
@@ -1730,43 +1864,140 @@ const formatDateRange = (start: string, end: string): string => {
                 </div>
 
                 {/* ── Scrollable content ────────────────────────────────── */}
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    {detailSubView === 'info' && (
-                        <div className="max-w-5xl mx-auto">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                                <div className="lg:col-span-2 space-y-8">
-                                    {fields.map(([key, value]: [string, any]) => (
-                                        <div key={key} className="group bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-lt-blue transition-colors">
-                                                {key.replace(/([A-Z])/g, ' $1').trim()}
-                                            </label>
-                                            <div className="text-slate-700 text-sm leading-relaxed">
-                                                {renderValue(key, value)}
-                                            </div>
-                                        </div>
-                                    ))}
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                    {activeTab === 'reports' ? (
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reported Destination</span>
+                                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
+                                        {item.targetType || item.category || 'TouristSpot'}
+                                    </span>
                                 </div>
-                                
+                                <div>
+                                    <h4 className="text-2xl font-black text-slate-900 tracking-tight">
+                                        {item.targetName || item.name || 'Tourist Destination'}
+                                    </h4>
+                                    <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-500 font-medium">
+                                        <span className="flex items-center gap-1.5">
+                                            <i className="fas fa-calendar-alt text-slate-400"></i>
+                                            {item.createdAt || item.created_at ? new Date(item.createdAt || item.created_at).toLocaleString() : 'Recently Submitted'}
+                                        </span>
+                                        {(item.email || item.name) && (
+                                            <>
+                                                <span>·</span>
+                                                <span className="flex items-center gap-1.5">
+                                                    <i className="fas fa-user text-slate-400"></i>
+                                                    {item.name || 'Visitor'} {item.email ? `(${item.email})` : ''}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-6 shadow-xs space-y-3">
+                                <div className="flex items-center gap-2 text-amber-900 text-xs font-black uppercase tracking-wider">
+                                    <i className="fas fa-flag text-amber-600"></i>
+                                    <span>Issue Reason: <strong className="text-amber-950 font-black underline">{item.reason || item.subject || 'Inaccurate Information'}</strong></span>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-black text-slate-700 uppercase tracking-widest mb-1.5">Visitor Feedback & Explanation</label>
+                                    <div className="bg-white p-5 rounded-xl border border-amber-200 text-slate-900 text-base leading-relaxed font-semibold shadow-xs">
+                                        "{item.description || item.message || 'No additional details provided by the visitor.'}"
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-3">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Triage Actions</label>
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    You can jump directly to edit this spot to correct inaccurate information, or mark this report as resolved.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const targetTab = (item.targetType || item.category || '').toLowerCase().includes('dining') ? 'dining-spots' : 'tourist-spots';
+                                            setIsDetailView(false);
+                                            setActiveTab(targetTab);
+                                            setTimeout(() => {
+                                                const spotMatch = data.find((s: any) => 
+                                                    (s.name && item.targetName && s.name.toLowerCase() === item.targetName.toLowerCase()) || 
+                                                    (s.name && item.name && s.name.toLowerCase() === item.name.toLowerCase()) || 
+                                                    s._id === item.targetId
+                                                );
+                                                if (spotMatch) {
+                                                    openDetailPanel(spotMatch, 'edit');
+                                                }
+                                            }, 400);
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-2 bg-lt-blue hover:bg-blue-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all text-xs"
+                                    >
+                                        <i className="fas fa-pen text-xs"></i>
+                                        Jump to Edit "{item.targetName || item.name || 'Destination'}"
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDelete(item._id)}
+                                        className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-xs transition-all text-xs"
+                                    >
+                                        <i className="fas fa-check text-xs"></i>
+                                        Resolve & Dismiss Report
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {detailSubView === 'info' && (
                                 <div className="space-y-6">
                                     {item.image && (
-                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                                            <div className="p-4 border-b border-slate-100">
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Featured Image</label>
-                                            </div>
-                                            <div className="aspect-video">
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                                            <div className="aspect-video w-full">
                                                 <img src={item.image} alt="" className="w-full h-full object-cover" />
                                             </div>
                                         </div>
                                     )}
-                                    
-                                    {item.gallery && item.gallery.length > 0 && (
-                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                                            <div className="p-4 border-b border-slate-100">
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gallery ({item.gallery.length})</label>
+
+                                    <div className="space-y-3">
+                                        {fields.map(([key, value]: [string, any]) => (
+                                            <div key={key} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                                                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                </label>
+                                                <div className="text-slate-800 text-sm leading-relaxed">
+                                                    {renderValue(key, value)}
+                                                </div>
                                             </div>
-                                            <div className="p-4 grid grid-cols-2 gap-3">
+                                        ))}
+                                    </div>
+
+                                    {item.mapEmbedUrl && (
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Location Map</span>
+                                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-lt-blue border border-blue-200">
+                                                    <i className="fas fa-map-marker-alt mr-1"></i> Interactive Map
+                                                </span>
+                                            </div>
+                                            <div className="rounded-xl overflow-hidden border border-slate-200 aspect-video w-full bg-slate-50">
+                                                <iframe 
+                                                    src={item.mapEmbedUrl}
+                                                    className="w-full h-full border-none"
+                                                    loading="lazy"
+                                                    title="Location Map"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {item.gallery && item.gallery.length > 0 && (
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4">
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Gallery ({item.gallery.length})</label>
+                                            <div className="grid grid-cols-3 gap-2">
                                                 {item.gallery.map((img: string, i: number) => (
-                                                    <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-200 hover:ring-2 hover:ring-lt-blue transition-all cursor-pointer">
+                                                    <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-200">
                                                         <img src={img} alt="" className="w-full h-full object-cover" />
                                                     </div>
                                                 ))}
@@ -1774,180 +2005,595 @@ const formatDateRange = (start: string, end: string): string => {
                                         </div>
                                     )}
 
-                                    {/* Quick actions sidebar card */}
-                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Quick Actions</p>
+                                    {/* Action card */}
+                                    <div className="pt-2">
                                         <button
+                                            type="button"
                                             onClick={() => setDetailSubView('edit')}
-                                            className="w-full flex items-center gap-3 px-4 py-3 bg-lt-blue/5 text-lt-blue hover:bg-lt-blue hover:text-white rounded-xl text-xs font-bold transition-all"
+                                            className="w-full flex items-center justify-center gap-2 bg-lt-blue hover:bg-blue-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all text-xs"
                                         >
-                                            <i className="fas fa-pen w-4 text-center"></i>
-                                            Edit this record
-                                        </button>
-                                        {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
-                                            <button
-                                                onClick={() => setDetailSubView('reviews')}
-                                                className="w-full flex items-center gap-3 px-4 py-3 bg-lt-orange/5 text-lt-orange hover:bg-lt-orange hover:text-white rounded-xl text-xs font-bold transition-all"
-                                            >
-                                                <i className="fas fa-comment-dots w-4 text-center"></i>
-                                                View reviews ({item.reviews?.length || 0})
-                                            </button>
-                                        )}
-                                        {activeTab === 'blog-posts' && item.status === 'pending' && (
-                                            <button
-                                                onClick={() => handleApprove(item._id)}
-                                                className="w-full flex items-center gap-3 px-4 py-3 bg-green-50 text-green-600 hover:bg-green-500 hover:text-white rounded-xl text-xs font-bold transition-all"
-                                            >
-                                                <i className="fas fa-check w-4 text-center"></i>
-                                                Approve post
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => handleDelete(item._id)}
-                                            className="w-full flex items-center gap-3 px-4 py-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-xs font-bold transition-all"
-                                        >
-                                            <i className="fas fa-trash-alt w-4 text-center"></i>
-                                            Delete record
+                                            <i className="fas fa-pen text-xs"></i>
+                                            Edit this Record
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
+                            )}
 
-                    {detailSubView === 'reviews' && (
-                        <div className="max-w-4xl mx-auto">
-                            <div className="flex items-center justify-between mb-8">
-                                <h4 className="font-bold text-slate-800 text-lg">User Reviews</h4>
-                                <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">{item.reviews?.length || 0} Total</span>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                {(!item.reviews || item.reviews.length === 0) ? (
-                                    <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200">
-                                        <i className="fas fa-comment-slash text-3xl text-slate-300 mb-4"></i>
-                                        <p className="text-slate-500 text-sm">No reviews yet for this spot.</p>
+                            {detailSubView === 'reviews' && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h4 className="font-bold text-slate-800 text-base">User Reviews</h4>
+                                        <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-bold">{item.reviews?.length || 0} Total</span>
                                     </div>
-                                ) : (
-                                    item.reviews.map((review: any) => (
-                                        <div key={review._id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-lt-blue transition-all group">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 font-bold relative">
-                                                        {review.user?.charAt(0) || 'U'}
-                                                        {!review.isSeen && (
-                                                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
+                                    
+                                    {(!item.reviews || item.reviews.length === 0) ? (
+                                        <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-slate-200">
+                                            <i className="fas fa-comment-slash text-3xl text-slate-300 mb-3"></i>
+                                            <p className="text-slate-500 text-sm">No reviews yet for this spot.</p>
+                                        </div>
+                                    ) : (
+                                        item.reviews.map((review: any) => (
+                                            <div key={review._id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold text-xs">
+                                                            {review.user?.charAt(0) || 'U'}
+                                                        </div>
+                                                        <div>
                                                             <p className="font-bold text-slate-800 text-sm">{review.user}</p>
-                                                            {review.isResolved && (
-                                                                <span className="px-2 py-0.5 bg-green-100 text-green-600 text-[8px] font-bold rounded-full uppercase">Resolved</span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <div className="flex text-lt-orange text-[10px]">
-                                                                {[...Array(5)].map((_, i) => (
-                                                                    <i key={i} className={`fas fa-star ${i < review.rating ? '' : 'opacity-20'}`}></i>
-                                                                ))}
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <div className="flex text-amber-400 text-[10px]">
+                                                                    {[...Array(5)].map((_, i) => (
+                                                                        <i key={i} className={`fas fa-star ${i < review.rating ? '' : 'opacity-20'}`}></i>
+                                                                    ))}
+                                                                </div>
+                                                                <span className="text-[10px] text-slate-400">{new Date(review.createdAt).toLocaleDateString()}</span>
                                                             </div>
-                                                            <span className="text-[10px] text-slate-400 font-medium">{new Date(review.createdAt).toLocaleDateString()}</span>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                                    {!review.isSeen && (
-                                                        <button 
-                                                            onClick={() => handleMarkReviewSeen(review._id)}
-                                                            className="px-3 py-1 bg-slate-100 text-slate-600 hover:bg-lt-blue hover:text-white rounded-lg text-[10px] font-bold transition-all"
-                                                            title="Mark as Seen"
-                                                        >
-                                                            Mark Seen
-                                                        </button>
-                                                    )}
-                                                    {!review.isResolved && (
-                                                        <button 
-                                                            onClick={() => handleMarkReviewResolved(review._id)}
-                                                            className="px-3 py-1 bg-slate-100 text-slate-600 hover:bg-green-500 hover:text-white rounded-lg text-[10px] font-bold transition-all"
-                                                            title="Mark as Resolved"
-                                                        >
-                                                            Resolve
-                                                        </button>
-                                                    )}
                                                     <button 
                                                         onClick={() => handleDeleteReview(review._id)}
-                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                                                        title="Delete Review"
                                                     >
                                                         <i className="fas fa-trash-alt text-xs"></i>
                                                     </button>
                                                 </div>
+                                                <p className="text-slate-600 text-sm leading-relaxed italic">"{review.comment}"</p>
                                             </div>
-                                            <p className="text-slate-600 text-sm leading-relaxed italic">"{review.comment}"</p>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {detailSubView === 'edit' && (
-                        <div className="max-w-3xl mx-auto">
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Basic Information</p>
-
-                                    {activeTab !== 'events' && activeTab !== 'blog-posts' && renderInput('name', 'Name', 'text', 'e.g., Strawberry Farm')}
-                                    {(activeTab === 'blog-posts' || activeTab === 'events') && renderInput('title', 'Title', 'text', 'e.g., My Trip to the Valley')}
-                                    
-                                    <UniversalImageSelector 
-                                        onImageSelected={(url) => setFormData({...formData, image: url})}
-                                        aspectRatio={activeTab === 'blog-posts' || activeTab === 'events' ? 16 / 9 : 4 / 3}
-                                        label="Display Image"
-                                        currentImage={formData.image}
-                                    />
-
-                                    {renderInput('description', 'Short Summary', 'textarea', 'A brief overview of this spot or event...')}
-                                    {activeTab !== 'blog-posts' && renderInput('location', 'Location', 'text', 'e.g., Km. 6, La Trinidad')}
+                                        ))
+                                    )}
                                 </div>
+                            )}
 
-                                {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
-                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Spot Details</p>
-                                        {activeTab === 'tourist-spots' && renderInput('history', 'Background Story', 'textarea', 'The historical significance or origin story...')}
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {renderInput('category', 'Category Label', 'text', 'e.g., Nature / Farm')}
-                                            {renderInput('openingHours', 'Business Hours', 'text', 'e.g., 8:00 AM - 5:00 PM')}
+                            {detailSubView === 'edit' && (
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    {/* ── 4-Tab Navigation for Tourist & Dining Spots (Idea A) ── */}
+                                    {(activeTab === 'tourist-spots' || activeTab === 'dining-spots') && (
+                                        <div className="flex border-b border-slate-200 bg-white sticky top-0 z-10 -mx-6 -mt-6 px-6 pt-3 mb-6 gap-1 shadow-2xs overflow-x-auto">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSpotEditorTab('basic')}
+                                                className={`pb-3 px-3.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                                                    spotEditorTab === 'basic' ? 'border-lt-blue text-lt-blue' : 'border-transparent text-slate-400 hover:text-slate-700'
+                                                }`}
+                                            >
+                                                <i className="fas fa-info-circle text-[11px]"></i>
+                                                Basic Info
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSpotEditorTab('media')}
+                                                className={`pb-3 px-3.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                                                    spotEditorTab === 'media' ? 'border-lt-blue text-lt-blue' : 'border-transparent text-slate-400 hover:text-slate-700'
+                                                }`}
+                                            >
+                                                <i className="fas fa-images text-[11px]"></i>
+                                                Media & Gallery
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSpotEditorTab('location')}
+                                                className={`pb-3 px-3.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                                                    spotEditorTab === 'location' ? 'border-lt-blue text-lt-blue' : 'border-transparent text-slate-400 hover:text-slate-700'
+                                                }`}
+                                            >
+                                                <i className="fas fa-map-marked-alt text-[11px]"></i>
+                                                {activeTab === 'dining-spots' ? 'Location & Pricing' : 'Location & Transit'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSpotEditorTab('safety')}
+                                                className={`pb-3 px-3.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                                                    spotEditorTab === 'safety' ? 'border-lt-blue text-lt-blue' : 'border-transparent text-slate-400 hover:text-slate-700'
+                                                }`}
+                                            >
+                                                <i className="fas fa-shield-alt text-[11px]"></i>
+                                                {activeTab === 'dining-spots' ? 'Hours & Specialties' : 'Hours & Safety'}
+                                            </button>
                                         </div>
-                                        {renderInput('bestTimeToVisit', 'Best Visit Time', 'text', 'e.g., November to April')}
-                                    </div>
-                                )}
+                                    )}
 
-                                {activeTab === 'jeepney-routes' && (
+                                    {/* ── TOURIST SPOTS TABS ── */}
+                                    {activeTab === 'tourist-spots' && (
+                                        <>
+                                            {spotEditorTab === 'basic' && (
+                                                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Basic Information</p>
+                                                    {renderInput('name', 'Destination Name', 'text', 'e.g. La Trinidad Strawberry Farm')}
+                                                    
+                                                    {/* Category preset chips */}
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1.5 tracking-tight">Category</label>
+                                                        <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                                            {SPOT_CATEGORY_PRESETS.map((cat) => (
+                                                                <button
+                                                                    key={cat}
+                                                                    type="button"
+                                                                    onClick={() => setFormData({ ...formData, category: cat })}
+                                                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all border ${
+                                                                        formData.category === cat 
+                                                                            ? 'bg-lt-blue text-white border-lt-blue shadow-2xs' 
+                                                                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                                    }`}
+                                                                >
+                                                                    {cat}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <input 
+                                                            type="text" 
+                                                            value={formData.category || ''} 
+                                                            onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                                            placeholder="Or type custom category label..."
+                                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-lt-blue focus:bg-white outline-none transition-all text-sm"
+                                                        />
+                                                    </div>
+
+                                                    {renderInput('description', 'Short Summary', 'textarea', 'A brief, engaging overview of this destination for tourists...')}
+                                                    {renderInput('history', 'Background Story & Heritage', 'textarea', 'The historical significance, cultural context, or origin story...')}
+
+                                                    {/* Filter tags with chips */}
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1.5 tracking-tight">Filter Tags</label>
+                                                        <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                                            {SPOT_TAG_PRESETS.map((tag) => {
+                                                                const currentTags = Array.isArray(formData.tags) 
+                                                                    ? formData.tags 
+                                                                    : typeof formData.tags === 'string' 
+                                                                        ? formData.tags.split(',').map((t: string) => t.trim()) 
+                                                                        : [];
+                                                                const isSelected = currentTags.includes(tag);
+                                                                return (
+                                                                    <button
+                                                                        key={tag}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            let nextTags;
+                                                                            if (isSelected) {
+                                                                                nextTags = currentTags.filter((t: string) => t !== tag);
+                                                                            } else {
+                                                                                nextTags = [...currentTags, tag];
+                                                                            }
+                                                                            setFormData({ ...formData, tags: nextTags });
+                                                                        }}
+                                                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all border ${
+                                                                            isSelected 
+                                                                                ? 'bg-emerald-500 text-white border-emerald-500 shadow-2xs' 
+                                                                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                                        }`}
+                                                                    >
+                                                                        {tag} {isSelected ? '✓' : '+'}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <input 
+                                                            type="text" 
+                                                            value={Array.isArray(formData.tags) ? formData.tags.join(', ') : (formData.tags || '')} 
+                                                            onChange={e => setFormData({ ...formData, tags: e.target.value })}
+                                                            placeholder="Comma-separated tags (e.g. Strawberry, Nature, Family)"
+                                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-lt-blue focus:bg-white outline-none transition-all text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {spotEditorTab === 'media' && (
+                                                <div className="space-y-6">
+                                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Display & Cover Photo</p>
+                                                        <UniversalImageSelector 
+                                                            onImageSelected={(url) => setFormData({...formData, image: url})}
+                                                            aspectRatio={4 / 3}
+                                                            label="Featured Image"
+                                                            currentImage={formData.image}
+                                                        />
+                                                        {renderInput('alt', 'Image Alt Text', 'text', 'e.g. Strawberry fields overlooking the valley')}
+                                                    </div>
+                                                    {renderGalleryInput('Spot Photo Gallery')}
+                                                </div>
+                                            )}
+
+                                            {spotEditorTab === 'location' && (
+                                                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Location & Transit Options</p>
+                                                    {renderInput('location', 'Physical Address / Location', 'text', 'e.g. Km. 6, Brgy. Betag, La Trinidad')}
+                                                    
+                                                    {/* Google Maps embed with auto-parser and live map preview */}
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <label className="block text-sm font-bold text-slate-700 tracking-tight">Google Maps Location Link</label>
+                                                                {formData.mapEmbedUrl && formData.mapEmbedUrl.includes('google.com/maps') && (
+                                                                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                                                        <i className="fas fa-check-circle text-xs"></i> Map Linked
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[11px] text-slate-500 mb-2">Paste the share or embed link from Google Maps for this spot.</p>
+                                                            <input 
+                                                                type="text"
+                                                                value={formData.mapEmbedUrl || ''}
+                                                                onChange={e => {
+                                                                    let val = e.target.value.trim();
+                                                                    const match = val.match(/src=["']([^"']+)["']/);
+                                                                    if (match && match[1]) val = match[1];
+                                                                    setFormData({ ...formData, mapEmbedUrl: val });
+                                                                }}
+                                                                placeholder="https://www.google.com/maps/embed?pb=..."
+                                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-lt-blue focus:bg-white outline-none transition-all text-sm"
+                                                            />
+                                                        </div>
+
+                                                        {formData.mapEmbedUrl && formData.mapEmbedUrl.includes('google.com/maps') && (
+                                                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                                                                        <i className="fas fa-map-marker-alt text-lt-blue"></i> Map Preview
+                                                                    </span>
+                                                                </div>
+                                                                <div className="aspect-video w-full rounded-lg overflow-hidden border border-slate-200 bg-white">
+                                                                    <iframe 
+                                                                        src={formData.mapEmbedUrl}
+                                                                        className="w-full h-full border-none"
+                                                                        loading="lazy"
+                                                                        title="Google Map Preview"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                                                        {renderInput('terminalLocation', 'Jeepney Terminal', 'text', 'e.g. Magsaysay Ave, Baguio')}
+                                                        {renderInput('jeepneyFare', 'Jeepney Fare', 'text', 'e.g. ₱15.00 - ₱20.00')}
+                                                        {renderInput('taxiFare', 'Taxi Fare (Est.)', 'text', 'e.g. ₱120.00 - ₱150.00')}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {spotEditorTab === 'safety' && (
+                                                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Hours & Safety Services</p>
+                                                    
+                                                    {/* Hours with quick chips */}
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1.5 tracking-tight">Business / Operating Hours</label>
+                                                        <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                                            {HOURS_PRESETS.map((hrs) => (
+                                                                <button
+                                                                    key={hrs}
+                                                                    type="button"
+                                                                    onClick={() => setFormData({ ...formData, openingHours: hrs })}
+                                                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all border ${
+                                                                        formData.openingHours === hrs 
+                                                                            ? 'bg-lt-blue text-white border-lt-blue shadow-2xs' 
+                                                                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                                    }`}
+                                                                >
+                                                                    {hrs}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <input 
+                                                            type="text" 
+                                                            value={formData.openingHours || ''} 
+                                                            onChange={e => setFormData({ ...formData, openingHours: e.target.value })}
+                                                            placeholder="e.g. 8:00 AM - 5:00 PM Daily"
+                                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-lt-blue focus:bg-white outline-none transition-all text-sm"
+                                                        />
+                                                    </div>
+
+                                                    {renderInput('bestTimeToVisit', 'Best Season to Visit', 'text', 'e.g. November to April (Strawberry Harvest Season)')}
+
+                                                    {/* Nearby Emergency Facilities Selector */}
+                                                    <div className="pt-2">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <label className="block text-sm font-bold text-slate-700 tracking-tight">Nearby Emergency Facilities</label>
+                                                            <span className="text-[10px] text-slate-400 font-semibold">Select nearby emergency services</span>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 gap-2.5">
+                                                            {EMERGENCY_FACILITY_PRESETS.map((facility) => {
+                                                                const currentFacilities = Array.isArray(formData.nearbyEmergency) ? formData.nearbyEmergency : [];
+                                                                const isSelected = currentFacilities.some((f: any) => f.name === facility.name);
+                                                                return (
+                                                                    <div 
+                                                                        key={facility.name}
+                                                                        onClick={() => {
+                                                                            let nextFacilities;
+                                                                            if (isSelected) {
+                                                                                nextFacilities = currentFacilities.filter((f: any) => f.name !== facility.name);
+                                                                            } else {
+                                                                                nextFacilities = [...currentFacilities, facility];
+                                                                            }
+                                                                            setFormData({ ...formData, nearbyEmergency: nextFacilities });
+                                                                        }}
+                                                                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                                                                            isSelected 
+                                                                                ? 'bg-blue-50/70 border-lt-blue shadow-2xs' 
+                                                                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${
+                                                                                facility.type === 'Hospital' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                                                                            }`}>
+                                                                                <i className={`fas ${facility.type === 'Hospital' ? 'fa-hospital' : 'fa-shield-alt'}`}></i>
+                                                                            </span>
+                                                                            <div>
+                                                                                <p className="text-xs font-bold text-slate-900 leading-tight">{facility.name}</p>
+                                                                                <p className="text-[10px] text-slate-500 mt-0.5">{facility.distance}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            checked={isSelected} 
+                                                                            readOnly 
+                                                                            className="w-4 h-4 text-lt-blue rounded-md border-slate-300 focus:ring-lt-blue pointer-events-none"
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* ── DINING SPOTS TABS ── */}
+                                    {activeTab === 'dining-spots' && (
+                                        <>
+                                            {spotEditorTab === 'basic' && (
+                                                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Basic Information</p>
+                                                    {renderInput('name', 'Establishment Name', 'text', 'e.g. Jack\'s Restaurant')}
+                                                    
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1.5 tracking-tight">Category</label>
+                                                        <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                                            {DINING_CATEGORY_PRESETS.map((cat) => (
+                                                                <button
+                                                                    key={cat}
+                                                                    type="button"
+                                                                    onClick={() => setFormData({ ...formData, category: cat })}
+                                                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all border ${
+                                                                        formData.category === cat 
+                                                                            ? 'bg-lt-blue text-white border-lt-blue shadow-2xs' 
+                                                                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                                    }`}
+                                                                >
+                                                                    {cat}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <input 
+                                                            type="text" 
+                                                            value={formData.category || ''} 
+                                                            onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                                            placeholder="Or type custom category..."
+                                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-lt-blue focus:bg-white outline-none transition-all text-sm"
+                                                        />
+                                                    </div>
+
+                                                    {renderInput('description', 'Description & Ambiance', 'textarea', 'Signature dishes, atmosphere, specialties...')}
+                                                </div>
+                                            )}
+
+                                            {spotEditorTab === 'media' && (
+                                                <div className="space-y-6">
+                                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Display & Cover Photo</p>
+                                                        <UniversalImageSelector 
+                                                            onImageSelected={(url) => setFormData({...formData, image: url})}
+                                                            aspectRatio={4 / 3}
+                                                            label="Featured Image"
+                                                            currentImage={formData.image}
+                                                        />
+                                                        {renderInput('alt', 'Image Alt Text', 'text', 'e.g. Dining interior and signature dishes')}
+                                                    </div>
+                                                    {renderGalleryInput('Dining Photo Gallery')}
+                                                </div>
+                                            )}
+
+                                            {spotEditorTab === 'location' && (
+                                                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Location & Pricing</p>
+                                                    {renderInput('location', 'Location / Address', 'text', 'e.g. Km. 4, Balili, La Trinidad')}
+                                                    {renderInput('priceRange', 'Price Range', 'text', 'e.g. ₱150 - ₱300 per person')}
+                                                    {renderInput('contactInfo', 'Contact Number / Facebook', 'text', 'e.g. (074) 422-2020 / fb.com/restaurant')}
+                                                    
+                                                    {/* Google Maps embed with auto-parser and live map preview */}
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <label className="block text-sm font-bold text-slate-700 tracking-tight">Google Maps Location Link</label>
+                                                                {formData.mapEmbedUrl && formData.mapEmbedUrl.includes('google.com/maps') && (
+                                                                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                                                        <i className="fas fa-check-circle text-xs"></i> Map Linked
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[11px] text-slate-500 mb-2">Paste the share or embed link from Google Maps for this restaurant/cafe.</p>
+                                                            <input 
+                                                                type="text"
+                                                                value={formData.mapEmbedUrl || ''}
+                                                                onChange={e => {
+                                                                    let val = e.target.value.trim();
+                                                                    const match = val.match(/src=["']([^"']+)["']/);
+                                                                    if (match && match[1]) val = match[1];
+                                                                    setFormData({ ...formData, mapEmbedUrl: val });
+                                                                }}
+                                                                placeholder="https://www.google.com/maps/embed?pb=..."
+                                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-lt-blue focus:bg-white outline-none transition-all text-sm"
+                                                            />
+                                                        </div>
+
+                                                        {formData.mapEmbedUrl && formData.mapEmbedUrl.includes('google.com/maps') && (
+                                                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                                                                        <i className="fas fa-map-marker-alt text-lt-blue"></i> Map Preview
+                                                                    </span>
+                                                                </div>
+                                                                <div className="aspect-video w-full rounded-lg overflow-hidden border border-slate-200 bg-white">
+                                                                    <iframe 
+                                                                        src={formData.mapEmbedUrl}
+                                                                        className="w-full h-full border-none"
+                                                                        loading="lazy"
+                                                                        title="Dining Spot Map Preview"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {spotEditorTab === 'safety' && (
+                                                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Hours & Specialties</p>
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1.5 tracking-tight">Business Hours</label>
+                                                        <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                                            {HOURS_PRESETS.map((hrs) => (
+                                                                <button
+                                                                    key={hrs}
+                                                                    type="button"
+                                                                    onClick={() => setFormData({ ...formData, openingHours: hrs })}
+                                                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all border ${
+                                                                        formData.openingHours === hrs 
+                                                                            ? 'bg-lt-blue text-white border-lt-blue shadow-2xs' 
+                                                                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                                    }`}
+                                                                >
+                                                                    {hrs}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <input 
+                                                            type="text" 
+                                                            value={formData.openingHours || ''} 
+                                                            onChange={e => setFormData({ ...formData, openingHours: e.target.value })}
+                                                            placeholder="e.g. 7:00 AM - 9:00 PM Daily"
+                                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-lt-blue focus:bg-white outline-none transition-all text-sm"
+                                                        />
+                                                    </div>
+                                                    {renderInput('specialties', 'House Specialties & Recommendations', 'text', 'e.g. Strawberry Shortcake, Fresh Salad, Benguet Brew')}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* ── JEEPNEY ROUTES ── */}
+                                    {activeTab === 'jeepney-routes' && (
                                     <div className="space-y-6">
-                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Signboard Style</p>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                {renderInput('signboard.text', 'Signboard Text', 'text', 'e.g. KM. 4 - KM. 5')}
-                                                {renderInput('signboard.backgroundColor', 'Background Color', 'text', 'e.g. bg-white or hex')}
-                                                {renderInput('signboard.color', 'Text Color', 'text', 'e.g. text-red-600 or hex')}
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Route Signboard</p>
+                                            
+                                            {renderInput('signboard.text', 'Signboard Route Text', 'text', 'e.g. KM. 4 - KM. 5 LA TRINIDAD')}
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Signboard Background</label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {[
+                                                            { label: 'White', color: '#ffffff', border: 'border-slate-300' },
+                                                            { label: 'Yellow', color: '#facc15', border: 'border-yellow-400' },
+                                                            { label: 'Green', color: '#16a34a', border: 'border-green-600' },
+                                                            { label: 'Blue', color: '#2563eb', border: 'border-blue-600' },
+                                                            { label: 'Red', color: '#dc2626', border: 'border-red-600' },
+                                                            { label: 'Black', color: '#0f172a', border: 'border-slate-800' }
+                                                        ].map(bg => (
+                                                            <button
+                                                                key={bg.color}
+                                                                type="button"
+                                                                onClick={() => setFormData({
+                                                                    ...formData,
+                                                                    signboard: { ...(formData.signboard || {}), backgroundColor: bg.color }
+                                                                })}
+                                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                                                                    (formData.signboard as any)?.backgroundColor === bg.color
+                                                                        ? 'ring-2 ring-lt-blue ring-offset-1 font-black shadow-xs'
+                                                                        : 'hover:scale-105'
+                                                                } ${bg.border}`}
+                                                                style={{ backgroundColor: bg.color, color: bg.color === '#ffffff' || bg.color === '#facc15' ? '#0f172a' : '#ffffff' }}
+                                                            >
+                                                                {bg.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Signboard Text Color</label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {[
+                                                            { label: 'Black', color: '#000000' },
+                                                            { label: 'Red', color: '#dc2626' },
+                                                            { label: 'Blue', color: '#1d4ed8' },
+                                                            { label: 'White', color: '#ffffff' },
+                                                            { label: 'Green', color: '#15803d' }
+                                                        ].map(tc => (
+                                                            <button
+                                                                key={tc.color}
+                                                                type="button"
+                                                                onClick={() => setFormData({
+                                                                    ...formData,
+                                                                    signboard: { ...(formData.signboard || {}), color: tc.color }
+                                                                })}
+                                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-slate-300 flex items-center gap-1.5 ${
+                                                                    (formData.signboard as any)?.color === tc.color
+                                                                        ? 'ring-2 ring-lt-blue ring-offset-1 font-black shadow-xs'
+                                                                        : 'hover:scale-105'
+                                                                }`}
+                                                                style={{ backgroundColor: tc.color, color: tc.color === '#ffffff' ? '#0f172a' : '#ffffff' }}
+                                                            >
+                                                                {tc.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="p-4 bg-slate-50 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
-                                                <p className="text-[8px] font-black text-slate-400 uppercase mb-3">Live Signboard Preview</p>
-                                                <div 
-                                                    className="px-6 py-3 rounded-xl border-4 border-slate-800 shadow-2xl transform -rotate-1 min-w-[200px] flex items-center justify-center"
-                                                    style={{ 
-                                                        backgroundColor: (formData.signboard as any)?.backgroundColor?.startsWith('bg-') ? '' : (formData.signboard as any)?.backgroundColor || '#fff'
-                                                    }}
-                                                >
-                                                    <h3 
-                                                        className={`text-xl font-black tracking-tighter text-center ${(formData.signboard as any)?.color?.startsWith('text-') ? (formData.signboard as any)?.color : ''}`}
-                                                        style={{
-                                                            color: (formData.signboard as any)?.color?.startsWith('text-') ? '' : (formData.signboard as any)?.color || '#000'
+
+                                            <div className="pt-2">
+                                                <div className="p-5 bg-slate-900 rounded-2xl flex items-center justify-center border border-slate-800 shadow-inner">
+                                                    <div 
+                                                        className="px-8 py-3.5 rounded-xl border-4 border-slate-900 shadow-2xl min-w-[220px] max-w-full flex items-center justify-center transition-all"
+                                                        style={{ 
+                                                            backgroundColor: (formData.signboard as any)?.backgroundColor || '#ffffff'
                                                         }}
                                                     >
-                                                        {(formData.signboard as any)?.text || 'SIGNBOARD PREVIEW'}
-                                                    </h3>
+                                                        <span 
+                                                            className="text-lg md:text-xl font-black tracking-tight text-center uppercase"
+                                                            style={{
+                                                                color: (formData.signboard as any)?.color || '#000000'
+                                                            }}
+                                                        >
+                                                            {(formData.signboard as any)?.text || 'ROUTE SIGNBOARD'}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1987,8 +2633,6 @@ const formatDateRange = (start: string, end: string): string => {
                                         {renderJeepneyPathEditor()}
                                     </div>
                                 )}
-
-                                {activeTab === 'tourist-spots' && renderGalleryInput('Gallery Images')}
 
                                 {activeTab === 'events' && (
                                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
@@ -2033,10 +2677,10 @@ const formatDateRange = (start: string, end: string): string => {
         </div>
     </div>
     {formData.date && (
-        <p className="text-[11px] text-slate-500 mt-2 flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-            <i className="fas fa-calendar-check text-lt-blue"></i>
-            Saves as: <span className="font-bold text-slate-700">{formData.date}</span>
-        </p>
+        <div className="mt-2 flex items-center gap-2 bg-blue-50/70 px-3 py-1.5 rounded-lg border border-blue-100 text-xs font-semibold text-lt-blue">
+            <i className="fas fa-calendar-alt"></i>
+            <span>{formData.date}</span>
+        </div>
     )}
 </div>
                                             {renderInput('badge', 'Event Type', 'text', 'e.g., Festival')}
@@ -2058,7 +2702,7 @@ const formatDateRange = (start: string, end: string): string => {
                                             {renderInput('badge', 'Article Tag', 'text', 'e.g., Travel Guide')}
                                             {renderInput('date', 'Post Date', 'text', 'e.g., October 20, 2023')}
                                         </div>
-                                        {renderInput('content', 'Article Body (Markdown/HTML)', 'textarea', 'Write the full article content here...')}
+                                        {renderInput('content', 'Article Content', 'textarea', 'Write the full article story, travel highlights, or visitor tips...')}
                                         {renderGalleryInput('Article Gallery')}
                                         
                                         {!isNew && (
@@ -2101,11 +2745,12 @@ const formatDateRange = (start: string, end: string): string => {
                                     </button>
                                 </div>
                             </form>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </>
+                )}
             </div>
-        );
+        </div>
+    );
     };
 
     if (isVerifying) {
@@ -2434,21 +3079,37 @@ const formatDateRange = (start: string, end: string): string => {
                                                                         <td className="p-4">
                                                                             <div className="flex items-center gap-3">
                                                                                 {!item.isSeen && (
-                                                                                    <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10_rgba(239,68,68,0.5)] flex-shrink-0 animate-pulse"></div>
+                                                                                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50 flex-shrink-0 animate-pulse" title="Unread report"></div>
                                                                                 )}
                                                                                 <div className="min-w-0">
-                                                                                    <div className="font-bold text-slate-900 text-sm truncate">{item.targetName}</div>
-                                                                                    <div className="text-[10px] text-slate-400 uppercase font-black tracking-tight mt-0.5">{item.targetType}</div>
+                                                                                    <div className="font-bold text-slate-900 text-sm truncate">
+                                                                                        {item.targetName || item.name || 'Tourist Destination'}
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
+                                                                                            {item.targetType || item.category || 'Spot'}
+                                                                                        </span>
+                                                                                        {(item.createdAt || item.created_at) && (
+                                                                                            <>
+                                                                                                <span className="text-[10px] text-slate-300">·</span>
+                                                                                                <span className="text-[10px] text-slate-400">
+                                                                                                    {new Date(item.createdAt || item.created_at).toLocaleDateString()}
+                                                                                                </span>
+                                                                                            </>
+                                                                                        )}
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
                                                                         </td>
                                                                         <td className="p-4">
-                                                                            <span className="text-[10px] text-red-600 bg-red-50 px-2.5 py-1 rounded-full font-black uppercase tracking-wider border border-red-100">
-                                                                                {item.reason}
+                                                                            <span className="text-xs text-red-700 bg-red-50 px-3 py-1 rounded-lg font-bold uppercase tracking-wider border border-red-200 inline-block">
+                                                                                {item.reason || item.subject || 'Inaccurate Information'}
                                                                             </span>
                                                                         </td>
                                                                         <td className="p-4">
-                                                                            <p className="text-xs text-slate-500 max-w-xs line-clamp-2 leading-relaxed">{item.description}</p>
+                                                                            <p className="text-xs text-slate-700 font-semibold max-w-sm line-clamp-2 leading-relaxed bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                                                                                "{item.description || item.message || 'No additional details provided.'}"
+                                                                            </p>
                                                                         </td>
                                                                     </>
                                                                 ) : (
@@ -2524,36 +3185,46 @@ const formatDateRange = (start: string, end: string): string => {
                                                                     </td>
                                                                 )}
                                                                 <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
-                                                                    <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <div className="flex justify-end gap-1.5 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                                                         {activeTab === 'blog-posts' && item.status === 'pending' && (
                                                                             <button 
                                                                                 onClick={() => handleApprove(item._id)} 
-                                                                                className="bg-lt-blue text-white w-10 h-10 rounded-xl hover:bg-blue-600 shadow-md shadow-lt-blue/10 transition-all flex items-center justify-center active:scale-90"
+                                                                                className="bg-lt-blue text-white w-9 h-9 rounded-xl hover:bg-blue-600 shadow-sm transition-all flex items-center justify-center active:scale-95"
                                                                                 title="Approve post"
                                                                             >
                                                                                 <i className="fas fa-check text-xs"></i>
                                                                             </button>
                                                                         )}
                                                                         {activeTab === 'reports' ? (
-                                                                            <button 
-                                                                                onClick={() => handleDelete(item._id)} 
-                                                                                className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-600 shadow-md shadow-emerald-500/10 transition-all active:scale-95"
-                                                                            >
-                                                                                Resolve
-                                                                            </button>
-                                                                        ) : (
-                                                                            <>
+                                                                            <div className="flex items-center gap-1.5">
                                                                                 <button 
-                                                                                    onClick={() => handleOpenModal(item)} 
-                                                                                    className="w-10 h-10 flex items-center justify-center text-slate-400 bg-white border border-slate-200 hover:border-lt-blue hover:text-lt-blue rounded-xl transition-all shadow-sm hover:shadow-md active:scale-90" 
-                                                                                    title="Edit Item"
+                                                                                    onClick={() => handleOpenDetailModal(item)} 
+                                                                                    className="bg-lt-blue text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-blue-600 shadow-xs transition-all active:scale-95"
+                                                                                    title="Review Report Details"
                                                                                 >
-                                                                                    <i className="fas fa-pen-nib text-xs"></i>
+                                                                                    Review
                                                                                 </button>
                                                                                 <button 
                                                                                     onClick={() => handleDelete(item._id)} 
-                                                                                    className="w-10 h-10 flex items-center justify-center text-slate-400 bg-white border border-slate-200 hover:border-red-500 hover:text-red-500 rounded-xl transition-all shadow-sm hover:shadow-md active:scale-90" 
-                                                                                    title="Delete Item"
+                                                                                    className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-emerald-700 shadow-xs transition-all active:scale-95"
+                                                                                    title="Resolve & Dismiss Report"
+                                                                                >
+                                                                                    Resolve
+                                                                                </button>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <>
+                                                                                <button 
+                                                                                    onClick={() => handleEdit(item)} 
+                                                                                    className="w-9 h-9 flex items-center justify-center text-slate-500 bg-white border border-slate-200 hover:border-lt-blue hover:text-lt-blue rounded-xl transition-all shadow-xs hover:shadow-md active:scale-95" 
+                                                                                    title="Edit Record"
+                                                                                >
+                                                                                    <i className="fas fa-pen text-xs"></i>
+                                                                                </button>
+                                                                                <button 
+                                                                                    onClick={() => handleDelete(item._id)} 
+                                                                                    className="w-9 h-9 flex items-center justify-center text-slate-500 bg-white border border-slate-200 hover:border-red-500 hover:text-red-500 rounded-xl transition-all shadow-xs hover:shadow-md active:scale-95" 
+                                                                                    title="Delete Record"
                                                                                 >
                                                                                     <i className="fas fa-trash-alt text-xs"></i>
                                                                                 </button>

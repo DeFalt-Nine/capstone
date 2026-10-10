@@ -8,25 +8,39 @@ import adminLogService from '../services/adminLogService.js';
 // @route   POST /api/reports
 router.post('/', async (req, res) => {
   try {
-    const { targetId, targetName, targetType, reason, description } = req.body;
-    // Note: Our reports table in Supabase schema has slightly different column names in my proposed migration,
-    // let's adjust to match the schema or make schema match the needs.
-    // I defined schema for reports as name, email, subject, message earlier.
-    // Let's use a more generic structure or stick to what the frontend sends.
+    const { targetId, targetName, targetType, reason, description, name, email, subject, message } = req.body;
     
+    const finalName = targetName || name || 'General Spot';
+    const finalReason = reason || subject || 'Inaccurate Information';
+    const finalDesc = description || message || `Report regarding ${targetType || 'Spot'} (${targetId || ''})`;
+    const finalCategory = targetType || 'TouristSpot';
+
     const { data, error } = await supabase
       .from('reports')
       .insert([{
-        name: targetName || 'System',
-        email: 'info@latrinidad.gov.ph',
-        subject: reason,
-        message: description || `Report on ${targetType} (${targetId})`,
-        category: targetType
+        name: finalName,
+        email: email || 'visitor@latrinidad.gov.ph',
+        subject: finalReason,
+        message: finalDesc,
+        category: finalCategory,
+        is_seen: false
       }])
       .select();
 
     if (error) throw error;
-    res.status(201).json({ ...data[0], _id: data[0].id });
+    const r = data[0];
+    res.status(201).json({
+      ...r,
+      _id: r.id,
+      targetId: targetId || r.id,
+      targetName: r.name,
+      targetType: r.category || 'TouristSpot',
+      reason: r.subject || 'General',
+      description: r.message || '',
+      status: r.is_seen ? 'resolved' : 'pending',
+      isSeen: Boolean(r.is_seen),
+      createdAt: r.created_at
+    });
   } catch (error) {
     console.error('[Reports Error]', error);
     res.status(500).json({ message: 'Server Error' });
@@ -43,7 +57,17 @@ router.get('/', verifyAdmin, async (req, res) => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.json(data.map(r => ({ ...r, _id: r.id, createdAt: r.created_at })));
+    res.json(data.map(r => ({
+      ...r,
+      _id: r.id,
+      targetName: r.name || 'Unknown Spot',
+      targetType: r.category || 'TouristSpot',
+      reason: r.subject || 'General Issue',
+      description: r.message || 'No description provided',
+      status: r.is_seen ? 'resolved' : 'pending',
+      isSeen: Boolean(r.is_seen),
+      createdAt: r.created_at
+    })));
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
@@ -87,7 +111,18 @@ router.put('/:id/seen', verifyAdmin, async (req, res) => {
       .select();
     
     if (error) throw error;
-    res.json({ ...data[0], _id: data[0].id });
+    const r = data[0];
+    res.json({
+      ...r,
+      _id: r.id,
+      targetName: r.name,
+      targetType: r.category || 'TouristSpot',
+      reason: r.subject,
+      description: r.message,
+      status: 'resolved',
+      isSeen: true,
+      createdAt: r.created_at
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
